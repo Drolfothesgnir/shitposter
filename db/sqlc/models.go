@@ -11,16 +11,16 @@ import (
 )
 
 type Comment struct {
-	ID           int64     `json:"id"`
-	UserID       int64     `json:"user_id"`
-	PostID       int64     `json:"post_id"`
-	Path         string    `json:"path"`
-	Depth        int32     `json:"depth"`
-	Upvotes      int64     `json:"upvotes"`
-	Downvotes    int64     `json:"downvotes"`
-	Body         string    `json:"body"`
-	CreatedAt    time.Time `json:"created_at"`
-	LastModified time.Time `json:"last_modified"`
+	ID             int64     `json:"id"`
+	UserID         int64     `json:"user_id"`
+	PostID         int64     `json:"post_id"`
+	Path           string    `json:"path"`
+	Depth          int32     `json:"depth"`
+	Upvotes        int64     `json:"upvotes"`
+	Downvotes      int64     `json:"downvotes"`
+	Body           string    `json:"body"`
+	CreatedAt      time.Time `json:"created_at"`
+	LastModifiedAt time.Time `json:"last_modified_at"`
 }
 
 type CommentVote struct {
@@ -28,21 +28,21 @@ type CommentVote struct {
 	UserID    int64 `json:"user_id"`
 	CommentID int64 `json:"comment_id"`
 	// 1 for upvote, -1 for downvote
-	Vote         int64     `json:"vote"`
-	CreatedAt    time.Time `json:"created_at"`
-	LastModified time.Time `json:"last_modified"`
+	Vote           int64     `json:"vote"`
+	CreatedAt      time.Time `json:"created_at"`
+	LastModifiedAt time.Time `json:"last_modified_at"`
 }
 
 type Post struct {
-	ID           int64     `json:"id"`
-	UserID       int64     `json:"user_id"`
-	Title        string    `json:"title"`
-	Topics       []byte    `json:"topics"`
-	Body         []byte    `json:"body"`
-	Upvotes      int64     `json:"upvotes"`
-	Downvotes    int64     `json:"downvotes"`
-	CreatedAt    time.Time `json:"created_at"`
-	LastModified time.Time `json:"last_modified"`
+	ID             int64     `json:"id"`
+	UserID         int64     `json:"user_id"`
+	Title          string    `json:"title"`
+	Topics         []byte    `json:"topics"`
+	Body           []byte    `json:"body"`
+	Upvotes        int64     `json:"upvotes"`
+	Downvotes      int64     `json:"downvotes"`
+	CreatedAt      time.Time `json:"created_at"`
+	LastModifiedAt time.Time `json:"last_modified_at"`
 }
 
 type PostVote struct {
@@ -50,9 +50,9 @@ type PostVote struct {
 	UserID int64 `json:"user_id"`
 	PostID int64 `json:"post_id"`
 	// 1 for upvote, -1 for downvote
-	Vote         int64     `json:"vote"`
-	CreatedAt    time.Time `json:"created_at"`
-	LastModified time.Time `json:"last_modified"`
+	Vote           int64     `json:"vote"`
+	CreatedAt      time.Time `json:"created_at"`
+	LastModifiedAt time.Time `json:"last_modified_at"`
 }
 
 type Session struct {

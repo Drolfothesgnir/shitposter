@@ -12,7 +12,7 @@ import (
 )
 
 const createComment = `-- name: CreateComment :one
-SELECT id, user_id, post_id, path, depth, upvotes, downvotes, body, created_at, last_modified FROM insert_comment(
+SELECT id, user_id, post_id, path, depth, upvotes, downvotes, body, created_at, last_modified_at FROM insert_comment(
   p_user_id := $1,
   p_post_id := $2,
   p_parent_path := $4,
@@ -45,7 +45,80 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 		&i.Downvotes,
 		&i.Body,
 		&i.CreatedAt,
-		&i.LastModified,
+		&i.LastModifiedAt,
+	)
+	return i, err
+}
+
+const downvoteComment = `-- name: DownvoteComment :one
+UPDATE comments
+SET downvotes = downvotes + 1
+WHERE id = $1
+RETURNING id, user_id, post_id, path, depth, upvotes, downvotes, body, created_at, last_modified_at
+`
+
+func (q *Queries) DownvoteComment(ctx context.Context, id int64) (Comment, error) {
+	row := q.db.QueryRow(ctx, downvoteComment, id)
+	var i Comment
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PostID,
+		&i.Path,
+		&i.Depth,
+		&i.Upvotes,
+		&i.Downvotes,
+		&i.Body,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+	)
+	return i, err
+}
+
+const getComment = `-- name: GetComment :one
+SELECT id, user_id, post_id, path, depth, upvotes, downvotes, body, created_at, last_modified_at FROM comments
+WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetComment(ctx context.Context, id int64) (Comment, error) {
+	row := q.db.QueryRow(ctx, getComment, id)
+	var i Comment
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PostID,
+		&i.Path,
+		&i.Depth,
+		&i.Upvotes,
+		&i.Downvotes,
+		&i.Body,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+	)
+	return i, err
+}
+
+const upvoteComment = `-- name: UpvoteComment :one
+UPDATE comments
+SET upvotes = upvotes + 1
+WHERE id = $1
+RETURNING id, user_id, post_id, path, depth, upvotes, downvotes, body, created_at, last_modified_at
+`
+
+func (q *Queries) UpvoteComment(ctx context.Context, id int64) (Comment, error) {
+	row := q.db.QueryRow(ctx, upvoteComment, id)
+	var i Comment
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PostID,
+		&i.Path,
+		&i.Depth,
+		&i.Upvotes,
+		&i.Downvotes,
+		&i.Body,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
 	)
 	return i, err
 }

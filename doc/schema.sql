@@ -1,7 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS ltree;
 -- SQL dump generated using DBML (dbml.dbdiagram.io)
 -- Database: PostgreSQL
--- Generated at: 2025-07-31T08:10:20.873Z
+-- Generated at: 2025-07-31T10:54:44.601Z
 
 CREATE TABLE "users" (
   "id" bigserial PRIMARY KEY,
@@ -44,7 +44,7 @@ CREATE TABLE "posts" (
   "upvotes" bigint NOT NULL DEFAULT 0,
   "downvotes" bigint NOT NULL DEFAULT 0,
   "created_at" timestamptz NOT NULL DEFAULT (now()),
-  "last_modified" timestamptz NOT NULL DEFAULT (now())
+  "last_modified_at" timestamptz NOT NULL DEFAULT (now())
 );
 
 CREATE TABLE "comments" (
@@ -57,7 +57,7 @@ CREATE TABLE "comments" (
   "downvotes" bigint NOT NULL DEFAULT 0,
   "body" text NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now()),
-  "last_modified" timestamptz NOT NULL DEFAULT (now())
+  "last_modified_at" timestamptz NOT NULL DEFAULT (now())
 );
 
 CREATE TABLE "post_votes" (
@@ -66,7 +66,7 @@ CREATE TABLE "post_votes" (
   "post_id" bigserial NOT NULL,
   "vote" int8 NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now()),
-  "last_modified" timestamptz NOT NULL DEFAULT (now())
+  "last_modified_at" timestamptz NOT NULL DEFAULT (now())
 );
 
 CREATE TABLE "comment_votes" (
@@ -75,7 +75,7 @@ CREATE TABLE "comment_votes" (
   "comment_id" bigserial NOT NULL,
   "vote" int8 NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now()),
-  "last_modified" timestamptz NOT NULL DEFAULT (now())
+  "last_modified_at" timestamptz NOT NULL DEFAULT (now())
 );
 
 CREATE INDEX ON "sessions" ("user_id");

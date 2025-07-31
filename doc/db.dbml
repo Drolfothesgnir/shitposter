@@ -58,7 +58,7 @@ Table posts as P {
   upvotes bigint [not null, default: 0]
   downvotes bigint [not null, default: 0]
   created_at timestamptz [not null, default: `now()`]
-  last_modified timestamptz [not null, default: `now()`]
+  last_modified_at timestamptz [not null, default: `now()`]
 
   Indexes {
     user_id
@@ -76,7 +76,7 @@ Table comments as C {
   downvotes bigint [not null, default: 0]
   body text [not null]
   created_at timestamptz [not null, default: `now()`]
-  last_modified timestamptz [not null, default: `now()`]
+  last_modified_at timestamptz [not null, default: `now()`]
 
   Indexes {
     user_id
@@ -91,7 +91,7 @@ Table post_votes as PV {
   post_id bigserial [not null]
   vote int8 [not null, note: "1 for upvote, -1 for downvote"]
   created_at timestamptz [not null, default: `now()`]
-  last_modified timestamptz [not null, default: `now()`]
+  last_modified_at timestamptz [not null, default: `now()`]
 
   Indexes {
     (user_id, post_id) [unique]
@@ -104,7 +104,7 @@ Table comment_votes as CV {
   comment_id bigserial [not null]
   vote int8 [not null, note: "1 for upvote, -1 for downvote"]
   created_at timestamptz [not null, default: `now()`]
-  last_modified timestamptz [not null, default: `now()`]
+  last_modified_at timestamptz [not null, default: `now()`]
 
   Indexes {
     (user_id, comment_id) [unique]

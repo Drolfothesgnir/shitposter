@@ -9,11 +9,18 @@ import (
 )
 
 type Querier interface {
+	ChangeCommentVote(ctx context.Context, arg ChangeCommentVoteParams) (CommentVote, error)
 	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
+	CreateCommentVote(ctx context.Context, arg CreateCommentVoteParams) (CommentVote, error)
 	CreatePost(ctx context.Context, arg CreatePostParams) (Post, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteCommentVote(ctx context.Context, id int64) error
+	DownvoteComment(ctx context.Context, id int64) (Comment, error)
+	GetComment(ctx context.Context, id int64) (Comment, error)
+	GetCommentVote(ctx context.Context, id int64) (CommentVote, error)
 	GetPost(ctx context.Context, id int64) (Post, error)
 	GetUser(ctx context.Context, id int64) (User, error)
+	UpvoteComment(ctx context.Context, id int64) (Comment, error)
 }
 
 var _ Querier = (*Queries)(nil)

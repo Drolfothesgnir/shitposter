@@ -1,11 +1,15 @@
 package db
 
 import (
+	"context"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Store interface {
 	Querier
+	UpvoteCommentTx(ctx context.Context, arg UpvoteCommentTxParams) (UpvoteCommentTxResult, error)
+	DownvoteCommentTx(ctx context.Context, arg DownvoteCommentTxParams) (DownvoteCommentTxResult, error)
 }
 
 type SQLStore struct {

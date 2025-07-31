@@ -17,7 +17,7 @@ INSERT INTO posts (
   body
 ) VALUES (
   $1, $2, $3, $4
-) RETURNING id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified
+) RETURNING id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at
 `
 
 type CreatePostParams struct {
@@ -44,13 +44,13 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 		&i.Upvotes,
 		&i.Downvotes,
 		&i.CreatedAt,
-		&i.LastModified,
+		&i.LastModifiedAt,
 	)
 	return i, err
 }
 
 const getPost = `-- name: GetPost :one
-SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified FROM posts
+SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at FROM posts
 WHERE id = $1 LIMIT 1
 `
 
@@ -66,7 +66,7 @@ func (q *Queries) GetPost(ctx context.Context, id int64) (Post, error) {
 		&i.Upvotes,
 		&i.Downvotes,
 		&i.CreatedAt,
-		&i.LastModified,
+		&i.LastModifiedAt,
 	)
 	return i, err
 }

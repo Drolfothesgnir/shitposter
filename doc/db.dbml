@@ -10,7 +10,7 @@ Project shitposter {
 Table users as U {
   id bigserial [pk]
   username varchar [not null, unique]
-  profile_img_url varchar 
+  profile_img_url varchar [not null]
   hashed_password varchar [not null]
   email varchar [unique, not null]
   is_email_verified bool [not null, default: false]

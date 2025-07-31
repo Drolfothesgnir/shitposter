@@ -18,6 +18,9 @@ migratedown1:
 db_docs:
 	dbdocs build doc/db.dbml
 
+sqlc:
+	sqlc generate
+
 db_schema:
 	echo "CREATE EXTENSION IF NOT EXISTS ltree;" > doc/schema.sql
 	dbml2sql --postgres -o temp_schema.sql doc/db.dbml
@@ -27,4 +30,4 @@ db_schema:
 	rm temp_schema.sql
 	
 
-.PHONY: new_migration db_docs db_schema migratedown migratedown1 migrateup migrateup1
+.PHONY: new_migration db_docs db_schema migratedown migratedown1 migrateup migrateup1 sqlc

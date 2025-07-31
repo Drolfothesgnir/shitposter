@@ -1,12 +1,12 @@
 CREATE EXTENSION IF NOT EXISTS ltree;
 -- SQL dump generated using DBML (dbml.dbdiagram.io)
 -- Database: PostgreSQL
--- Generated at: 2025-07-30T17:48:52.222Z
+-- Generated at: 2025-07-31T08:10:20.873Z
 
 CREATE TABLE "users" (
   "id" bigserial PRIMARY KEY,
   "username" varchar UNIQUE NOT NULL,
-  "profile_img_url" varchar,
+  "profile_img_url" varchar NOT NULL,
   "hashed_password" varchar NOT NULL,
   "email" varchar UNIQUE NOT NULL,
   "is_email_verified" bool NOT NULL DEFAULT false,

@@ -8,8 +8,8 @@ import (
 
 type Store interface {
 	Querier
-	UpvoteCommentTx(ctx context.Context, arg UpvoteCommentTxParams) (UpvoteCommentTxResult, error)
-	DownvoteCommentTx(ctx context.Context, arg DownvoteCommentTxParams) (DownvoteCommentTxResult, error)
+	VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (VoteCommentTxResult, error)
+	DeleteCommentVoteTx(ctx context.Context, arg DeleteCommentVoteTxParams) (DeleteCommentVoteTxResult, error)
 }
 
 type SQLStore struct {

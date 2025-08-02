@@ -15,12 +15,12 @@ type Querier interface {
 	CreatePost(ctx context.Context, arg CreatePostParams) (Post, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteCommentVote(ctx context.Context, id int64) error
-	DownvoteComment(ctx context.Context, id int64) (Comment, error)
 	GetComment(ctx context.Context, id int64) (Comment, error)
 	GetCommentVote(ctx context.Context, id int64) (CommentVote, error)
+	GetExistingVote(ctx context.Context, arg GetExistingVoteParams) (CommentVote, error)
 	GetPost(ctx context.Context, id int64) (Post, error)
 	GetUser(ctx context.Context, id int64) (User, error)
-	UpvoteComment(ctx context.Context, id int64) (Comment, error)
+	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -50,31 +50,6 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 	return i, err
 }
 
-const downvoteComment = `-- name: DownvoteComment :one
-UPDATE comments
-SET downvotes = downvotes + 1
-WHERE id = $1
-RETURNING id, user_id, post_id, path, depth, upvotes, downvotes, body, created_at, last_modified_at
-`
-
-func (q *Queries) DownvoteComment(ctx context.Context, id int64) (Comment, error) {
-	row := q.db.QueryRow(ctx, downvoteComment, id)
-	var i Comment
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.PostID,
-		&i.Path,
-		&i.Depth,
-		&i.Upvotes,
-		&i.Downvotes,
-		&i.Body,
-		&i.CreatedAt,
-		&i.LastModifiedAt,
-	)
-	return i, err
-}
-
 const getComment = `-- name: GetComment :one
 SELECT id, user_id, post_id, path, depth, upvotes, downvotes, body, created_at, last_modified_at FROM comments
 WHERE id = $1 LIMIT 1
@@ -98,15 +73,30 @@ func (q *Queries) GetComment(ctx context.Context, id int64) (Comment, error) {
 	return i, err
 }
 
-const upvoteComment = `-- name: UpvoteComment :one
+const updateComment = `-- name: UpdateComment :one
 UPDATE comments
-SET upvotes = upvotes + 1
+SET 
+  upvotes = upvotes + COALESCE($2, 0),
+  downvotes = downvotes + COALESCE($3, 0),
+  body = COALESCE($4, body)
 WHERE id = $1
 RETURNING id, user_id, post_id, path, depth, upvotes, downvotes, body, created_at, last_modified_at
 `
 
-func (q *Queries) UpvoteComment(ctx context.Context, id int64) (Comment, error) {
-	row := q.db.QueryRow(ctx, upvoteComment, id)
+type UpdateCommentParams struct {
+	ID             int64       `json:"id"`
+	DeltaUpvotes   pgtype.Int8 `json:"delta_upvotes"`
+	DeltaDownvotes pgtype.Int8 `json:"delta_downvotes"`
+	Body           pgtype.Text `json:"body"`
+}
+
+func (q *Queries) UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error) {
+	row := q.db.QueryRow(ctx, updateComment,
+		arg.ID,
+		arg.DeltaUpvotes,
+		arg.DeltaDownvotes,
+		arg.Body,
+	)
 	var i Comment
 	err := row.Scan(
 		&i.ID,

@@ -22,3 +22,8 @@ RETURNING *;
 -- name: DeleteCommentVote :exec
 DELETE FROM comment_votes
 WHERE id = $1;
+
+-- name: GetExistingVote :one 
+SELECT * from comment_votes
+WHERE user_id = $1 AND comment_id = $2
+LIMIT 1;

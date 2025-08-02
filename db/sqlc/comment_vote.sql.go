@@ -95,3 +95,28 @@ func (q *Queries) GetCommentVote(ctx context.Context, id int64) (CommentVote, er
 	)
 	return i, err
 }
+
+const getExistingVote = `-- name: GetExistingVote :one
+SELECT id, user_id, comment_id, vote, created_at, last_modified_at from comment_votes
+WHERE user_id = $1 AND comment_id = $2
+LIMIT 1
+`
+
+type GetExistingVoteParams struct {
+	UserID    int64 `json:"user_id"`
+	CommentID int64 `json:"comment_id"`
+}
+
+func (q *Queries) GetExistingVote(ctx context.Context, arg GetExistingVoteParams) (CommentVote, error) {
+	row := q.db.QueryRow(ctx, getExistingVote, arg.UserID, arg.CommentID)
+	var i CommentVote
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.CommentID,
+		&i.Vote,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+	)
+	return i, err
+}

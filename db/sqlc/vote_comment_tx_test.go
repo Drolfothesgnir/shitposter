@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,7 +38,8 @@ func TestVoteCommentTx(t *testing.T) {
 		require.NoError(t, err)
 
 		result := <-results
-		require.NotEmpty(t, result)
+		require.NotEmpty(t, result.CommentVote)
+		require.NotEmpty(t, result.Comment)
 
 		require.Equal(t, comment1.ID, result.Comment.ID)
 		require.Equal(t, comment1.Body, result.Comment.Body)
@@ -127,4 +129,35 @@ func TestChangeVote(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(1), tx_result2.Comment.Downvotes)
 	require.Zero(t, tx_result2.Comment.Upvotes)
+	require.Equal(t, int64(-1), tx_result2.CommentVote.Vote)
+}
+
+func TestBadCommentID(t *testing.T) {
+	user := createRandomUser(t)
+
+	tx_result, err := testStore.VoteCommentTx(context.Background(), VoteCommentTxParams{
+		UserID:    user.ID,
+		CommentID: -1,
+		Vote:      1,
+	})
+
+	require.Empty(t, tx_result)
+	var pgErr *pgconn.PgError
+	require.Error(t, err)
+	require.ErrorAs(t, err, &pgErr)
+	require.Equal(t, "23503", pgErr.Code)
+	require.Equal(t, "comment_votes_comment_id_fkey", pgErr.ConstraintName)
+}
+
+func TestBadVote(t *testing.T) {
+	comment := createRandomComment(t)
+	tx_result, err := testStore.VoteCommentTx(context.Background(), VoteCommentTxParams{
+		UserID:    comment.UserID,
+		CommentID: comment.ID,
+		Vote:      5,
+	})
+
+	require.Empty(t, tx_result)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidVoteValue)
 }

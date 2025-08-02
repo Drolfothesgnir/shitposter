@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -21,6 +22,11 @@ type VoteCommentTxResult struct {
 func (store *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (VoteCommentTxResult, error) {
 	var result VoteCommentTxResult
 
+	// Check if vote's value is correct: 1 or -1
+	if arg.Vote != int64(1) && arg.Vote != int64(-1) {
+		return result, ErrInvalidVoteValue
+	}
+
 	err := store.execTx(ctx, func(q *Queries) error {
 		var err error
 
@@ -31,7 +37,7 @@ func (store *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParam
 		})
 
 		// if it does not exist create new one
-		if err != nil && err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			result.CommentVote, err = q.CreateCommentVote(ctx, CreateCommentVoteParams{
 				UserID:    arg.UserID,
 				CommentID: arg.CommentID,
@@ -52,13 +58,11 @@ func (store *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParam
 				deltaUpvotes = 1
 			}
 
-			arg := UpdateCommentParams{
+			result.Comment, err = q.UpdateComment(ctx, UpdateCommentParams{
 				ID:             arg.CommentID,
 				DeltaUpvotes:   pgtype.Int8{Int64: int64(deltaUpvotes), Valid: true},
 				DeltaDownvotes: pgtype.Int8{Int64: int64(deltaDownvotes), Valid: true},
-			}
-
-			result.Comment, err = q.UpdateComment(ctx, arg)
+			})
 
 			if err != nil {
 				return err
@@ -73,6 +77,16 @@ func (store *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParam
 			return ErrDuplicateVote
 		}
 
+		// update vote's value
+		result.CommentVote, err = q.ChangeCommentVote(ctx, ChangeCommentVoteParams{
+			ID:   comment_vote.ID,
+			Vote: arg.Vote,
+		})
+
+		if err != nil {
+			return err
+		}
+
 		// if vote exists and its value is diffent from the one from the arg
 		// then comment's Upvotes/Downvotes recalculated
 		deltaDownvotes := -1
@@ -83,13 +97,11 @@ func (store *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParam
 			deltaUpvotes = -1
 		}
 
-		arg := UpdateCommentParams{
+		result.Comment, err = q.UpdateComment(ctx, UpdateCommentParams{
 			ID:             arg.CommentID,
 			DeltaUpvotes:   pgtype.Int8{Int64: int64(deltaUpvotes), Valid: true},
 			DeltaDownvotes: pgtype.Int8{Int64: int64(deltaDownvotes), Valid: true},
-		}
-
-		result.Comment, err = q.UpdateComment(ctx, arg)
+		})
 
 		if err != nil {
 			return err

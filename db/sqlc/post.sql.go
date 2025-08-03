@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createPost = `-- name: CreatePost :one
@@ -56,6 +58,52 @@ WHERE id = $1 LIMIT 1
 
 func (q *Queries) GetPost(ctx context.Context, id int64) (Post, error) {
 	row := q.db.QueryRow(ctx, getPost, id)
+	var i Post
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Topics,
+		&i.Body,
+		&i.Upvotes,
+		&i.Downvotes,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+	)
+	return i, err
+}
+
+const updatePost = `-- name: UpdatePost :one
+UPDATE posts
+SET 
+  title = COALESCE($2, title),
+  body = COALESCE($3, body),
+  topics = COALESCE($4, topics),
+  upvotes = upvotes + COALESCE($5, 0),
+  downvotes = downvotes + COALESCE($6, 0),
+  last_modified_at = NOW()
+WHERE id = $1
+RETURNING id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at
+`
+
+type UpdatePostParams struct {
+	ID             int64       `json:"id"`
+	Title          pgtype.Text `json:"title"`
+	Body           []byte      `json:"body"`
+	Topics         []byte      `json:"topics"`
+	DeltaUpvotes   pgtype.Int8 `json:"delta_upvotes"`
+	DeltaDownvotes pgtype.Int8 `json:"delta_downvotes"`
+}
+
+func (q *Queries) UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, error) {
+	row := q.db.QueryRow(ctx, updatePost,
+		arg.ID,
+		arg.Title,
+		arg.Body,
+		arg.Topics,
+		arg.DeltaUpvotes,
+		arg.DeltaDownvotes,
+	)
 	var i Post
 	err := row.Scan(
 		&i.ID,

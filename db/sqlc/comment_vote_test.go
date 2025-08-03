@@ -72,7 +72,7 @@ func TestGetCommentVote(t *testing.T) {
 	vote1, err := testStore.CreateCommentVote(context.Background(), arg)
 	require.NoError(t, err)
 
-	vote2, err := testStore.GetCommentVote(context.Background(), vote1.ID)
+	vote2, err := testStore.GetCommentVoteByID(context.Background(), vote1.ID)
 	require.NoError(t, err)
 
 	require.Equal(t, vote1.ID, vote2.ID)
@@ -99,7 +99,7 @@ func TestDeleteCommentVote(t *testing.T) {
 	err = testStore.DeleteCommentVote(context.Background(), vote1.ID)
 	require.NoError(t, err)
 
-	_, err = testStore.GetCommentVote(context.Background(), vote1.ID)
+	_, err = testStore.GetCommentVoteByID(context.Background(), vote1.ID)
 	require.Error(t, err)
 	require.ErrorIs(t, err, pgx.ErrNoRows)
 }

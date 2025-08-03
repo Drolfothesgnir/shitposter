@@ -8,19 +8,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type VoteCommentTxParams struct {
-	UserID    int64 `json:"user_id"`
-	CommentID int64 `json:"comment_id"`
-	Vote      int64 `json:"vote"`
+type VotePostTxParams struct {
+	UserID int64 `json:"user_id"`
+	PostID int64 `json:"post_id"`
+	Vote   int64 `json:"vote"`
 }
 
-type VoteCommentTxResult struct {
-	Comment     Comment     `json:"comment"`
-	CommentVote CommentVote `json:"comment_vote"`
+type VotePostTxResult struct {
+	Post     Post     `json:"post"`
+	PostVote PostVote `json:"post_vote"`
 }
 
-func (store *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (VoteCommentTxResult, error) {
-	var result VoteCommentTxResult
+func (store *SQLStore) VotePostTx(ctx context.Context, arg VotePostTxParams) (VotePostTxResult, error) {
+	var result VotePostTxResult
 
 	// Check if vote's value is correct: 1 or -1
 	if arg.Vote != int64(1) && arg.Vote != int64(-1) {
@@ -30,25 +30,25 @@ func (store *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParam
 	err := store.execTx(ctx, func(q *Queries) error {
 		var err error
 
-		// Checking if user's vote for this comment alread exist
-		comment_vote, err := q.GetCommentVote(ctx, GetCommentVoteParams{
-			UserID:    arg.UserID,
-			CommentID: arg.CommentID,
+		// Checking if user's vote for this post alread exist
+		post_vote, err := q.GetPostVote(ctx, GetPostVoteParams{
+			UserID: arg.UserID,
+			PostID: arg.PostID,
 		})
 
 		// if it does not exist create new one
 		if errors.Is(err, pgx.ErrNoRows) {
-			result.CommentVote, err = q.CreateCommentVote(ctx, CreateCommentVoteParams{
-				UserID:    arg.UserID,
-				CommentID: arg.CommentID,
-				Vote:      arg.Vote,
+			result.PostVote, err = q.CreatePostVote(ctx, CreatePostVoteParams{
+				UserID: arg.UserID,
+				PostID: arg.PostID,
+				Vote:   arg.Vote,
 			})
 
 			if err != nil {
 				return err
 			}
 
-			// update comments Upvotes/Downvotes with new vote
+			// update post's Upvotes/Downvotes with new vote
 			deltaDownvotes := 0
 			deltaUpvotes := 0
 
@@ -58,8 +58,8 @@ func (store *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParam
 				deltaUpvotes = 1
 			}
 
-			result.Comment, err = q.UpdateComment(ctx, UpdateCommentParams{
-				ID:             arg.CommentID,
+			result.Post, err = q.UpdatePost(ctx, UpdatePostParams{
+				ID:             arg.PostID,
 				DeltaUpvotes:   pgtype.Int8{Int64: int64(deltaUpvotes), Valid: true},
 				DeltaDownvotes: pgtype.Int8{Int64: int64(deltaDownvotes), Valid: true},
 			})
@@ -73,13 +73,13 @@ func (store *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParam
 
 		// if the vote exist and it has same value, 1 or -1,
 		// then it's a duplicate vote and error is returned
-		if comment_vote.Vote == arg.Vote {
+		if post_vote.Vote == arg.Vote {
 			return ErrDuplicateVote
 		}
 
 		// update vote's value
-		result.CommentVote, err = q.ChangeCommentVote(ctx, ChangeCommentVoteParams{
-			ID:   comment_vote.ID,
+		result.PostVote, err = q.ChangePostVote(ctx, ChangePostVoteParams{
+			ID:   post_vote.ID,
 			Vote: arg.Vote,
 		})
 
@@ -88,7 +88,7 @@ func (store *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParam
 		}
 
 		// if vote exists and its value is diffent from the one from the arg
-		// then comment's Upvotes/Downvotes recalculated
+		// then Post's Upvotes/Downvotes recalculated
 		deltaDownvotes := -1
 		deltaUpvotes := 1
 
@@ -97,8 +97,8 @@ func (store *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParam
 			deltaUpvotes = -1
 		}
 
-		result.Comment, err = q.UpdateComment(ctx, UpdateCommentParams{
-			ID:             arg.CommentID,
+		result.Post, err = q.UpdatePost(ctx, UpdatePostParams{
+			ID:             arg.PostID,
 			DeltaUpvotes:   pgtype.Int8{Int64: int64(deltaUpvotes), Valid: true},
 			DeltaDownvotes: pgtype.Int8{Int64: int64(deltaDownvotes), Valid: true},
 		})

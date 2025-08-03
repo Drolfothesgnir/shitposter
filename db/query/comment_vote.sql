@@ -7,7 +7,7 @@ vote
   $1, $2, $3
 ) RETURNING *;
 
--- name: GetCommentVote :one 
+-- name: GetCommentVoteByID :one 
 SELECT * FROM comment_votes
 WHERE id = $1 LIMIT 1;
 
@@ -23,7 +23,7 @@ RETURNING *;
 DELETE FROM comment_votes
 WHERE id = $1;
 
--- name: GetExistingVote :one 
+-- name: GetCommentVote :one 
 SELECT * from comment_votes
 WHERE user_id = $1 AND comment_id = $2
 LIMIT 1;

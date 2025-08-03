@@ -78,7 +78,8 @@ UPDATE comments
 SET 
   upvotes = upvotes + COALESCE($2, 0),
   downvotes = downvotes + COALESCE($3, 0),
-  body = COALESCE($4, body)
+  body = COALESCE($4, body),
+  last_modified_at = NOW()
 WHERE id = $1
 RETURNING id, user_id, post_id, path, depth, upvotes, downvotes, body, created_at, last_modified_at
 `

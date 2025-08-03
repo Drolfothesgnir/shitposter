@@ -20,7 +20,7 @@ func (store *SQLStore) DeleteCommentVoteTx(ctx context.Context, arg DeleteCommen
 	err := store.execTx(ctx, func(q *Queries) error {
 		var err error
 
-		vote, err := q.GetCommentVote(ctx, arg.VoteID)
+		vote, err := q.GetCommentVoteByID(ctx, arg.VoteID)
 		if err != nil {
 			return err
 		}

@@ -81,7 +81,7 @@ func TestVoteCommentTx(t *testing.T) {
 	require.Equal(t, int64(n_pos-n_neg), comment2.Upvotes-comment2.Downvotes)
 }
 
-func TestDuplicateVote(t *testing.T) {
+func TestDuplicatePostVote(t *testing.T) {
 	comment := createRandomComment(t)
 
 	user := createRandomUser(t)
@@ -105,7 +105,7 @@ func TestDuplicateVote(t *testing.T) {
 	require.ErrorIs(t, err, ErrDuplicateVote)
 }
 
-func TestChangeVote(t *testing.T) {
+func TestChangePostVoteValue(t *testing.T) {
 	comment := createRandomComment(t)
 
 	user := createRandomUser(t)
@@ -149,7 +149,7 @@ func TestBadCommentID(t *testing.T) {
 	require.Equal(t, "comment_votes_comment_id_fkey", pgErr.ConstraintName)
 }
 
-func TestBadVote(t *testing.T) {
+func TestBadPostVote(t *testing.T) {
 	comment := createRandomComment(t)
 	tx_result, err := testStore.VoteCommentTx(context.Background(), VoteCommentTxParams{
 		UserID:    comment.UserID,

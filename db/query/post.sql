@@ -23,3 +23,22 @@ SET
   last_modified_at = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: GetPostsByPopularity :many
+SELECT * FROM posts
+WHERE created_at >= (NOW() - sqlc.arg(interval)::INTERVAL)
+ORDER BY (upvotes - downvotes) DESC
+LIMIT $1
+OFFSET $2;
+
+-- name: GetOldestPosts :many
+SELECT * FROM posts
+ORDER BY created_at ASC
+LIMIT $1
+OFFSET $2;
+
+-- name: GetNewestPosts :many
+SELECT * FROM posts
+ORDER BY created_at DESC
+LIMIT $1
+OFFSET $2;

@@ -51,6 +51,90 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 	return i, err
 }
 
+const getNewestPosts = `-- name: GetNewestPosts :many
+SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at FROM posts
+ORDER BY created_at DESC
+LIMIT $1
+OFFSET $2
+`
+
+type GetNewestPostsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) GetNewestPosts(ctx context.Context, arg GetNewestPostsParams) ([]Post, error) {
+	rows, err := q.db.Query(ctx, getNewestPosts, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Post{}
+	for rows.Next() {
+		var i Post
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Title,
+			&i.Topics,
+			&i.Body,
+			&i.Upvotes,
+			&i.Downvotes,
+			&i.CreatedAt,
+			&i.LastModifiedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getOldestPosts = `-- name: GetOldestPosts :many
+SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at FROM posts
+ORDER BY created_at ASC
+LIMIT $1
+OFFSET $2
+`
+
+type GetOldestPostsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) GetOldestPosts(ctx context.Context, arg GetOldestPostsParams) ([]Post, error) {
+	rows, err := q.db.Query(ctx, getOldestPosts, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Post{}
+	for rows.Next() {
+		var i Post
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Title,
+			&i.Topics,
+			&i.Body,
+			&i.Upvotes,
+			&i.Downvotes,
+			&i.CreatedAt,
+			&i.LastModifiedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPost = `-- name: GetPost :one
 SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at FROM posts
 WHERE id = $1 LIMIT 1
@@ -71,6 +155,50 @@ func (q *Queries) GetPost(ctx context.Context, id int64) (Post, error) {
 		&i.LastModifiedAt,
 	)
 	return i, err
+}
+
+const getPostsByPopularity = `-- name: GetPostsByPopularity :many
+SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at FROM posts
+WHERE created_at >= (NOW() - $3::INTERVAL)
+ORDER BY (upvotes - downvotes) DESC
+LIMIT $1
+OFFSET $2
+`
+
+type GetPostsByPopularityParams struct {
+	Limit    int32           `json:"limit"`
+	Offset   int32           `json:"offset"`
+	Interval pgtype.Interval `json:"interval"`
+}
+
+func (q *Queries) GetPostsByPopularity(ctx context.Context, arg GetPostsByPopularityParams) ([]Post, error) {
+	rows, err := q.db.Query(ctx, getPostsByPopularity, arg.Limit, arg.Offset, arg.Interval)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Post{}
+	for rows.Next() {
+		var i Post
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Title,
+			&i.Topics,
+			&i.Body,
+			&i.Upvotes,
+			&i.Downvotes,
+			&i.CreatedAt,
+			&i.LastModifiedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updatePost = `-- name: UpdatePost :one

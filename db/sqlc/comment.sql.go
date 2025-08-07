@@ -15,8 +15,10 @@ const createComment = `-- name: CreateComment :one
 SELECT id, user_id, post_id, path, depth, upvotes, downvotes, body, created_at, last_modified_at FROM insert_comment(
   p_user_id := $1,
   p_post_id := $2,
-  p_parent_path := $4,
-  p_body := $3
+  p_parent_path := $6,
+  p_body := $3,
+  p_upvotes := $4,
+  p_downvotes := $5
 )
 `
 
@@ -24,6 +26,8 @@ type CreateCommentParams struct {
 	PUserID     int64       `json:"p_user_id"`
 	PPostID     int64       `json:"p_post_id"`
 	PBody       string      `json:"p_body"`
+	PUpvotes    int64       `json:"p_upvotes"`
+	PDownvotes  int64       `json:"p_downvotes"`
 	PParentPath pgtype.Text `json:"p_parent_path"`
 }
 
@@ -32,6 +36,8 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 		arg.PUserID,
 		arg.PPostID,
 		arg.PBody,
+		arg.PUpvotes,
+		arg.PDownvotes,
 		arg.PParentPath,
 	)
 	var i Comment

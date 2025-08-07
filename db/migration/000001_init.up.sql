@@ -1,7 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS ltree;
 -- SQL dump generated using DBML (dbml.dbdiagram.io)
 -- Database: PostgreSQL
--- Generated at: 2025-07-31T10:54:44.601Z
+-- Generated at: 2025-08-06T13:07:06.320Z
 
 CREATE TABLE "users" (
   "id" bigserial PRIMARY KEY,
@@ -130,7 +130,9 @@ create or replace function insert_comment(
 	p_user_id bigint,
 	p_post_id bigint,
 	p_parent_path ltree,
-	p_body text
+	p_body text,
+	p_upvotes bigint default 0,
+	p_downvotes bigint default 0
 ) returns comments as $$
 declare
 	new_id bigint;
@@ -147,8 +149,8 @@ begin
     	new_depth := nlevel(p_parent_path);
 	end if;
 
-	insert into comments (id, user_id, post_id, path, depth, body)
-	values (new_id, p_user_id, p_post_id, new_path, new_depth, p_body)
+	insert into comments (id, user_id, post_id, path, depth, body, upvotes, downvotes)
+	values (new_id, p_user_id, p_post_id, new_path, new_depth, p_body, p_upvotes, p_downvotes)
 	returning * into result;
 
 	return result;

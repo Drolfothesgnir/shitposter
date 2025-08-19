@@ -79,6 +79,49 @@ func (q *Queries) GetComment(ctx context.Context, id int64) (Comment, error) {
 	return i, err
 }
 
+const getCommentsByPopularity = `-- name: GetCommentsByPopularity :many
+SELECT id, user_id, post_id, path, depth, upvotes, downvotes, body, created_at, last_modified_at FROM get_comments_by_popularity(
+  p_post_id := $1,
+  p_root_comments_limit := $2
+)
+`
+
+type GetCommentsByPopularityParams struct {
+	PPostID            int64 `json:"p_post_id"`
+	PRootCommentsLimit int64 `json:"p_root_comments_limit"`
+}
+
+func (q *Queries) GetCommentsByPopularity(ctx context.Context, arg GetCommentsByPopularityParams) ([]Comment, error) {
+	rows, err := q.db.Query(ctx, getCommentsByPopularity, arg.PPostID, arg.PRootCommentsLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Comment{}
+	for rows.Next() {
+		var i Comment
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.PostID,
+			&i.Path,
+			&i.Depth,
+			&i.Upvotes,
+			&i.Downvotes,
+			&i.Body,
+			&i.CreatedAt,
+			&i.LastModifiedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateComment = `-- name: UpdateComment :one
 UPDATE comments
 SET 

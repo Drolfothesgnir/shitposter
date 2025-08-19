@@ -21,3 +21,9 @@ SET
   last_modified_at = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: GetCommentsByPopularity :many
+SELECT * FROM get_comments_by_popularity(
+  p_post_id := $1,
+  p_root_comments_limit := $2
+);

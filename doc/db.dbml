@@ -82,6 +82,7 @@ Table comments as C {
     user_id
     post_id
     path [type: gist]
+    (path, depth)
   }
 }
 

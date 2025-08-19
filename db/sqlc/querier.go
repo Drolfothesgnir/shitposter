@@ -21,6 +21,7 @@ type Querier interface {
 	GetComment(ctx context.Context, id int64) (Comment, error)
 	GetCommentVote(ctx context.Context, arg GetCommentVoteParams) (CommentVote, error)
 	GetCommentVoteByID(ctx context.Context, id int64) (CommentVote, error)
+	GetCommentsByPopularity(ctx context.Context, arg GetCommentsByPopularityParams) ([]Comment, error)
 	GetNewestPosts(ctx context.Context, arg GetNewestPostsParams) ([]Post, error)
 	GetOldestPosts(ctx context.Context, arg GetOldestPostsParams) ([]Post, error)
 	GetPost(ctx context.Context, id int64) (Post, error)

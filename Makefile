@@ -24,6 +24,9 @@ sqlc:
 test:
 	go test -v -cover -short ./...
 
+dummy_comments:
+	go test -run TestCreateDummyComments ./...
+
 db_schema:
 	echo "CREATE EXTENSION IF NOT EXISTS ltree;" > doc/schema.sql
 	dbml2sql --postgres -o temp_schema.sql doc/db.dbml

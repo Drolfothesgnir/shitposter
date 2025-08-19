@@ -3,3 +3,7 @@ CREATE INDEX idx_comments_post_popularity ON comments(post_id, (upvotes - downvo
 
 -- Alternative approach - separate index for time-based queries
 CREATE INDEX idx_posts_created_at_desc ON posts(created_at DESC);
+
+-- Composite index for the anchor query (root comments)
+CREATE INDEX idx_comments_post_depth_popularity 
+ON comments (post_id, depth, (upvotes - downvotes) DESC);

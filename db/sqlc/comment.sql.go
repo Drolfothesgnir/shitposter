@@ -12,23 +12,23 @@ import (
 )
 
 const createComment = `-- name: CreateComment :one
-SELECT id, user_id, post_id, path, depth, upvotes, downvotes, body, created_at, last_modified_at FROM insert_comment(
+SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, popularity FROM insert_comment(
   p_user_id := $1,
   p_post_id := $2,
-  p_parent_path := $6,
   p_body := $3,
-  p_upvotes := $4,
-  p_downvotes := $5
+  p_parent_id := $4,
+  p_upvotes := $5,
+  p_downvotes := $6
 )
 `
 
 type CreateCommentParams struct {
-	PUserID     int64       `json:"p_user_id"`
-	PPostID     int64       `json:"p_post_id"`
-	PBody       string      `json:"p_body"`
-	PUpvotes    int64       `json:"p_upvotes"`
-	PDownvotes  int64       `json:"p_downvotes"`
-	PParentPath pgtype.Text `json:"p_parent_path"`
+	PUserID    int64       `json:"p_user_id"`
+	PPostID    int64       `json:"p_post_id"`
+	PBody      string      `json:"p_body"`
+	PParentID  pgtype.Int8 `json:"p_parent_id"`
+	PUpvotes   pgtype.Int8 `json:"p_upvotes"`
+	PDownvotes pgtype.Int8 `json:"p_downvotes"`
 }
 
 func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error) {
@@ -36,28 +36,29 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 		arg.PUserID,
 		arg.PPostID,
 		arg.PBody,
+		arg.PParentID,
 		arg.PUpvotes,
 		arg.PDownvotes,
-		arg.PParentPath,
 	)
 	var i Comment
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.PostID,
-		&i.Path,
+		&i.ParentID,
 		&i.Depth,
 		&i.Upvotes,
 		&i.Downvotes,
 		&i.Body,
 		&i.CreatedAt,
 		&i.LastModifiedAt,
+		&i.Popularity,
 	)
 	return i, err
 }
 
 const getComment = `-- name: GetComment :one
-SELECT id, user_id, post_id, path, depth, upvotes, downvotes, body, created_at, last_modified_at FROM comments
+SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, popularity FROM comments
 WHERE id = $1 LIMIT 1
 `
 
@@ -68,31 +69,32 @@ func (q *Queries) GetComment(ctx context.Context, id int64) (Comment, error) {
 		&i.ID,
 		&i.UserID,
 		&i.PostID,
-		&i.Path,
+		&i.ParentID,
 		&i.Depth,
 		&i.Upvotes,
 		&i.Downvotes,
 		&i.Body,
 		&i.CreatedAt,
 		&i.LastModifiedAt,
+		&i.Popularity,
 	)
 	return i, err
 }
 
 const getCommentsByPopularity = `-- name: GetCommentsByPopularity :many
-SELECT id, user_id, post_id, path, depth, upvotes, downvotes, body, created_at, last_modified_at FROM get_comments_by_popularity(
+SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, popularity FROM get_comments_by_popularity(
   p_post_id := $1,
-  p_root_comments_limit := $2
+  p_root_limit := $2
 )
 `
 
 type GetCommentsByPopularityParams struct {
-	PPostID            int64 `json:"p_post_id"`
-	PRootCommentsLimit int64 `json:"p_root_comments_limit"`
+	PPostID    int64 `json:"p_post_id"`
+	PRootLimit int32 `json:"p_root_limit"`
 }
 
 func (q *Queries) GetCommentsByPopularity(ctx context.Context, arg GetCommentsByPopularityParams) ([]Comment, error) {
-	rows, err := q.db.Query(ctx, getCommentsByPopularity, arg.PPostID, arg.PRootCommentsLimit)
+	rows, err := q.db.Query(ctx, getCommentsByPopularity, arg.PPostID, arg.PRootLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -104,13 +106,14 @@ func (q *Queries) GetCommentsByPopularity(ctx context.Context, arg GetCommentsBy
 			&i.ID,
 			&i.UserID,
 			&i.PostID,
-			&i.Path,
+			&i.ParentID,
 			&i.Depth,
 			&i.Upvotes,
 			&i.Downvotes,
 			&i.Body,
 			&i.CreatedAt,
 			&i.LastModifiedAt,
+			&i.Popularity,
 		); err != nil {
 			return nil, err
 		}
@@ -130,7 +133,7 @@ SET
   body = COALESCE($4, body),
   last_modified_at = NOW()
 WHERE id = $1
-RETURNING id, user_id, post_id, path, depth, upvotes, downvotes, body, created_at, last_modified_at
+RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, popularity
 `
 
 type UpdateCommentParams struct {
@@ -152,13 +155,14 @@ func (q *Queries) UpdateComment(ctx context.Context, arg UpdateCommentParams) (C
 		&i.ID,
 		&i.UserID,
 		&i.PostID,
-		&i.Path,
+		&i.ParentID,
 		&i.Depth,
 		&i.Upvotes,
 		&i.Downvotes,
 		&i.Body,
 		&i.CreatedAt,
 		&i.LastModifiedAt,
+		&i.Popularity,
 	)
 	return i, err
 }

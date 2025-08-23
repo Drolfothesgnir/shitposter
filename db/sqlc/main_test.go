@@ -6,7 +6,6 @@ import (
 	"log"
 	"math/rand/v2"
 	"os"
-	"strings"
 	"sync"
 	"testing"
 
@@ -57,14 +56,12 @@ type CommentsGeneratorParams struct {
 }
 
 // recursive function to create comment
-func f(t *testing.T, path *string, prob float64, params CommentsGeneratorParams, wg *sync.WaitGroup) {
+func f(t *testing.T, parent_id *int64, prob float64, params CommentsGeneratorParams, wg *sync.WaitGroup) {
 	n := rand.Int64N(int64(len(params.AvailableUserIDs)))
 
 	body := "top comment"
-	if path != nil {
-		parts := strings.Split(*path, ".")
-		parent := parts[len(parts)-1]
-		body = fmt.Sprintf("reply to a comment %s", parent)
+	if parent_id != nil {
+		body = fmt.Sprintf("reply to a comment %d", *parent_id)
 	}
 
 	upvote_scalar := 1.0
@@ -82,13 +79,15 @@ func f(t *testing.T, path *string, prob float64, params CommentsGeneratorParams,
 		downvote_scalar = 2.0
 	}
 
+	p_id, ok := getParentID(parent_id)
+
 	comment, err := testStore.CreateComment(context.Background(), CreateCommentParams{
-		PUserID:     params.AvailableUserIDs[n],
-		PPostID:     params.PostID,
-		PBody:       body,
-		PUpvotes:    int64(upvote_scalar * float64(rand.Int64N(1000))),
-		PDownvotes:  int64(downvote_scalar * float64(rand.Int64N(1000))),
-		PParentPath: pgtype.Text{String: getPath(path), Valid: path != nil},
+		PUserID:    params.AvailableUserIDs[n],
+		PPostID:    params.PostID,
+		PBody:      body,
+		PParentID:  pgtype.Int8{Int64: p_id, Valid: ok},
+		PUpvotes:   pgtype.Int8{Int64: int64(upvote_scalar * float64(rand.Int64N(1000))), Valid: true},
+		PDownvotes: pgtype.Int8{Int64: int64(downvote_scalar * float64(rand.Int64N(1000))), Valid: true},
 	})
 
 	require.NoError(t, err)
@@ -100,7 +99,7 @@ func f(t *testing.T, path *string, prob float64, params CommentsGeneratorParams,
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				f(t, &comment.Path, prob*0.5, params, wg)
+				f(t, &comment.ID, prob*0.5, params, wg)
 			}()
 		}
 	}
@@ -122,10 +121,10 @@ func GenerateDummyComments(t *testing.T, params CommentsGeneratorParams) {
 	wg.Wait()
 }
 
-func getPath(path *string) string {
-	if path != nil {
-		return *path
+func getParentID(parent_id *int64) (int64, bool) {
+	if parent_id != nil {
+		return *parent_id, true
 	}
 
-	return ""
+	return -1, false
 }

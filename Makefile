@@ -1,5 +1,11 @@
 DB_URL=postgresql://root:secret@localhost:5432/shitposter?sslmode=disable
 
+createdb:
+	docker exec -it postgres17 createdb --username=root --owner=root shitposter
+
+dropdb:
+	docker exec -it postgres17 dropdb shitposter
+
 new_migration:
 	migrate create -ext sql -dir db/migration -seq $(name)
 
@@ -25,6 +31,7 @@ test:
 	go test -v -cover -short ./...
 
 dummy_comments:
+	go clean -testcache
 	go test -run TestCreateDummyComments ./...
 
 db_schema:

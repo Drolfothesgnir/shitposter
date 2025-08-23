@@ -4,6 +4,8 @@
 -- Drop functions first
 DROP FUNCTION IF EXISTS insert_comment(bigint, bigint, ltree, text);
 
+DROP FUNCTION IF EXISTS get_comments_by_popularity(bigint, bigint);
+
 -- Drop custom indexes (expression indexes and named indexes)
 DROP INDEX IF EXISTS idx_comments_post_popularity;
 DROP INDEX IF EXISTS idx_comments_parent_id; 
@@ -23,11 +25,3 @@ DROP SEQUENCE IF EXISTS comments_id_seq;
 DROP SEQUENCE IF EXISTS posts_id_seq;
 DROP SEQUENCE IF EXISTS users_id_seq;
 DROP SEQUENCE IF EXISTS verification_emails_id_seq;
-
--- Drop extensions (be careful - other databases might use these)
--- Only uncomment if you're sure no other schemas need these extensions
-DROP EXTENSION IF EXISTS ltree;
--- DROP EXTENSION IF EXISTS "uuid-ossp";
-
--- Optional: Drop the entire schema if you created a custom one
--- DROP SCHEMA IF EXISTS shitposter CASCADE;

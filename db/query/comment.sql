@@ -2,10 +2,10 @@
 SELECT * FROM insert_comment(
   p_user_id := $1,
   p_post_id := $2,
-  p_parent_path := sqlc.narg('p_parent_path'),
   p_body := $3,
-  p_upvotes := $4,
-  p_downvotes := $5
+  p_parent_id := sqlc.narg('p_parent_id'),
+  p_upvotes := sqlc.narg('p_upvotes'),
+  p_downvotes := sqlc.narg('p_downvotes')
 );
 
 -- name: GetComment :one
@@ -25,5 +25,5 @@ RETURNING *;
 -- name: GetCommentsByPopularity :many
 SELECT * FROM get_comments_by_popularity(
   p_post_id := $1,
-  p_root_comments_limit := $2
+  p_root_limit := $2
 );

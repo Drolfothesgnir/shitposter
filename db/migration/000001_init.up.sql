@@ -1,8 +1,3 @@
-CREATE EXTENSION IF NOT EXISTS ltree;
--- SQL dump generated using DBML (dbml.dbdiagram.io)
--- Database: PostgreSQL
--- Generated at: 2025-08-19T20:14:14.701Z
-
 CREATE TABLE "users" (
   "id" bigserial PRIMARY KEY,
   "username" varchar UNIQUE NOT NULL,
@@ -16,7 +11,7 @@ CREATE TABLE "users" (
 
 CREATE TABLE "sessions" (
   "id" uuid PRIMARY KEY,
-  "user_id" bigserial NOT NULL,
+  "user_id" bigint NOT NULL,
   "refresh_token" varchar NOT NULL,
   "user_agent" varchar NOT NULL,
   "client_ip" varchar NOT NULL,
@@ -27,7 +22,7 @@ CREATE TABLE "sessions" (
 
 CREATE TABLE "verification_emails" (
   "id" bigserial PRIMARY KEY,
-  "user_id" bigserial NOT NULL,
+  "user_id" bigint NOT NULL,
   "email" varchar NOT NULL,
   "secret_code" varchar NOT NULL,
   "is_used" bool NOT NULL DEFAULT false,
@@ -37,7 +32,7 @@ CREATE TABLE "verification_emails" (
 
 CREATE TABLE "posts" (
   "id" bigserial PRIMARY KEY,
-  "user_id" bigserial NOT NULL,
+  "user_id" bigint NOT NULL,
   "title" varchar NOT NULL,
   "topics" jsonb,
   "body" jsonb NOT NULL,
@@ -49,9 +44,9 @@ CREATE TABLE "posts" (
 
 CREATE TABLE "comments" (
   "id" bigserial PRIMARY KEY,
-  "user_id" bigserial NOT NULL,
-  "post_id" bigserial NOT NULL,
-  "path" ltree NOT NULL,
+  "user_id" bigint NOT NULL,
+  "post_id" bigint NOT NULL,
+  "parent_id" bigint,
   "depth" int NOT NULL DEFAULT 0,
   "upvotes" bigint NOT NULL DEFAULT 0,
   "downvotes" bigint NOT NULL DEFAULT 0,
@@ -62,8 +57,8 @@ CREATE TABLE "comments" (
 
 CREATE TABLE "post_votes" (
   "id" bigserial PRIMARY KEY,
-  "user_id" bigserial NOT NULL,
-  "post_id" bigserial NOT NULL,
+  "user_id" bigint NOT NULL,
+  "post_id" bigint NOT NULL,
   "vote" int8 NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now()),
   "last_modified_at" timestamptz NOT NULL DEFAULT (now())
@@ -71,8 +66,8 @@ CREATE TABLE "post_votes" (
 
 CREATE TABLE "comment_votes" (
   "id" bigserial PRIMARY KEY,
-  "user_id" bigserial NOT NULL,
-  "comment_id" bigserial NOT NULL,
+  "user_id" bigint NOT NULL,
+  "comment_id" bigint NOT NULL,
   "vote" int8 NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now()),
   "last_modified_at" timestamptz NOT NULL DEFAULT (now())
@@ -94,10 +89,6 @@ CREATE INDEX ON "comments" ("user_id");
 
 CREATE INDEX ON "comments" ("post_id");
 
-CREATE INDEX ON "comments" USING GIST ("path");
-
-CREATE INDEX ON "comments" ("path", "depth");
-
 CREATE UNIQUE INDEX ON "post_votes" ("user_id", "post_id");
 
 CREATE UNIQUE INDEX ON "comment_votes" ("user_id", "comment_id");
@@ -116,6 +107,8 @@ ALTER TABLE "comments" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
 
 ALTER TABLE "comments" ADD FOREIGN KEY ("post_id") REFERENCES "posts" ("id") ON DELETE CASCADE;
 
+ALTER TABLE "comments" ADD FOREIGN KEY ("parent_id") REFERENCES "comments" ("id") ON DELETE CASCADE;
+
 ALTER TABLE "post_votes" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE;
 
 ALTER TABLE "comment_votes" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE;
@@ -123,90 +116,117 @@ ALTER TABLE "comment_votes" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id"
 ALTER TABLE "post_votes" ADD FOREIGN KEY ("post_id") REFERENCES "posts" ("id") ON DELETE CASCADE;
 
 ALTER TABLE "comment_votes" ADD FOREIGN KEY ("comment_id") REFERENCES "comments" ("id") ON DELETE CASCADE;
--- Fast retrieval of comments for a post, ordered by popularity
-CREATE INDEX idx_comments_post_popularity ON comments(post_id, (upvotes - downvotes) DESC);
+
+-- added auto "popularity" column and its index
+ALTER TABLE comments ADD COLUMN popularity BIGINT GENERATED ALWAYS AS (upvotes - downvotes) STORED;
 
 -- Alternative approach - separate index for time-based queries
 CREATE INDEX idx_posts_created_at_desc ON posts(created_at DESC);
 
--- Composite index for the anchor query (root comments)
-CREATE INDEX idx_comments_post_depth_popularity 
-ON comments (post_id, depth, (upvotes - downvotes) DESC);
 CREATE OR REPLACE FUNCTION insert_comment(
 	p_user_id BIGINT,
 	p_post_id BIGINT,
-	p_parent_path LTREE,
+	p_parent_id BIGINT,
 	p_body TEXT,
 	p_upvotes BIGINT DEFAULT 0,
 	p_downvotes BIGINT DEFAULT 0
-) RETURNS comments AS $$
+) RETURNS comments
+LANGUAGE plpgsql AS $$
 DECLARE
-	new_id BIGINT;
-	new_path LTREE;
-	new_depth INT;
-	result comments;
+	v_depth INT;
+	v_post BIGINT;
+  v_upvotes BIGINT := COALESCE(p_upvotes, 0);
+  v_downvotes BIGINT := COALESCE(p_downvotes, 0); 
+	row_out comments;
 BEGIN
-	new_id := NEXTVAL('comments_id_seq');
-	IF p_parent_path IS NULL THEN
-		new_path := new_id::TEXT::LTREE;
-		new_depth := 0;
+	IF p_parent_id IS NULL THEN
+		v_depth := 0;
 	ELSE
-		new_path := (p_parent_path::TEXT || '.' || new_id::TEXT)::LTREE;
-    	new_depth := NLEVEL(p_parent_path);
+		SELECT post_id, depth INTO v_post, v_depth
+		FROM comments
+		WHERE id = p_parent_id
+    -- disabling other transactions from deleting the parent comment
+		FOR KEY SHARE;
+
+		IF NOT FOUND THEN
+			RAISE EXCEPTION 'Parent % not found', p_parent_id
+			USING ERRCODE = 'foreign_key_violation';
+		END IF;
+
+		IF v_post <> p_post_id THEN
+			RAISE EXCEPTION 'Parent(%) belongs to post(%) but, new comment has post(%)',
+			p_parent_id, v_post, p_post_id;
+		END IF;
+
+		v_depth := v_depth + 1;
 	END IF;
 
-	INSERT INTO comments (id, user_id, post_id, path, depth, body, upvotes, downvotes)
-	VALUES (new_id, p_user_id, p_post_id, new_path, new_depth, p_body, p_upvotes, p_downvotes)
-	RETURNING * INTO result;
+	INSERT INTO comments (user_id, post_id, parent_id, depth, body, upvotes, downvotes)
+	VALUES (p_user_id, p_post_id, p_parent_id, v_depth, p_body, v_upvotes, v_downvotes)
+	RETURNING * INTO row_out;
 
-	RETURN result;
+	RETURN row_out;
 END;
+$$;
 
-$$ LANGUAGE plpgsql;
 
-
--- utility for ordering comments recursively depth-first by popularity
+-- utility for extracting comments ordered by popularity
 CREATE OR REPLACE FUNCTION get_comments_by_popularity(
-	p_post_id BIGINT,
-	p_root_comments_limit BIGINT
-) RETURNS SETOF comments AS $$
-	BEGIN
-		RETURN QUERY
-		WITH RECURSIVE cte AS (
-			SELECT c.*, 
-				-- root comment order index used as LIMIT
-				ROW_NUMBER() OVER(ORDER BY (c.upvotes - c.downvotes) DESC) AS rn,
-				-- rank used for the end sorting 
-				(ROW_NUMBER() OVER(ORDER BY (c.upvotes - c.downvotes) DESC))::text::ltree AS rank
-			FROM comments c
-			WHERE c.depth = 0 AND c.post_id = p_post_id
-		
-			UNION ALL
-		
-			SELECT c.*, 
-				t.rn,
-				-- concatenate rank to the parent index to get rank
-				t.rank || (ROW_NUMBER() OVER(ORDER BY (c.upvotes - c.downvotes) DESC))::text AS rank
-				
-			FROM comments c, cte t
-			-- checks if comment is a descendant of one of the previously found comments
-			-- and if there is not too much root comments found
-			WHERE c.path <@ t.path AND c.depth = t.depth + 1 AND t.rn <= p_root_comments_limit
-		)
-		SELECT 
-			c.id, 
-			c.user_id, 
-			c.post_id, 
-			c.path, 
-			c.depth, 
-			c.upvotes, 
-			c.downvotes,
-			c.body, 
-			c.created_at, 
-			c.last_modified_at
-		FROM cte c
-		WHERE rn <= p_root_comments_limit
-		ORDER BY rank;
-	END;
+  p_post_id BIGINT,
+  p_root_limit INT
+) RETURNS SETOF comments
+-- STABLE is used for optimization. It tells to the engine that db will not be modified, only queried
+LANGUAGE plpgsql STABLE AS $$
+BEGIN
+  RETURN QUERY
+  WITH RECURSIVE
+  -- getting roor comments
+  roots AS (
+    SELECT c.*
+    FROM comments c
+    WHERE c.post_id = p_post_id AND c.parent_id IS NULL
+    ORDER BY c.popularity DESC, c.id
+    LIMIT p_root_limit
+  ),
+  cte (
+    id, user_id, post_id, parent_id, depth,
+    upvotes, downvotes, body, created_at, last_modified_at,
+    popularity, rnk
+  ) AS (
+    SELECT
+      r.id, r.user_id, r.post_id, r.parent_id, r.depth,
+      r.upvotes, r.downvotes, r.body, r.created_at, r.last_modified_at, r.popularity,
+	  -- creating array of order indexes for the final sort
+	  -- it gives every comment its place in ordered by popularity list
+      ARRAY[ROW_NUMBER() OVER (ORDER BY r.popularity DESC, r.id)] AS rnk
+    FROM roots r
 
-$$ LANGUAGE plpgsql;
+    UNION ALL
+
+    -- getting children of the root comments
+    SELECT
+      ch.id, ch.user_id, ch.post_id, ch.parent_id, ch.depth,
+      ch.upvotes, ch.downvotes, ch.body, ch.created_at, ch.last_modified_at,
+      ch.popularity,
+      t.rnk || ch.rn AS rnk
+    FROM cte t
+	-- using JOIN LATERAL because the condition needs data from multiple sources
+	-- and I didn't used FROM comments c, cte t because... I don't know
+    JOIN LATERAL (
+      SELECT c.*,
+			-- index in ordered by popularity list, same thing as for the root comments
+             ROW_NUMBER() OVER (ORDER BY c.popularity DESC, c.id) AS rn
+      FROM comments c
+      WHERE c.post_id = t.post_id
+        AND c.parent_id = t.id
+    ) ch ON TRUE
+  )
+  SELECT
+    id, user_id, post_id, parent_id, depth,
+    upvotes, downvotes, body, created_at, last_modified_at,
+    popularity
+  FROM cte
+  -- utilising ordered index array
+  ORDER BY rnk;
+END;
+$$;

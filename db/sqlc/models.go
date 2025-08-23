@@ -8,19 +8,21 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Comment struct {
-	ID             int64     `json:"id"`
-	UserID         int64     `json:"user_id"`
-	PostID         int64     `json:"post_id"`
-	Path           string    `json:"path"`
-	Depth          int32     `json:"depth"`
-	Upvotes        int64     `json:"upvotes"`
-	Downvotes      int64     `json:"downvotes"`
-	Body           string    `json:"body"`
-	CreatedAt      time.Time `json:"created_at"`
-	LastModifiedAt time.Time `json:"last_modified_at"`
+	ID             int64       `json:"id"`
+	UserID         int64       `json:"user_id"`
+	PostID         int64       `json:"post_id"`
+	ParentID       pgtype.Int8 `json:"parent_id"`
+	Depth          int32       `json:"depth"`
+	Upvotes        int64       `json:"upvotes"`
+	Downvotes      int64       `json:"downvotes"`
+	Body           string      `json:"body"`
+	CreatedAt      time.Time   `json:"created_at"`
+	LastModifiedAt time.Time   `json:"last_modified_at"`
+	Popularity     pgtype.Int8 `json:"popularity"`
 }
 
 type CommentVote struct {

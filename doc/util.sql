@@ -36,12 +36,15 @@ CREATE OR REPLACE FUNCTION get_comments_by_popularity(
 	p_post_id BIGINT,
 	p_root_comments_limit BIGINT
 ) RETURNS SETOF comments AS $$
+	DECLARE
+		max_rank LTREE;
 	BEGIN
+		max_rank := p_root_comments_limit::TEXT::LTREE;
 		RETURN QUERY
 		WITH RECURSIVE cte AS (
 			SELECT c.*, 
 				-- rank used for the end sorting 
-				(ROW_NUMBER() OVER(ORDER BY (c.upvotes - c.downvotes) DESC))::text::ltree AS rank
+				(ROW_NUMBER() OVER(ORDER BY (c.upvotes - c.downvotes) DESC))::TEXT::LTREE AS rank
 			FROM comments c
 			WHERE c.depth = 0 AND c.post_id = p_post_id
 		
@@ -49,7 +52,7 @@ CREATE OR REPLACE FUNCTION get_comments_by_popularity(
 		
 			SELECT c.*, 
 				-- concatenate the rank to the parent index to get the child rank
-				t.rank || (ROW_NUMBER() OVER(ORDER BY (c.upvotes - c.downvotes) DESC))::text AS rank
+				t.rank || (ROW_NUMBER() OVER(ORDER BY (c.upvotes - c.downvotes) DESC))::TEXT AS rank
 				
 			FROM comments c, cte t
 			-- checks if comment is a descendant of one of the previously found comments
@@ -57,7 +60,7 @@ CREATE OR REPLACE FUNCTION get_comments_by_popularity(
 			WHERE 
 				c.path <@ t.path AND 
 				c.depth = t.depth + 1 AND 
-				t.rank <= p_root_comments_limit::TEXT::ltree
+				t.rank <= max_rank
 		)
 		SELECT 
 			c.id, 
@@ -71,7 +74,7 @@ CREATE OR REPLACE FUNCTION get_comments_by_popularity(
 			c.created_at, 
 			c.last_modified_at
 		FROM cte c
-		WHERE rank <= p_root_comments_limit::TEXT::ltree
+		WHERE rank <= max_rank
 		ORDER BY rank;
 	END;
 

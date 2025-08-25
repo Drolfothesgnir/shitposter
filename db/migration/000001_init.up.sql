@@ -52,7 +52,9 @@ CREATE TABLE "comments" (
   "downvotes" bigint NOT NULL DEFAULT 0,
   "body" text NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now()),
-  "last_modified_at" timestamptz NOT NULL DEFAULT (now())
+  "last_modified_at" timestamptz NOT NULL DEFAULT (now()),
+  "is_deleted" bool NOT NULL DEFAULT false,
+  "deleted_at" timestamptz NOT NULL DEFAULT '0001-01-01 00:00:00Z'
 );
 
 CREATE TABLE "post_votes" (
@@ -89,9 +91,18 @@ CREATE INDEX ON "comments" ("user_id");
 
 CREATE INDEX ON "comments" ("post_id");
 
+-- used for faster cascade deletion of comments children
+CREATE INDEX IF NOT EXISTS comments_parent_id_idx ON comments(parent_id);
+
 CREATE UNIQUE INDEX ON "post_votes" ("user_id", "post_id");
 
+-- used for faster cascade deletion of post votes
+CREATE INDEX IF NOT EXISTS post_votes_post_id_idx ON post_votes(post_id);
+
 CREATE UNIQUE INDEX ON "comment_votes" ("user_id", "comment_id");
+
+-- used for faster cascade deletion of comment votes
+CREATE INDEX IF NOT EXISTS comment_votes_comment_id_idx ON comment_votes(comment_id);
 
 COMMENT ON COLUMN "post_votes"."vote" IS '1 for upvote, -1 for downvote';
 
@@ -120,6 +131,14 @@ ALTER TABLE "comment_votes" ADD FOREIGN KEY ("comment_id") REFERENCES "comments"
 -- added auto "popularity" column and its index
 ALTER TABLE comments ADD COLUMN popularity BIGINT GENERATED ALWAYS AS (upvotes - downvotes) STORED;
 
+-- roots by popularity
+CREATE INDEX IF NOT EXISTS comments_roots_pop
+  ON comments (post_id, popularity DESC, id) WHERE parent_id IS NULL;
+
+-- children by popularity
+CREATE INDEX IF NOT EXISTS comments_children_pop
+  ON comments (post_id, parent_id, popularity DESC, id);
+
 -- Alternative approach - separate index for time-based queries
 CREATE INDEX idx_posts_created_at_desc ON posts(created_at DESC);
 
@@ -131,6 +150,7 @@ CREATE OR REPLACE FUNCTION insert_comment(
 	p_upvotes BIGINT DEFAULT 0,
 	p_downvotes BIGINT DEFAULT 0
 ) RETURNS comments
+-- using plpgsql because I have variables and control flow
 LANGUAGE plpgsql AS $$
 DECLARE
 	v_depth INT;
@@ -176,11 +196,9 @@ CREATE OR REPLACE FUNCTION get_comments_by_popularity(
   p_root_limit INT
 ) RETURNS SETOF comments
 -- STABLE is used for optimization. It tells to the engine that db will not be modified, only queried
-LANGUAGE plpgsql STABLE AS $$
-BEGIN
-  RETURN QUERY
+LANGUAGE sql STABLE AS $$
   WITH RECURSIVE
-  -- getting roor comments
+  -- getting root comments
   roots AS (
     SELECT c.*
     FROM comments c
@@ -191,14 +209,15 @@ BEGIN
   cte (
     id, user_id, post_id, parent_id, depth,
     upvotes, downvotes, body, created_at, last_modified_at,
-    popularity, rnk
+    is_deleted, deleted_at, popularity, rnk
   ) AS (
     SELECT
       r.id, r.user_id, r.post_id, r.parent_id, r.depth,
-      r.upvotes, r.downvotes, r.body, r.created_at, r.last_modified_at, r.popularity,
+      r.upvotes, r.downvotes, r.body, r.created_at, r.last_modified_at,
+      r.is_deleted, r.deleted_at, r.popularity,
 	  -- creating array of order indexes for the final sort
 	  -- it gives every comment its place in ordered by popularity list
-      ARRAY[ROW_NUMBER() OVER (ORDER BY r.popularity DESC, r.id)] AS rnk
+      ARRAY[ROW_NUMBER() OVER (ORDER BY r.popularity DESC, r.id)]::BIGINT[] AS rnk
     FROM roots r
 
     UNION ALL
@@ -207,11 +226,10 @@ BEGIN
     SELECT
       ch.id, ch.user_id, ch.post_id, ch.parent_id, ch.depth,
       ch.upvotes, ch.downvotes, ch.body, ch.created_at, ch.last_modified_at,
-      ch.popularity,
+      ch.is_deleted, ch.deleted_at, ch.popularity,
       t.rnk || ch.rn AS rnk
     FROM cte t
 	-- using JOIN LATERAL because the condition needs data from multiple sources
-	-- and I didn't used FROM comments c, cte t because... I don't know
     JOIN LATERAL (
       SELECT c.*,
 			-- index in ordered by popularity list, same thing as for the root comments
@@ -224,9 +242,128 @@ BEGIN
   SELECT
     id, user_id, post_id, parent_id, depth,
     upvotes, downvotes, body, created_at, last_modified_at,
-    popularity
+    is_deleted, deleted_at, popularity
   FROM cte
   -- utilising ordered index array
   ORDER BY rnk;
-END;
+$$;
+
+-- UPSERT of a comment vote
+CREATE OR REPLACE FUNCTION vote_comment(
+  p_user_id    bigint,
+  p_comment_id bigint,
+  p_vote       int
+) RETURNS comments
+LANGUAGE sql AS $$
+WITH
+-- trying to update already existed vote
+upd AS (
+  UPDATE comment_votes v
+     SET 
+      vote = p_vote,
+      last_modified_at = NOW()
+   WHERE v.user_id = p_user_id
+     AND v.comment_id = p_comment_id
+	 -- checking if two votes have different values
+     AND v.vote IS DISTINCT FROM p_vote
+  RETURNING
+    v.comment_id,
+    (CASE WHEN p_vote = 1  THEN  1 ELSE -1 END) AS up_delta,
+    (CASE WHEN p_vote = -1 THEN  1 ELSE -1 END) AS down_delta
+),
+
+ins AS (
+  INSERT INTO comment_votes(user_id, comment_id, vote)
+  VALUES (p_user_id, p_comment_id, p_vote)
+  -- if another transaction is already trying to create new vote do nothing
+  ON CONFLICT (user_id, comment_id) DO NOTHING
+  RETURNING
+    comment_id,
+    (p_vote = 1)::int  AS up_delta,
+    (p_vote = -1)::int AS down_delta
+),
+-- extracting deltas from whatever operation succeeded
+delta AS (
+  SELECT * FROM upd
+  UNION ALL
+  SELECT * FROM ins
+),
+-- applying deltas to the comments counters
+bump AS (
+  UPDATE comments c
+     SET upvotes   = c.upvotes   + COALESCE(d.up_delta, 0),
+         downvotes = c.downvotes + COALESCE(d.down_delta, 0)
+    FROM delta d
+   WHERE c.id = d.comment_id
+  RETURNING c.*
+)
+-- returning updated comment
+SELECT *
+FROM bump 
+UNION ALL
+SELECT c.*
+FROM comments c
+-- check in comments only if bump didn't return anything
+WHERE c.id = p_comment_id
+	AND NOT EXISTS (SELECT 1 FROM bump);
+$$;
+
+-- UPSERT of a post vote
+CREATE OR REPLACE FUNCTION vote_post(
+  p_user_id    bigint,
+  p_post_id bigint,
+  p_vote       int
+) RETURNS posts
+LANGUAGE sql AS $$
+WITH
+-- trying to update already existed vote
+upd AS (
+  UPDATE post_votes v
+     SET 
+      vote = p_vote,
+      last_modified_at = NOW()
+   WHERE v.user_id = p_user_id
+     AND v.post_id = p_post_id
+	 -- checking if two votes have different values
+     AND v.vote IS DISTINCT FROM p_vote
+  RETURNING
+    v.post_id,
+    (CASE WHEN p_vote = 1  THEN  1 ELSE -1 END) AS up_delta,
+    (CASE WHEN p_vote = -1 THEN  1 ELSE -1 END) AS down_delta
+),
+
+ins AS (
+  INSERT INTO post_votes(user_id, post_id, vote)
+  VALUES (p_user_id, p_post_id, p_vote)
+  -- if another transaction is already trying to create new vote do nothing
+  ON CONFLICT (user_id, post_id) DO NOTHING
+  RETURNING
+    post_id,
+    (p_vote = 1)::int  AS up_delta,
+    (p_vote = -1)::int AS down_delta
+),
+-- extracting deltas from whatever operation succeeded
+delta AS (
+  SELECT * FROM upd
+  UNION ALL
+  SELECT * FROM ins
+),
+-- applying deltas to the posts counters
+bump AS (
+  UPDATE posts p
+     SET upvotes   = p.upvotes   + COALESCE(d.up_delta, 0),
+         downvotes = p.downvotes + COALESCE(d.down_delta, 0)
+    FROM delta d
+   WHERE p.id = d.post_id
+  RETURNING p.*
+)
+-- returning updated post
+SELECT *
+FROM bump 
+UNION ALL
+SELECT p.*
+FROM posts p
+-- check in posts only if bump didn't return anything
+WHERE p.id = p_post_id
+	AND NOT EXISTS (SELECT 1 FROM bump);
 $$;

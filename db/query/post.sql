@@ -42,3 +42,10 @@ SELECT * FROM posts
 ORDER BY created_at DESC
 LIMIT $1
 OFFSET $2;
+
+-- name: VotePost :one
+SELECT * FROM vote_post(
+  p_user_id := $1,
+  p_post_id := $2,
+  p_vote := $3   
+);

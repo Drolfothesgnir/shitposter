@@ -74,6 +74,8 @@ The goal is to learn and demonstrate web dev skills.
         "body": "I agree",
         "created_at": "2025-07-21 15:11:55.039123+00",
         "last_modified_at": "0001-01-01 00:00:00+00",
+        "is_deleted": false,
+        "deleted_at": "0001-01-01 00:00:00+00",
         "replies": [
           "..." // <- comment can contain other comments as its replies since
         ]
@@ -95,6 +97,8 @@ The goal is to learn and demonstrate web dev skills.
             "body": "I agree",
             "created_at": "2025-07-21 15:11:55.039123+00",
             "last_modified_at": "0001-01-01 00:00:00+00",
+            "is_deleted": false,
+            "deleted_at": "0001-01-01 00:00:00+00",
             "replies": [
               "..." 
             ]

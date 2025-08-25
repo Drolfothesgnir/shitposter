@@ -246,3 +246,34 @@ func (q *Queries) UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, e
 	)
 	return i, err
 }
+
+const votePost = `-- name: VotePost :one
+SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at FROM vote_post(
+  p_user_id := $1,
+  p_post_id := $2,
+  p_vote := $3   
+)
+`
+
+type VotePostParams struct {
+	PUserID int64 `json:"p_user_id"`
+	PPostID int64 `json:"p_post_id"`
+	PVote   int32 `json:"p_vote"`
+}
+
+func (q *Queries) VotePost(ctx context.Context, arg VotePostParams) (Post, error) {
+	row := q.db.QueryRow(ctx, votePost, arg.PUserID, arg.PPostID, arg.PVote)
+	var i Post
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Topics,
+		&i.Body,
+		&i.Upvotes,
+		&i.Downvotes,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+	)
+	return i, err
+}

@@ -27,3 +27,10 @@ SELECT * FROM get_comments_by_popularity(
   p_post_id := $1,
   p_root_limit := $2
 );
+
+-- name: VoteComment :one
+SELECT * FROM vote_comment(
+  p_user_id := $1,
+  p_comment_id := $2,
+  p_vote := $3   
+);

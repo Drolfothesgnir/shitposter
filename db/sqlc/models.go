@@ -22,6 +22,8 @@ type Comment struct {
 	Body           string      `json:"body"`
 	CreatedAt      time.Time   `json:"created_at"`
 	LastModifiedAt time.Time   `json:"last_modified_at"`
+	IsDeleted      bool        `json:"is_deleted"`
+	DeletedAt      time.Time   `json:"deleted_at"`
 	Popularity     pgtype.Int8 `json:"popularity"`
 }
 

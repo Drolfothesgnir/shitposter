@@ -34,3 +34,9 @@ SELECT * FROM vote_comment(
   p_comment_id := $2,
   p_vote := $3   
 );
+
+-- name: DeleteCommentVote :exec
+SELECT delete_comment_vote(
+  p_comment_id := $1,
+  p_user_id := $2
+);

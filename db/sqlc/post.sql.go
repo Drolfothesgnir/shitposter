@@ -51,6 +51,23 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 	return i, err
 }
 
+const deletePostVote = `-- name: DeletePostVote :exec
+SELECT delete_post_vote(
+  p_post_id := $1,
+  p_user_id := $2
+)
+`
+
+type DeletePostVoteParams struct {
+	PPostID int64 `json:"p_post_id"`
+	PUserID int64 `json:"p_user_id"`
+}
+
+func (q *Queries) DeletePostVote(ctx context.Context, arg DeletePostVoteParams) error {
+	_, err := q.db.Exec(ctx, deletePostVote, arg.PPostID, arg.PUserID)
+	return err
+}
+
 const getNewestPosts = `-- name: GetNewestPosts :many
 SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at FROM posts
 ORDER BY created_at DESC

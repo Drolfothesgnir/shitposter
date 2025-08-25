@@ -244,3 +244,49 @@ func TestVoteComment(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, vote3.Vote, vote4.Vote)
 }
+
+func TestDeleteCommentVote(t *testing.T) {
+	comment1 := createRandomComment(t)
+
+	user := createRandomUser(t)
+
+	_, err := testStore.VoteComment(context.Background(), VoteCommentParams{
+		PUserID:    user.ID,
+		PCommentID: comment1.ID,
+		PVote:      1,
+	})
+
+	require.NoError(t, err)
+
+	vote1, err := testStore.GetCommentVote(context.Background(), GetCommentVoteParams{
+		UserID:    user.ID,
+		CommentID: comment1.ID,
+	})
+
+	require.NotEmpty(t, vote1)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), vote1.Vote)
+
+	err = testStore.DeleteCommentVote(context.Background(), DeleteCommentVoteParams{
+		PCommentID: comment1.ID,
+		PUserID:    user.ID,
+	})
+
+	require.NoError(t, err)
+
+	comment2, err := testStore.GetComment(context.Background(), comment1.ID)
+
+	require.NoError(t, err)
+	require.Equal(t, comment1.Upvotes, comment2.Upvotes)
+	require.Equal(t, comment1.Downvotes, comment2.Downvotes)
+
+	vote2, err := testStore.GetCommentVote(context.Background(), GetCommentVoteParams{
+		UserID:    user.ID,
+		CommentID: comment1.ID,
+	})
+
+	require.Empty(t, vote2)
+	require.Error(t, err)
+	require.ErrorIs(t, err, pgx.ErrNoRows)
+
+}

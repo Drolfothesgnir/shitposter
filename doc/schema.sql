@@ -259,7 +259,9 @@ WITH
 -- trying to update already existed vote
 upd AS (
   UPDATE comment_votes v
-     SET vote = p_vote
+     SET 
+      vote = p_vote,
+      last_modified_at = NOW()
    WHERE v.user_id = p_user_id
      AND v.comment_id = p_comment_id
 	 -- checking if two votes have different values
@@ -317,7 +319,9 @@ WITH
 -- trying to update already existed vote
 upd AS (
   UPDATE post_votes v
-     SET vote = p_vote
+     SET 
+      vote = p_vote,
+      last_modified_at = NOW()
    WHERE v.user_id = p_user_id
      AND v.post_id = p_post_id
 	 -- checking if two votes have different values
@@ -362,4 +366,40 @@ FROM posts p
 -- check in posts only if bump didn't return anything
 WHERE p.id = p_post_id
 	AND NOT EXISTS (SELECT 1 FROM bump);
+$$;
+
+CREATE OR REPLACE FUNCTION delete_comment_vote(
+	p_comment_id BIGINT,
+	p_user_id BIGINT
+) RETURNS void
+LANGUAGE sql AS $$
+WITH del AS (
+	DELETE FROM comment_votes
+	WHERE user_id = p_user_id AND comment_id = p_comment_id
+	RETURNING vote
+)
+UPDATE comments c
+SET
+	upvotes = c.upvotes + (CASE WHEN d.vote = 1 THEN -1 ELSE 0 END),
+	downvotes = c.downvotes + (CASE WHEN d.vote = -1 THEN -1 ELSE 0 END)
+FROM del d
+WHERE c.id = p_comment_id;
+$$;
+
+CREATE OR REPLACE FUNCTION delete_post_vote(
+	p_post_id BIGINT,
+	p_user_id BIGINT
+) RETURNS void
+LANGUAGE sql AS $$
+WITH del AS (
+	DELETE FROM post_votes
+	WHERE user_id = p_user_id AND post_id = p_post_id
+	RETURNING vote
+)
+UPDATE comments c
+SET
+	upvotes = c.upvotes + (CASE WHEN d.vote = 1 THEN -1 ELSE 0 END),
+	downvotes = c.downvotes + (CASE WHEN d.vote = -1 THEN -1 ELSE 0 END)
+FROM del d
+WHERE c.id = p_post_id;
 $$;

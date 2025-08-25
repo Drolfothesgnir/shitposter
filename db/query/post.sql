@@ -49,3 +49,9 @@ SELECT * FROM vote_post(
   p_post_id := $2,
   p_vote := $3   
 );
+
+-- name: DeletePostVote :exec
+SELECT delete_post_vote(
+  p_post_id := $1,
+  p_user_id := $2
+);

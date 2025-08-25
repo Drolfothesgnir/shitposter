@@ -59,6 +59,23 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 	return i, err
 }
 
+const deleteCommentVote = `-- name: DeleteCommentVote :exec
+SELECT delete_comment_vote(
+  p_comment_id := $1,
+  p_user_id := $2
+)
+`
+
+type DeleteCommentVoteParams struct {
+	PCommentID int64 `json:"p_comment_id"`
+	PUserID    int64 `json:"p_user_id"`
+}
+
+func (q *Queries) DeleteCommentVote(ctx context.Context, arg DeleteCommentVoteParams) error {
+	_, err := q.db.Exec(ctx, deleteCommentVote, arg.PCommentID, arg.PUserID)
+	return err
+}
+
 const getComment = `-- name: GetComment :one
 SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity FROM comments
 WHERE id = $1 LIMIT 1

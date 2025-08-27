@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/Drolfothesgnir/shitposter/util"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,4 +68,176 @@ func createRandomPost(t *testing.T) Post {
 
 func TestCreatePost(t *testing.T) {
 	createRandomPost(t)
+}
+
+func TestGetNewestPosts(t *testing.T) {
+	n := 10
+	posts := make([]Post, n)
+
+	user := createRandomUser(t)
+
+	var err error
+
+	body := PostBody{ContentType: "html", Content: "<h1>Hello world</h1>"}
+	json_body, err := json.Marshal(body)
+	require.NoError(t, err)
+
+	topics := []string{util.RandomString(3)}
+	json_topics, err := json.Marshal(topics)
+	require.NoError(t, err)
+
+	for i := range n {
+		// inserting posts into array in reverse order
+		posts[n-i-1], err = testStore.CreatePost(context.Background(), CreatePostParams{
+			UserID: user.ID,
+			Title:  util.RandomString(10),
+			Body:   json_body,
+			Topics: json_topics,
+		})
+		require.NoError(t, err)
+	}
+
+	// get all n new posts first
+	query_result1, err := testStore.GetNewestPosts(context.Background(), GetNewestPostsParams{
+		Limit:  int32(n),
+		Offset: 0,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, posts, query_result1)
+
+	// get first 5 posts
+	query_result2, err := testStore.GetNewestPosts(context.Background(), GetNewestPostsParams{
+		Limit:  int32(5),
+		Offset: 0,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, posts[:5], query_result2)
+
+	// get second 5 posts
+	query_result3, err := testStore.GetNewestPosts(context.Background(), GetNewestPostsParams{
+		Limit:  int32(5),
+		Offset: 5,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, posts[5:], query_result3)
+}
+
+func TestVotePost(t *testing.T) {
+	post1 := createRandomPost(t)
+
+	user := createRandomUser(t)
+
+	// there should be no vote initially
+	vote1, err := testStore.GetPostVote(context.Background(), GetPostVoteParams{
+		UserID: user.ID,
+		PostID: post1.ID,
+	})
+
+	require.Empty(t, vote1)
+	require.Error(t, err)
+	require.ErrorIs(t, err, pgx.ErrNoRows)
+
+	// happy upvote case
+	post2, err := testStore.VotePost(context.Background(), VotePostParams{
+		PUserID: user.ID,
+		PPostID: post1.ID,
+		PVote:   1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, post1.Upvotes+1, post2.Upvotes)
+
+	vote2, err := testStore.GetPostVote(context.Background(), GetPostVoteParams{
+		UserID: user.ID,
+		PostID: post1.ID,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, int64(1), vote2.Vote)
+
+	// vote change to -1
+	post3, err := testStore.VotePost(context.Background(), VotePostParams{
+		PUserID: user.ID,
+		PPostID: post1.ID,
+		PVote:   -1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, post1.Downvotes+1, post3.Downvotes)
+	require.Equal(t, post1.Upvotes, post3.Upvotes)
+
+	vote3, err := testStore.GetPostVote(context.Background(), GetPostVoteParams{
+		UserID: user.ID,
+		PostID: post1.ID,
+	})
+	require.NoError(t, err)
+	require.Equal(t, int64(-1), vote3.Vote)
+
+	// check voting idempotency
+	post4, err := testStore.VotePost(context.Background(), VotePostParams{
+		PUserID: user.ID,
+		PPostID: post1.ID,
+		PVote:   -1,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, post3.Downvotes, post4.Downvotes)
+
+	vote4, err := testStore.GetPostVote(context.Background(), GetPostVoteParams{
+		UserID: user.ID,
+		PostID: post1.ID,
+	})
+	require.NoError(t, err)
+	require.Equal(t, vote3.Vote, vote4.Vote)
+}
+
+func TestUpdatePost(t *testing.T) {
+	post1 := createRandomPost(t)
+
+	newTitle := util.RandomString(10)
+
+	body1, err := GetPostBodyFromJSON(post1.Body)
+	require.NoError(t, err)
+
+	newBody := PostBody{
+		ContentType: body1.ContentType,
+		Content:     "<h2>Test</h2>",
+	}
+
+	newBodyJson, err := json.Marshal(newBody)
+	require.NoError(t, err)
+
+	topics1, err := GetPostTopicsFromJSON(post1.Topics)
+	require.NoError(t, err)
+
+	newTopic := util.RandomString(5)
+
+	newTopics := append(topics1, newTopic)
+	newTopicsJson, err := json.Marshal(newTopics)
+	require.NoError(t, err)
+
+	post2, err := testStore.UpdatePost(context.Background(), UpdatePostParams{
+		ID:     post1.ID,
+		Title:  pgtype.Text{String: newTitle, Valid: true},
+		Body:   newBodyJson,
+		Topics: newTopicsJson,
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, post1.ID, post2.ID)
+	require.True(t, post2.LastModifiedAt.After(post1.LastModifiedAt))
+
+	body2, err := GetPostBodyFromJSON(post2.Body)
+	require.NoError(t, err)
+
+	require.Equal(t, &newBody, body2)
+
+	topics2, err := GetPostTopicsFromJSON(post2.Topics)
+	require.NoError(t, err)
+	require.Equal(t, newTopics, topics2)
+
+	require.Equal(t, newTitle, post2.Title)
 }

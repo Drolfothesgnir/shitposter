@@ -14,10 +14,8 @@ WHERE id = $1 LIMIT 1;
 
 -- name: UpdateComment :one
 UPDATE comments
-SET 
-  upvotes = upvotes + COALESCE(sqlc.narg('delta_upvotes'), 0),
-  downvotes = downvotes + COALESCE(sqlc.narg('delta_downvotes'), 0),
-  body = COALESCE(sqlc.narg('body'), body),
+SET
+  body = $2,
   last_modified_at = NOW()
 WHERE id = $1
 RETURNING *;

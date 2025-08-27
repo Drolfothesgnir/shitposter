@@ -128,7 +128,7 @@ ALTER TABLE "post_votes" ADD FOREIGN KEY ("post_id") REFERENCES "posts" ("id") O
 
 ALTER TABLE "comment_votes" ADD FOREIGN KEY ("comment_id") REFERENCES "comments" ("id") ON DELETE CASCADE;
 
--- added auto "popularity" column and its index
+-- added auto "popularity" column and its index to the comments
 ALTER TABLE comments ADD COLUMN popularity BIGINT GENERATED ALWAYS AS (upvotes - downvotes) STORED;
 
 -- roots by popularity
@@ -139,8 +139,16 @@ CREATE INDEX IF NOT EXISTS comments_roots_pop
 CREATE INDEX IF NOT EXISTS comments_children_pop
   ON comments (post_id, parent_id, popularity DESC, id);
 
--- Alternative approach - separate index for time-based queries
-CREATE INDEX idx_posts_created_at_desc ON posts(created_at DESC);
+-- added auto "popularity" column and its index to the posts
+ALTER TABLE posts ADD COLUMN popularity BIGINT GENERATED ALWAYS AS (upvotes - downvotes) STORED;
+
+-- for getting newest posts
+CREATE INDEX IF NOT EXISTS idx_posts_created_at_id_desc
+  ON posts (created_at DESC, id DESC);
+
+-- for getting oldets posts
+CREATE INDEX IF NOT EXISTS idx_posts_created_at_id_asc
+  ON posts (created_at, id);
 
 CREATE OR REPLACE FUNCTION insert_comment(
 	p_user_id BIGINT,

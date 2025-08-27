@@ -7,6 +7,7 @@ import (
 
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
@@ -288,5 +289,41 @@ func TestDeleteCommentVote(t *testing.T) {
 	require.Empty(t, vote2)
 	require.Error(t, err)
 	require.ErrorIs(t, err, pgx.ErrNoRows)
+
+}
+
+func TestUpdateComment(t *testing.T) {
+	comment1 := createRandomComment(t)
+
+	newBody := util.RandomString(10)
+
+	comment2, err := testStore.UpdateComment(context.Background(), UpdateCommentParams{
+		ID:   comment1.ID,
+		Body: newBody,
+	})
+
+	require.NoError(t, err)
+
+	require.Equal(t, newBody, comment2.Body)
+}
+
+func TestGetCommentsByPopularityInvalidPostID(t *testing.T) {
+	comments, err := testStore.GetCommentsByPopularity(context.Background(), GetCommentsByPopularityParams{
+		PPostID: -1,
+	})
+
+	require.NoError(t, err)
+	require.True(t, len(comments) == 0)
+}
+
+func TestGetCommentsByPopularityInvalidLimit(t *testing.T) {
+	_, err := testStore.GetCommentsByPopularity(context.Background(), GetCommentsByPopularityParams{
+		PPostID:    1,
+		PRootLimit: -1,
+	})
+
+	var pgErr *pgconn.PgError
+	require.ErrorAs(t, err, &pgErr)
+	require.Equal(t, "2201W", pgErr.Code)
 
 }

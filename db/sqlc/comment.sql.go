@@ -150,29 +150,20 @@ func (q *Queries) GetCommentsByPopularity(ctx context.Context, arg GetCommentsBy
 
 const updateComment = `-- name: UpdateComment :one
 UPDATE comments
-SET 
-  upvotes = upvotes + COALESCE($2, 0),
-  downvotes = downvotes + COALESCE($3, 0),
-  body = COALESCE($4, body),
+SET
+  body = $2,
   last_modified_at = NOW()
 WHERE id = $1
 RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity
 `
 
 type UpdateCommentParams struct {
-	ID             int64       `json:"id"`
-	DeltaUpvotes   pgtype.Int8 `json:"delta_upvotes"`
-	DeltaDownvotes pgtype.Int8 `json:"delta_downvotes"`
-	Body           pgtype.Text `json:"body"`
+	ID   int64  `json:"id"`
+	Body string `json:"body"`
 }
 
 func (q *Queries) UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error) {
-	row := q.db.QueryRow(ctx, updateComment,
-		arg.ID,
-		arg.DeltaUpvotes,
-		arg.DeltaDownvotes,
-		arg.Body,
-	)
+	row := q.db.QueryRow(ctx, updateComment, arg.ID, arg.Body)
 	var i Comment
 	err := row.Scan(
 		&i.ID,

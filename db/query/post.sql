@@ -53,3 +53,7 @@ SELECT delete_post_vote(
   p_post_id := $1,
   p_user_id := $2
 );
+
+-- name: DeletePost :exec
+DELETE FROM posts
+WHERE id = $1;

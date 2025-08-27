@@ -12,7 +12,9 @@ type Querier interface {
 	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
 	CreatePost(ctx context.Context, arg CreatePostParams) (Post, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteComment(ctx context.Context, id int64) (Comment, error)
 	DeleteCommentVote(ctx context.Context, arg DeleteCommentVoteParams) error
+	DeletePost(ctx context.Context, id int64) error
 	DeletePostVote(ctx context.Context, arg DeletePostVoteParams) error
 	GetComment(ctx context.Context, id int64) (Comment, error)
 	GetCommentVote(ctx context.Context, arg GetCommentVoteParams) (CommentVote, error)

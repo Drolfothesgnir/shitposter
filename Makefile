@@ -21,9 +21,6 @@ migrateup1:
 migratedown1:
 	migrate -path db/migration -database "$(DB_URL)" -verbose down 1
 
-db_docs:
-	dbdocs build doc/db.dbml
-
 sqlc:
 	sqlc generate
 
@@ -34,4 +31,7 @@ dummy_comments:
 	go clean -testcache
 	go test -run TestCreateDummyComments ./...
 
-.PHONY: new_migration db_docs db_schema migratedown migratedown1 migrateup migrateup1 sqlc test
+db_schema:
+	./generate_sql_schema.sh
+
+.PHONY: new_migration db_schema migratedown migratedown1 migrateup migrateup1 sqlc test

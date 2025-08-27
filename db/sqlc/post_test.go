@@ -287,3 +287,39 @@ func TestDeletePostVote(t *testing.T) {
 	require.ErrorIs(t, err, pgx.ErrNoRows)
 
 }
+
+func TestDeletePost(t *testing.T) {
+	user := createRandomUser(t)
+	post1 := createRandomPost(t)
+
+	comment1, err := testStore.CreateComment(context.Background(), CreateCommentParams{
+		PUserID: user.ID,
+		PPostID: post1.ID,
+		PBody:   util.RandomString(6),
+	})
+
+	require.NoError(t, err)
+
+	comment2, err := testStore.CreateComment(context.Background(), CreateCommentParams{
+		PUserID: user.ID,
+		PPostID: post1.ID,
+		PBody:   util.RandomString(6),
+	})
+
+	require.NoError(t, err)
+
+	err = testStore.DeletePost(context.Background(), post1.ID)
+	require.NoError(t, err)
+
+	_, err = testStore.GetPost(context.Background(), post1.ID)
+	require.Error(t, err)
+	require.ErrorIs(t, err, pgx.ErrNoRows)
+
+	_, err = testStore.GetComment(context.Background(), comment1.ID)
+	require.Error(t, err)
+	require.ErrorIs(t, err, pgx.ErrNoRows)
+
+	_, err = testStore.GetComment(context.Background(), comment2.ID)
+	require.Error(t, err)
+	require.ErrorIs(t, err, pgx.ErrNoRows)
+}

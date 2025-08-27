@@ -59,6 +59,38 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 	return i, err
 }
 
+const deleteComment = `-- name: DeleteComment :one
+UPDATE comments
+SET 
+  body = '[deleted]',
+  is_deleted = true,
+  deleted_at = NOW(),
+  last_modified_at = NOW()
+WHERE id = $1
+RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity
+`
+
+func (q *Queries) DeleteComment(ctx context.Context, id int64) (Comment, error) {
+	row := q.db.QueryRow(ctx, deleteComment, id)
+	var i Comment
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PostID,
+		&i.ParentID,
+		&i.Depth,
+		&i.Upvotes,
+		&i.Downvotes,
+		&i.Body,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.Popularity,
+	)
+	return i, err
+}
+
 const deleteCommentVote = `-- name: DeleteCommentVote :exec
 SELECT delete_comment_vote(
   p_comment_id := $1,

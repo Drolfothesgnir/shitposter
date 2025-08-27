@@ -38,3 +38,13 @@ SELECT delete_comment_vote(
   p_comment_id := $1,
   p_user_id := $2
 );
+
+-- name: DeleteComment :one
+UPDATE comments
+SET 
+  body = '[deleted]',
+  is_deleted = true,
+  deleted_at = NOW(),
+  last_modified_at = NOW()
+WHERE id = $1
+RETURNING *;

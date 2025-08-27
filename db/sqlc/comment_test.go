@@ -327,3 +327,15 @@ func TestGetCommentsByPopularityInvalidLimit(t *testing.T) {
 	require.Equal(t, "2201W", pgErr.Code)
 
 }
+
+func TestDeleteComment(t *testing.T) {
+	comment1 := createRandomComment(t)
+
+	comment2, err := testStore.DeleteComment(context.Background(), comment1.ID)
+	require.NoError(t, err)
+
+	require.True(t, comment2.IsDeleted)
+	require.Equal(t, "[deleted]", comment2.Body)
+	require.True(t, comment2.DeletedAt.After(comment2.CreatedAt))
+	require.True(t, comment2.LastModifiedAt.After(comment2.CreatedAt))
+}

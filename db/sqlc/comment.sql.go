@@ -12,7 +12,7 @@ import (
 )
 
 const createComment = `-- name: CreateComment :one
-SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, popularity FROM insert_comment(
+SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity FROM insert_comment(
   p_user_id := $1,
   p_post_id := $2,
   p_body := $3,
@@ -52,13 +52,32 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 		&i.Body,
 		&i.CreatedAt,
 		&i.LastModifiedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
 		&i.Popularity,
 	)
 	return i, err
 }
 
+const deleteCommentVote = `-- name: DeleteCommentVote :exec
+SELECT delete_comment_vote(
+  p_comment_id := $1,
+  p_user_id := $2
+)
+`
+
+type DeleteCommentVoteParams struct {
+	PCommentID int64 `json:"p_comment_id"`
+	PUserID    int64 `json:"p_user_id"`
+}
+
+func (q *Queries) DeleteCommentVote(ctx context.Context, arg DeleteCommentVoteParams) error {
+	_, err := q.db.Exec(ctx, deleteCommentVote, arg.PCommentID, arg.PUserID)
+	return err
+}
+
 const getComment = `-- name: GetComment :one
-SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, popularity FROM comments
+SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity FROM comments
 WHERE id = $1 LIMIT 1
 `
 
@@ -76,13 +95,15 @@ func (q *Queries) GetComment(ctx context.Context, id int64) (Comment, error) {
 		&i.Body,
 		&i.CreatedAt,
 		&i.LastModifiedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
 		&i.Popularity,
 	)
 	return i, err
 }
 
 const getCommentsByPopularity = `-- name: GetCommentsByPopularity :many
-SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, popularity FROM get_comments_by_popularity(
+SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity FROM get_comments_by_popularity(
   p_post_id := $1,
   p_root_limit := $2
 )
@@ -113,6 +134,8 @@ func (q *Queries) GetCommentsByPopularity(ctx context.Context, arg GetCommentsBy
 			&i.Body,
 			&i.CreatedAt,
 			&i.LastModifiedAt,
+			&i.IsDeleted,
+			&i.DeletedAt,
 			&i.Popularity,
 		); err != nil {
 			return nil, err
@@ -127,29 +150,20 @@ func (q *Queries) GetCommentsByPopularity(ctx context.Context, arg GetCommentsBy
 
 const updateComment = `-- name: UpdateComment :one
 UPDATE comments
-SET 
-  upvotes = upvotes + COALESCE($2, 0),
-  downvotes = downvotes + COALESCE($3, 0),
-  body = COALESCE($4, body),
+SET
+  body = $2,
   last_modified_at = NOW()
 WHERE id = $1
-RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, popularity
+RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity
 `
 
 type UpdateCommentParams struct {
-	ID             int64       `json:"id"`
-	DeltaUpvotes   pgtype.Int8 `json:"delta_upvotes"`
-	DeltaDownvotes pgtype.Int8 `json:"delta_downvotes"`
-	Body           pgtype.Text `json:"body"`
+	ID   int64  `json:"id"`
+	Body string `json:"body"`
 }
 
 func (q *Queries) UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error) {
-	row := q.db.QueryRow(ctx, updateComment,
-		arg.ID,
-		arg.DeltaUpvotes,
-		arg.DeltaDownvotes,
-		arg.Body,
-	)
+	row := q.db.QueryRow(ctx, updateComment, arg.ID, arg.Body)
 	var i Comment
 	err := row.Scan(
 		&i.ID,
@@ -162,6 +176,43 @@ func (q *Queries) UpdateComment(ctx context.Context, arg UpdateCommentParams) (C
 		&i.Body,
 		&i.CreatedAt,
 		&i.LastModifiedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.Popularity,
+	)
+	return i, err
+}
+
+const voteComment = `-- name: VoteComment :one
+SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity FROM vote_comment(
+  p_user_id := $1,
+  p_comment_id := $2,
+  p_vote := $3   
+)
+`
+
+type VoteCommentParams struct {
+	PUserID    int64 `json:"p_user_id"`
+	PCommentID int64 `json:"p_comment_id"`
+	PVote      int32 `json:"p_vote"`
+}
+
+func (q *Queries) VoteComment(ctx context.Context, arg VoteCommentParams) (Comment, error) {
+	row := q.db.QueryRow(ctx, voteComment, arg.PUserID, arg.PCommentID, arg.PVote)
+	var i Comment
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PostID,
+		&i.ParentID,
+		&i.Depth,
+		&i.Upvotes,
+		&i.Downvotes,
+		&i.Body,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
 		&i.Popularity,
 	)
 	return i, err

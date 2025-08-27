@@ -19,7 +19,7 @@ INSERT INTO posts (
   body
 ) VALUES (
   $1, $2, $3, $4
-) RETURNING id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at
+) RETURNING id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity
 `
 
 type CreatePostParams struct {
@@ -47,13 +47,31 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 		&i.Downvotes,
 		&i.CreatedAt,
 		&i.LastModifiedAt,
+		&i.Popularity,
 	)
 	return i, err
 }
 
+const deletePostVote = `-- name: DeletePostVote :exec
+SELECT delete_post_vote(
+  p_post_id := $1,
+  p_user_id := $2
+)
+`
+
+type DeletePostVoteParams struct {
+	PPostID int64 `json:"p_post_id"`
+	PUserID int64 `json:"p_user_id"`
+}
+
+func (q *Queries) DeletePostVote(ctx context.Context, arg DeletePostVoteParams) error {
+	_, err := q.db.Exec(ctx, deletePostVote, arg.PPostID, arg.PUserID)
+	return err
+}
+
 const getNewestPosts = `-- name: GetNewestPosts :many
-SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at FROM posts
-ORDER BY created_at DESC
+SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity FROM posts
+ORDER BY created_at DESC, id DESC
 LIMIT $1
 OFFSET $2
 `
@@ -82,6 +100,7 @@ func (q *Queries) GetNewestPosts(ctx context.Context, arg GetNewestPostsParams) 
 			&i.Downvotes,
 			&i.CreatedAt,
 			&i.LastModifiedAt,
+			&i.Popularity,
 		); err != nil {
 			return nil, err
 		}
@@ -94,8 +113,8 @@ func (q *Queries) GetNewestPosts(ctx context.Context, arg GetNewestPostsParams) 
 }
 
 const getOldestPosts = `-- name: GetOldestPosts :many
-SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at FROM posts
-ORDER BY created_at ASC
+SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity FROM posts
+ORDER BY created_at ASC, id ASC
 LIMIT $1
 OFFSET $2
 `
@@ -124,6 +143,7 @@ func (q *Queries) GetOldestPosts(ctx context.Context, arg GetOldestPostsParams) 
 			&i.Downvotes,
 			&i.CreatedAt,
 			&i.LastModifiedAt,
+			&i.Popularity,
 		); err != nil {
 			return nil, err
 		}
@@ -136,7 +156,7 @@ func (q *Queries) GetOldestPosts(ctx context.Context, arg GetOldestPostsParams) 
 }
 
 const getPost = `-- name: GetPost :one
-SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at FROM posts
+SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity FROM posts
 WHERE id = $1 LIMIT 1
 `
 
@@ -153,12 +173,13 @@ func (q *Queries) GetPost(ctx context.Context, id int64) (Post, error) {
 		&i.Downvotes,
 		&i.CreatedAt,
 		&i.LastModifiedAt,
+		&i.Popularity,
 	)
 	return i, err
 }
 
 const getPostsByPopularity = `-- name: GetPostsByPopularity :many
-SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at FROM posts
+SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity FROM posts
 WHERE created_at >= (NOW() - $3::INTERVAL)
 ORDER BY (upvotes - downvotes) DESC
 LIMIT $1
@@ -190,6 +211,7 @@ func (q *Queries) GetPostsByPopularity(ctx context.Context, arg GetPostsByPopula
 			&i.Downvotes,
 			&i.CreatedAt,
 			&i.LastModifiedAt,
+			&i.Popularity,
 		); err != nil {
 			return nil, err
 		}
@@ -207,20 +229,16 @@ SET
   title = COALESCE($2, title),
   body = COALESCE($3, body),
   topics = COALESCE($4, topics),
-  upvotes = upvotes + COALESCE($5, 0),
-  downvotes = downvotes + COALESCE($6, 0),
   last_modified_at = NOW()
 WHERE id = $1
-RETURNING id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at
+RETURNING id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity
 `
 
 type UpdatePostParams struct {
-	ID             int64       `json:"id"`
-	Title          pgtype.Text `json:"title"`
-	Body           []byte      `json:"body"`
-	Topics         []byte      `json:"topics"`
-	DeltaUpvotes   pgtype.Int8 `json:"delta_upvotes"`
-	DeltaDownvotes pgtype.Int8 `json:"delta_downvotes"`
+	ID     int64       `json:"id"`
+	Title  pgtype.Text `json:"title"`
+	Body   []byte      `json:"body"`
+	Topics []byte      `json:"topics"`
 }
 
 func (q *Queries) UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, error) {
@@ -229,8 +247,6 @@ func (q *Queries) UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, e
 		arg.Title,
 		arg.Body,
 		arg.Topics,
-		arg.DeltaUpvotes,
-		arg.DeltaDownvotes,
 	)
 	var i Post
 	err := row.Scan(
@@ -243,6 +259,39 @@ func (q *Queries) UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, e
 		&i.Downvotes,
 		&i.CreatedAt,
 		&i.LastModifiedAt,
+		&i.Popularity,
+	)
+	return i, err
+}
+
+const votePost = `-- name: VotePost :one
+SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity FROM vote_post(
+  p_user_id := $1,
+  p_post_id := $2,
+  p_vote := $3   
+)
+`
+
+type VotePostParams struct {
+	PUserID int64 `json:"p_user_id"`
+	PPostID int64 `json:"p_post_id"`
+	PVote   int32 `json:"p_vote"`
+}
+
+func (q *Queries) VotePost(ctx context.Context, arg VotePostParams) (Post, error) {
+	row := q.db.QueryRow(ctx, votePost, arg.PUserID, arg.PPostID, arg.PVote)
+	var i Post
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Topics,
+		&i.Body,
+		&i.Upvotes,
+		&i.Downvotes,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+		&i.Popularity,
 	)
 	return i, err
 }

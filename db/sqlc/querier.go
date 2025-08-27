@@ -9,28 +9,24 @@ import (
 )
 
 type Querier interface {
-	ChangeCommentVote(ctx context.Context, arg ChangeCommentVoteParams) (CommentVote, error)
-	ChangePostVote(ctx context.Context, arg ChangePostVoteParams) (PostVote, error)
 	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
-	CreateCommentVote(ctx context.Context, arg CreateCommentVoteParams) (CommentVote, error)
 	CreatePost(ctx context.Context, arg CreatePostParams) (Post, error)
-	CreatePostVote(ctx context.Context, arg CreatePostVoteParams) (PostVote, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
-	DeleteCommentVote(ctx context.Context, id int64) error
-	DeletePostVote(ctx context.Context, id int64) error
+	DeleteCommentVote(ctx context.Context, arg DeleteCommentVoteParams) error
+	DeletePostVote(ctx context.Context, arg DeletePostVoteParams) error
 	GetComment(ctx context.Context, id int64) (Comment, error)
 	GetCommentVote(ctx context.Context, arg GetCommentVoteParams) (CommentVote, error)
-	GetCommentVoteByID(ctx context.Context, id int64) (CommentVote, error)
 	GetCommentsByPopularity(ctx context.Context, arg GetCommentsByPopularityParams) ([]Comment, error)
 	GetNewestPosts(ctx context.Context, arg GetNewestPostsParams) ([]Post, error)
 	GetOldestPosts(ctx context.Context, arg GetOldestPostsParams) ([]Post, error)
 	GetPost(ctx context.Context, id int64) (Post, error)
 	GetPostVote(ctx context.Context, arg GetPostVoteParams) (PostVote, error)
-	GetPostVoteByID(ctx context.Context, id int64) (PostVote, error)
 	GetPostsByPopularity(ctx context.Context, arg GetPostsByPopularityParams) ([]Post, error)
 	GetUser(ctx context.Context, id int64) (User, error)
 	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)
 	UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, error)
+	VoteComment(ctx context.Context, arg VoteCommentParams) (Comment, error)
+	VotePost(ctx context.Context, arg VotePostParams) (Post, error)
 }
 
 var _ Querier = (*Queries)(nil)

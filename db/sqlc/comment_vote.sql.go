@@ -9,74 +9,6 @@ import (
 	"context"
 )
 
-const changeCommentVote = `-- name: ChangeCommentVote :one
-UPDATE comment_votes
-SET 
-  vote = $2,
-  last_modified_at = NOW()
-WHERE id = $1
-RETURNING id, user_id, comment_id, vote, created_at, last_modified_at
-`
-
-type ChangeCommentVoteParams struct {
-	ID   int64 `json:"id"`
-	Vote int64 `json:"vote"`
-}
-
-func (q *Queries) ChangeCommentVote(ctx context.Context, arg ChangeCommentVoteParams) (CommentVote, error) {
-	row := q.db.QueryRow(ctx, changeCommentVote, arg.ID, arg.Vote)
-	var i CommentVote
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.CommentID,
-		&i.Vote,
-		&i.CreatedAt,
-		&i.LastModifiedAt,
-	)
-	return i, err
-}
-
-const createCommentVote = `-- name: CreateCommentVote :one
-INSERT INTO comment_votes (
-user_id,
-comment_id,
-vote
-) VALUES (
-  $1, $2, $3
-) RETURNING id, user_id, comment_id, vote, created_at, last_modified_at
-`
-
-type CreateCommentVoteParams struct {
-	UserID    int64 `json:"user_id"`
-	CommentID int64 `json:"comment_id"`
-	Vote      int64 `json:"vote"`
-}
-
-func (q *Queries) CreateCommentVote(ctx context.Context, arg CreateCommentVoteParams) (CommentVote, error) {
-	row := q.db.QueryRow(ctx, createCommentVote, arg.UserID, arg.CommentID, arg.Vote)
-	var i CommentVote
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.CommentID,
-		&i.Vote,
-		&i.CreatedAt,
-		&i.LastModifiedAt,
-	)
-	return i, err
-}
-
-const deleteCommentVote = `-- name: DeleteCommentVote :exec
-DELETE FROM comment_votes
-WHERE id = $1
-`
-
-func (q *Queries) DeleteCommentVote(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteCommentVote, id)
-	return err
-}
-
 const getCommentVote = `-- name: GetCommentVote :one
 SELECT id, user_id, comment_id, vote, created_at, last_modified_at from comment_votes
 WHERE user_id = $1 AND comment_id = $2
@@ -90,25 +22,6 @@ type GetCommentVoteParams struct {
 
 func (q *Queries) GetCommentVote(ctx context.Context, arg GetCommentVoteParams) (CommentVote, error) {
 	row := q.db.QueryRow(ctx, getCommentVote, arg.UserID, arg.CommentID)
-	var i CommentVote
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.CommentID,
-		&i.Vote,
-		&i.CreatedAt,
-		&i.LastModifiedAt,
-	)
-	return i, err
-}
-
-const getCommentVoteByID = `-- name: GetCommentVoteByID :one
-SELECT id, user_id, comment_id, vote, created_at, last_modified_at FROM comment_votes
-WHERE id = $1 LIMIT 1
-`
-
-func (q *Queries) GetCommentVoteByID(ctx context.Context, id int64) (CommentVote, error) {
-	row := q.db.QueryRow(ctx, getCommentVoteByID, id)
 	var i CommentVote
 	err := row.Scan(
 		&i.ID,

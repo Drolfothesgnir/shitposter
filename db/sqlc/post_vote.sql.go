@@ -9,74 +9,6 @@ import (
 	"context"
 )
 
-const changePostVote = `-- name: ChangePostVote :one
-UPDATE post_votes
-SET 
-  vote = $2,
-  last_modified_at = NOW()
-WHERE id = $1
-RETURNING id, user_id, post_id, vote, created_at, last_modified_at
-`
-
-type ChangePostVoteParams struct {
-	ID   int64 `json:"id"`
-	Vote int64 `json:"vote"`
-}
-
-func (q *Queries) ChangePostVote(ctx context.Context, arg ChangePostVoteParams) (PostVote, error) {
-	row := q.db.QueryRow(ctx, changePostVote, arg.ID, arg.Vote)
-	var i PostVote
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.PostID,
-		&i.Vote,
-		&i.CreatedAt,
-		&i.LastModifiedAt,
-	)
-	return i, err
-}
-
-const createPostVote = `-- name: CreatePostVote :one
-INSERT INTO post_votes (
-user_id,
-post_id,
-vote
-) VALUES (
-  $1, $2, $3
-) RETURNING id, user_id, post_id, vote, created_at, last_modified_at
-`
-
-type CreatePostVoteParams struct {
-	UserID int64 `json:"user_id"`
-	PostID int64 `json:"post_id"`
-	Vote   int64 `json:"vote"`
-}
-
-func (q *Queries) CreatePostVote(ctx context.Context, arg CreatePostVoteParams) (PostVote, error) {
-	row := q.db.QueryRow(ctx, createPostVote, arg.UserID, arg.PostID, arg.Vote)
-	var i PostVote
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.PostID,
-		&i.Vote,
-		&i.CreatedAt,
-		&i.LastModifiedAt,
-	)
-	return i, err
-}
-
-const deletePostVote = `-- name: DeletePostVote :exec
-DELETE FROM post_votes
-WHERE id = $1
-`
-
-func (q *Queries) DeletePostVote(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deletePostVote, id)
-	return err
-}
-
 const getPostVote = `-- name: GetPostVote :one
 SELECT id, user_id, post_id, vote, created_at, last_modified_at from post_votes
 WHERE user_id = $1 AND post_id = $2
@@ -90,25 +22,6 @@ type GetPostVoteParams struct {
 
 func (q *Queries) GetPostVote(ctx context.Context, arg GetPostVoteParams) (PostVote, error) {
 	row := q.db.QueryRow(ctx, getPostVote, arg.UserID, arg.PostID)
-	var i PostVote
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.PostID,
-		&i.Vote,
-		&i.CreatedAt,
-		&i.LastModifiedAt,
-	)
-	return i, err
-}
-
-const getPostVoteByID = `-- name: GetPostVoteByID :one
-SELECT id, user_id, post_id, vote, created_at, last_modified_at FROM post_votes
-WHERE id = $1 LIMIT 1
-`
-
-func (q *Queries) GetPostVoteByID(ctx context.Context, id int64) (PostVote, error) {
-	row := q.db.QueryRow(ctx, getPostVoteByID, id)
 	var i PostVote
 	err := row.Scan(
 		&i.ID,

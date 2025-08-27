@@ -22,6 +22,8 @@ type Comment struct {
 	Body           string      `json:"body"`
 	CreatedAt      time.Time   `json:"created_at"`
 	LastModifiedAt time.Time   `json:"last_modified_at"`
+	IsDeleted      bool        `json:"is_deleted"`
+	DeletedAt      time.Time   `json:"deleted_at"`
 	Popularity     pgtype.Int8 `json:"popularity"`
 }
 
@@ -36,15 +38,16 @@ type CommentVote struct {
 }
 
 type Post struct {
-	ID             int64     `json:"id"`
-	UserID         int64     `json:"user_id"`
-	Title          string    `json:"title"`
-	Topics         []byte    `json:"topics"`
-	Body           []byte    `json:"body"`
-	Upvotes        int64     `json:"upvotes"`
-	Downvotes      int64     `json:"downvotes"`
-	CreatedAt      time.Time `json:"created_at"`
-	LastModifiedAt time.Time `json:"last_modified_at"`
+	ID             int64       `json:"id"`
+	UserID         int64       `json:"user_id"`
+	Title          string      `json:"title"`
+	Topics         []byte      `json:"topics"`
+	Body           []byte      `json:"body"`
+	Upvotes        int64       `json:"upvotes"`
+	Downvotes      int64       `json:"downvotes"`
+	CreatedAt      time.Time   `json:"created_at"`
+	LastModifiedAt time.Time   `json:"last_modified_at"`
+	Popularity     pgtype.Int8 `json:"popularity"`
 }
 
 type PostVote struct {

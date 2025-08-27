@@ -241,3 +241,49 @@ func TestUpdatePost(t *testing.T) {
 
 	require.Equal(t, newTitle, post2.Title)
 }
+
+func TestDeletePostVote(t *testing.T) {
+	post1 := createRandomPost(t)
+
+	user := createRandomUser(t)
+
+	_, err := testStore.VotePost(context.Background(), VotePostParams{
+		PUserID: user.ID,
+		PPostID: post1.ID,
+		PVote:   1,
+	})
+
+	require.NoError(t, err)
+
+	vote1, err := testStore.GetPostVote(context.Background(), GetPostVoteParams{
+		UserID: user.ID,
+		PostID: post1.ID,
+	})
+
+	require.NotEmpty(t, vote1)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), vote1.Vote)
+
+	err = testStore.DeletePostVote(context.Background(), DeletePostVoteParams{
+		PPostID: post1.ID,
+		PUserID: user.ID,
+	})
+
+	require.NoError(t, err)
+
+	post2, err := testStore.GetPost(context.Background(), post1.ID)
+
+	require.NoError(t, err)
+	require.Equal(t, post1.Upvotes, post2.Upvotes)
+	require.Equal(t, post1.Downvotes, post2.Downvotes)
+
+	vote2, err := testStore.GetPostVote(context.Background(), GetPostVoteParams{
+		UserID: user.ID,
+		PostID: post1.ID,
+	})
+
+	require.Empty(t, vote2)
+	require.Error(t, err)
+	require.ErrorIs(t, err, pgx.ErrNoRows)
+
+}

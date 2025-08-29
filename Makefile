@@ -34,4 +34,7 @@ dummy_comments:
 db_schema:
 	./generate_sql_schema.sh
 
-.PHONY: new_migration db_schema migratedown migratedown1 migrateup migrateup1 sqlc test
+server:
+	go run main.go
+
+.PHONY: new_migration db_schema migratedown migratedown1 migrateup migrateup1 sqlc test server

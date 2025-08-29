@@ -6,6 +6,7 @@ import (
 
 type Store interface {
 	Querier
+	Shutdown() // Graceful DB shutdown.
 }
 
 type SQLStore struct {
@@ -18,4 +19,8 @@ func NewStore(connPool *pgxpool.Pool) Store {
 		connPool: connPool,
 		Queries:  New(connPool),
 	}
+}
+
+func (store *SQLStore) Shutdown() {
+	store.connPool.Close()
 }

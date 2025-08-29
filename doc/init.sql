@@ -148,6 +148,11 @@ CREATE INDEX IF NOT EXISTS idx_posts_created_at_id_desc
 -- for getting oldets posts
 CREATE INDEX IF NOT EXISTS idx_posts_created_at_id_asc
   ON posts (created_at, id);
+
+-- ensuring one reply per comment per user
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_reply_per_user_parent
+  ON comments (user_id, parent_id)
+  WHERE parent_id IS NOT NULL AND NOT is_deleted;
 CREATE OR REPLACE FUNCTION insert_comment(
 	p_user_id BIGINT,
 	p_post_id BIGINT,

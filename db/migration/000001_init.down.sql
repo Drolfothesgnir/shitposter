@@ -6,7 +6,7 @@ DROP FUNCTION IF EXISTS delete_post_vote(BIGINT, BIGINT);
 DROP FUNCTION IF EXISTS delete_comment_vote(BIGINT, BIGINT);
 DROP FUNCTION IF EXISTS vote_post(BIGINT, BIGINT, INT);
 DROP FUNCTION IF EXISTS vote_comment(BIGINT, BIGINT, INT);
-DROP FUNCTION IF EXISTS get_comments_by_popularity(BIGINT, INT);
+DROP FUNCTION IF EXISTS get_comments_by_popularity(BIGINT, INT, INT);
 DROP FUNCTION IF EXISTS insert_comment(BIGINT, BIGINT, BIGINT, TEXT, BIGINT, BIGINT);
 
 -- Drop all indexes (in reverse order of creation)

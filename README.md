@@ -140,6 +140,7 @@ The goal is to learn and demonstrate web dev skills.
       - **PATCH** /posts/{post-id}/comments/{comment-id} → Edit a Comment
       - **GET** /posts/{post-id}/comments → View comments
       - **GET** /posts/{post-id}/comments?limit=20&offset=0 → View comments with pagination
+      - **GET** /posts/{post-id}/comments?order_by=popularity&limit=20&offset=0 → View most popular comments with pagination
       - **DELETE** /posts/{post-id}/comments/{comment-id} → Delete comment
    - Votes
       - **POST** /posts/{post-id}/vote → Vote/Downvote a Post

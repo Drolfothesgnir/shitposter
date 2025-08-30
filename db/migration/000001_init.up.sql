@@ -202,7 +202,8 @@ $$;
 -- utility for extracting comments ordered by popularity
 CREATE OR REPLACE FUNCTION get_comments_by_popularity(
   p_post_id BIGINT,
-  p_root_limit INT
+  p_root_limit INT,
+  p_root_offset INT
 ) RETURNS SETOF comments
 -- STABLE is used for optimization. It tells to the engine that db will not be modified, only queried
 LANGUAGE sql STABLE AS $$
@@ -214,6 +215,7 @@ LANGUAGE sql STABLE AS $$
     WHERE c.post_id = p_post_id AND c.parent_id IS NULL
     ORDER BY c.popularity DESC, c.id
     LIMIT p_root_limit
+	  OFFSET p_root_offset
   ),
   cte (
     id, user_id, post_id, parent_id, depth,

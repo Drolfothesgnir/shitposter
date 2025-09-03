@@ -2,30 +2,52 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/gin-gonic/gin"
+	"github.com/go-webauthn/webauthn/webauthn"
 )
 
 type Service struct {
 	config util.Config
 	store  db.Store
 	// tokenMaker token.Maker
-	server *http.Server
+	server         *http.Server
+	webauthnConfig *webauthn.WebAuthn
 }
 
 // Returns new service instance with provided config and store.
-func NewService(config util.Config, store db.Store) *Service {
-	service := Service{
+func NewService(config util.Config, store db.Store) (*Service, error) {
+	service := &Service{
 		config: config,
 		store:  store,
 	}
 
 	server := &http.Server{
 		Addr: config.HTTPServerAddress,
+	}
+
+	// Relay Party id must be the same as domain of the server and most NOT be changed
+	// otherwise all stored creds will be lost
+	host, _, err := config.ExtractHostPort()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse server http address: %w", err)
+	}
+
+	waConfig := &webauthn.Config{
+		RPDisplayName: "Shitposter",
+		RPID:          host,
+		RPOrigins:     []string{config.HTTPServerAddress},
+	}
+
+	service.webauthnConfig, err = webauthn.New(waConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Webauthn config: %w", err)
 	}
 
 	// caps how long a client can take to send just the headers (blocks slowloris).
@@ -41,7 +63,7 @@ func NewService(config util.Config, store db.Store) *Service {
 
 	service.server = server
 
-	return &service
+	return service, nil
 }
 
 // Establishes HTTP router.
@@ -63,4 +85,8 @@ func (service *Service) Start() error {
 
 func (service *Service) Shutdown(ctx context.Context) error {
 	return service.server.Shutdown(ctx)
+}
+
+func errorResponse(err error) gin.H {
+	return gin.H{"error": err.Error()}
 }

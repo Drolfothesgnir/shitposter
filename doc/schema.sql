@@ -1,12 +1,20 @@
 CREATE TABLE "users" (
   "id" bigserial PRIMARY KEY,
   "username" varchar UNIQUE NOT NULL,
+  "webauthn_user_handle" bytea UNIQUE NOT NULL,
   "profile_img_url" varchar NOT NULL,
-  "hashed_password" varchar NOT NULL,
   "email" varchar UNIQUE NOT NULL,
-  "is_email_verified" bool NOT NULL DEFAULT false,
-  "password_changed_at" timestamptz NOT NULL DEFAULT '0001-01-01 00:00:00Z',
   "created_at" timestamptz NOT NULL DEFAULT (now())
+);
+
+CREATE TABLE "webauthn_credentials" (
+  "id" bytea PRIMARY KEY,
+  "user_id" bigint NOT NULL,
+  "public_key" bytea NOT NULL,
+  "sign_count" bigint NOT NULL DEFAULT 0,
+  "transports" jsonb NOT NULL,
+  "created_at" timestamptz NOT NULL DEFAULT (now()),
+  "last_used_at" timestamptz
 );
 
 CREATE TABLE "sessions" (
@@ -18,16 +26,6 @@ CREATE TABLE "sessions" (
   "is_blocked" boolean NOT NULL DEFAULT false,
   "expires_at" timestamptz NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now())
-);
-
-CREATE TABLE "verification_emails" (
-  "id" bigserial PRIMARY KEY,
-  "user_id" bigint NOT NULL,
-  "email" varchar NOT NULL,
-  "secret_code" varchar NOT NULL,
-  "is_used" bool NOT NULL DEFAULT false,
-  "created_at" timestamptz NOT NULL DEFAULT (now()),
-  "expires_at" timestamptz NOT NULL DEFAULT (now() + interval '15 minutes')
 );
 
 CREATE TABLE "posts" (
@@ -61,7 +59,7 @@ CREATE TABLE "post_votes" (
   "id" bigserial PRIMARY KEY,
   "user_id" bigint NOT NULL,
   "post_id" bigint NOT NULL,
-  "vote" int8 NOT NULL,
+  "vote" smallint NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now()),
   "last_modified_at" timestamptz NOT NULL DEFAULT (now())
 );
@@ -70,7 +68,7 @@ CREATE TABLE "comment_votes" (
   "id" bigserial PRIMARY KEY,
   "user_id" bigint NOT NULL,
   "comment_id" bigint NOT NULL,
-  "vote" int8 NOT NULL,
+  "vote" smallint NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now()),
   "last_modified_at" timestamptz NOT NULL DEFAULT (now())
 );
@@ -79,9 +77,9 @@ COMMENT ON COLUMN "post_votes"."vote" IS '1 for upvote, -1 for downvote';
 
 COMMENT ON COLUMN "comment_votes"."vote" IS '1 for upvote, -1 for downvote';
 
-ALTER TABLE "sessions" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
+ALTER TABLE "webauthn_credentials" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE;
 
-ALTER TABLE "verification_emails" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
+ALTER TABLE "sessions" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE;
 
 ALTER TABLE "posts" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
 

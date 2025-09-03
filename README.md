@@ -39,11 +39,8 @@ The goal is to learn and demonstrate web dev skills.
         "id": 1,
         "username": "user1",
         "email": "user@mail.com",
-        // "hashed_password": "..." <-- saved in the db
         "profile_img_url": "localhost:4000/media/images/iamge1",
-        "created_at": "2025-07-21 15:11:55.039123+00",
-        "password_changed_at": "0001-01-01 00:00:00+00",
-        "is_email_verified": true
+        "created_at": "2025-07-21 15:11:55.039123+00"
       }
       ```
    - Single Post</br>
@@ -122,8 +119,8 @@ The goal is to learn and demonstrate web dev skills.
       ```
 4. Assigning methods to operations on Resources
    - Users
-      - **POST** /users → Create new user
-      - **POST** /users/login → Login existing user
+      - **POST** /signup → Create new user with passkey
+      - **POST** /users/login/passkey → Login existing user
       - **PATCH** /users/{user-id} → Update user's data
       - **POST** /users/renew_access → Renew access token via refresh token
       - **DELETE** /users/{user-id} → Delete user

@@ -156,7 +156,7 @@ func TestVotePost(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, int64(1), vote2.Vote)
+	require.Equal(t, int16(1), vote2.Vote)
 
 	// vote change to -1
 	post3, err := testStore.VotePost(context.Background(), VotePostParams{
@@ -174,7 +174,7 @@ func TestVotePost(t *testing.T) {
 		PostID: post1.ID,
 	})
 	require.NoError(t, err)
-	require.Equal(t, int64(-1), vote3.Vote)
+	require.Equal(t, int16(-1), vote3.Vote)
 
 	// check voting idempotency
 	post4, err := testStore.VotePost(context.Background(), VotePostParams{
@@ -262,7 +262,7 @@ func TestDeletePostVote(t *testing.T) {
 
 	require.NotEmpty(t, vote1)
 	require.NoError(t, err)
-	require.Equal(t, int64(1), vote1.Vote)
+	require.Equal(t, int16(1), vote1.Vote)
 
 	err = testStore.DeletePostVote(context.Background(), DeletePostVoteParams{
 		PPostID: post1.ID,

@@ -23,8 +23,6 @@ DROP INDEX IF EXISTS comments_post_id_idx;
 DROP INDEX IF EXISTS comments_user_id_idx;
 DROP INDEX IF EXISTS posts_topics_idx;
 DROP INDEX IF EXISTS posts_user_id_idx;
-DROP INDEX IF EXISTS verification_emails_user_id_secret_code_idx;
-DROP INDEX IF EXISTS verification_emails_expires_at_idx;
 DROP INDEX IF EXISTS sessions_expires_at_idx;
 DROP INDEX IF EXISTS sessions_user_id_idx;
 
@@ -43,7 +41,6 @@ ALTER TABLE comments DROP CONSTRAINT IF EXISTS comments_parent_id_fkey;
 ALTER TABLE comments DROP CONSTRAINT IF EXISTS comments_post_id_fkey;
 ALTER TABLE comments DROP CONSTRAINT IF EXISTS comments_user_id_fkey;
 ALTER TABLE posts DROP CONSTRAINT IF EXISTS posts_user_id_fkey;
-ALTER TABLE verification_emails DROP CONSTRAINT IF EXISTS verification_emails_user_id_fkey;
 ALTER TABLE sessions DROP CONSTRAINT IF EXISTS sessions_user_id_fkey;
 
 -- Drop all tables (in reverse order of dependencies)
@@ -51,6 +48,6 @@ DROP TABLE IF EXISTS comment_votes CASCADE;
 DROP TABLE IF EXISTS post_votes CASCADE;
 DROP TABLE IF EXISTS comments CASCADE;
 DROP TABLE IF EXISTS posts CASCADE;
-DROP TABLE IF EXISTS verification_emails CASCADE;
 DROP TABLE IF EXISTS sessions CASCADE;
+DROP TABLE IF EXISTS webauthn_credentials CASCADE;
 DROP TABLE IF EXISTS users CASCADE;

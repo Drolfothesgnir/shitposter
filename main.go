@@ -85,7 +85,12 @@ func RunGinServer(
 	config util.Config,
 	store db.Store,
 ) {
-	service := api.NewService(config, store)
+	service, err := api.NewService(config, store)
+
+	if err != nil {
+		log.Error().Err(err).Msg("cannot create HTTP service")
+		return
+	}
 
 	waitGroup.Go(func() error {
 		log.Info().Msgf("start HTTP server at %s", config.HTTPServerAddress)

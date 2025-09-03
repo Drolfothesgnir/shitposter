@@ -1,6 +1,9 @@
 package util
 
 import (
+	"fmt"
+	"net"
+	"net/url"
 	"time"
 
 	"github.com/spf13/viper"
@@ -33,5 +36,25 @@ func LoadConfig(path string) (config Config, err error) {
 	}
 
 	err = viper.Unmarshal(&config)
+	return
+}
+
+// ExtractHostPort parses the HTTP server address and returns the host and port components.
+// If no port is specified in the URL, port will be an empty string.
+func (config *Config) ExtractHostPort() (host string, port string, err error) {
+	urlStr, err := url.Parse(config.HTTPServerAddress)
+	if err != nil {
+		err = fmt.Errorf("error parsing http server url: %w", err)
+		return
+	}
+
+	host, port, err = net.SplitHostPort(urlStr.Host)
+	if err != nil {
+		// If there's no port, SplitHostPort returns an error,
+		// in which case the host itself is the hostname.
+		host = urlStr.Host
+		err = nil
+	}
+
 	return
 }

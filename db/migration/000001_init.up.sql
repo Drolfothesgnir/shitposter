@@ -1,12 +1,20 @@
 CREATE TABLE "users" (
   "id" bigserial PRIMARY KEY,
   "username" varchar UNIQUE NOT NULL,
+  "webauthn_user_handle" bytea UNIQUE NOT NULL,
   "profile_img_url" varchar NOT NULL,
-  "hashed_password" varchar NOT NULL,
   "email" varchar UNIQUE NOT NULL,
-  "is_email_verified" bool NOT NULL DEFAULT false,
-  "password_changed_at" timestamptz NOT NULL DEFAULT '0001-01-01 00:00:00Z',
   "created_at" timestamptz NOT NULL DEFAULT (now())
+);
+
+CREATE TABLE "webauthn_credentials" (
+  "id" bytea PRIMARY KEY,
+  "user_id" bigint NOT NULL,
+  "public_key" bytea NOT NULL,
+  "sign_count" bigint NOT NULL DEFAULT 0,
+  "transports" jsonb NOT NULL,
+  "created_at" timestamptz NOT NULL DEFAULT (now()),
+  "last_used_at" timestamptz
 );
 
 CREATE TABLE "sessions" (
@@ -18,16 +26,6 @@ CREATE TABLE "sessions" (
   "is_blocked" boolean NOT NULL DEFAULT false,
   "expires_at" timestamptz NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now())
-);
-
-CREATE TABLE "verification_emails" (
-  "id" bigserial PRIMARY KEY,
-  "user_id" bigint NOT NULL,
-  "email" varchar NOT NULL,
-  "secret_code" varchar NOT NULL,
-  "is_used" bool NOT NULL DEFAULT false,
-  "created_at" timestamptz NOT NULL DEFAULT (now()),
-  "expires_at" timestamptz NOT NULL DEFAULT (now() + interval '15 minutes')
 );
 
 CREATE TABLE "posts" (
@@ -61,7 +59,7 @@ CREATE TABLE "post_votes" (
   "id" bigserial PRIMARY KEY,
   "user_id" bigint NOT NULL,
   "post_id" bigint NOT NULL,
-  "vote" int8 NOT NULL,
+  "vote" smallint NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now()),
   "last_modified_at" timestamptz NOT NULL DEFAULT (now())
 );
@@ -70,7 +68,7 @@ CREATE TABLE "comment_votes" (
   "id" bigserial PRIMARY KEY,
   "user_id" bigint NOT NULL,
   "comment_id" bigint NOT NULL,
-  "vote" int8 NOT NULL,
+  "vote" smallint NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now()),
   "last_modified_at" timestamptz NOT NULL DEFAULT (now())
 );
@@ -79,9 +77,9 @@ COMMENT ON COLUMN "post_votes"."vote" IS '1 for upvote, -1 for downvote';
 
 COMMENT ON COLUMN "comment_votes"."vote" IS '1 for upvote, -1 for downvote';
 
-ALTER TABLE "sessions" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
+ALTER TABLE "webauthn_credentials" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE;
 
-ALTER TABLE "verification_emails" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
+ALTER TABLE "sessions" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE;
 
 ALTER TABLE "posts" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
 
@@ -101,13 +99,11 @@ ALTER TABLE "comment_votes" ADD FOREIGN KEY ("comment_id") REFERENCES "comments"
 
 -- added auto "popularity" column and its index to the comments
 ALTER TABLE "comments" ADD COLUMN "popularity" BIGINT GENERATED ALWAYS AS (upvotes - downvotes) STORED;
+CREATE INDEX IF NOT EXISTS webauthn_credentials_user_id_idx ON webauthn_credentials(user_id);
+
 CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id);
 
 CREATE INDEX IF NOT EXISTS sessions_expires_at_idx ON sessions(expires_at);
-
-CREATE INDEX IF NOT EXISTS verification_emails_expires_at_idx ON verification_emails(expires_at);
-
-CREATE INDEX IF NOT EXISTS verification_emails_user_id_secret_code_idx ON verification_emails(user_id, secret_code);
 
 CREATE INDEX IF NOT EXISTS posts_user_id_idx ON posts(user_id);
 
@@ -119,6 +115,8 @@ CREATE INDEX IF NOT EXISTS comments_post_id_idx ON comments(post_id);
 
 -- used for faster cascade deletion of comments children
 CREATE INDEX IF NOT EXISTS comments_parent_id_idx ON comments(parent_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_users_email_idx on users(id, email);
 
 CREATE UNIQUE INDEX IF NOT EXISTS post_votes_user_id_post_id ON post_votes(user_id, post_id);
 

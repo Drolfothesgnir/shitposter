@@ -143,10 +143,10 @@ func TestGetCommentsByPopularity(t *testing.T) {
 	for i := range 3 {
 		replies[i] = make([]Comment, 3)
 		for j := range 3 {
-			userId := int64(i*3 + j)
+			userIdx := int64(3 + i*3 + j)
 			var err error
 			replies[i][j], err = testStore.CreateComment(context.Background(), CreateCommentParams{
-				PUserID:    userId,
+				PUserID:    userIds[userIdx],
 				PPostID:    post.ID,
 				PBody:      fmt.Sprintf("%d reply to the root comment #%d", j, i),
 				PUpvotes:   pgtype.Int8{Int64: reply_upvotes[i][j], Valid: true},

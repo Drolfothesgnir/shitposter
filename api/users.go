@@ -2,12 +2,10 @@ package api
 
 import (
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
-	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -22,64 +20,87 @@ type User struct {
 	// WebauthnUserHandle []byte    `json:"-"`
 }
 
-// Aggregated type which implements webauthn.User interface
-type UserWithCredentials struct {
-	db.User
-	Credentials []webauthn.Credential
+// // Aggregated type which implements webauthn.User interface
+// type UserWithCredentials struct {
+// 	db.User
+// 	Credentials []webauthn.Credential
+// }
+
+// // UserWithCredentials factory which takes raw db.User and db.WebauthnCredentials
+// func NewUserWithCredentials(user db.User, creds []db.WebauthnCredential) (*UserWithCredentials, error) {
+// 	parsedCreds := make([]webauthn.Credential, len(creds))
+
+// 	for i, cred := range creds {
+// 		parsedTransport := []protocol.AuthenticatorTransport{}
+// 		if err := json.Unmarshal(cred.Transports, &parsedTransport); err != nil {
+// 			return nil, fmt.Errorf("failed to parse transports for credential %x: %w", cred.ID, err)
+// 		}
+
+// 		parsedCred := webauthn.Credential{
+// 			ID:        cred.ID,
+// 			PublicKey: cred.PublicKey,
+// 			Transport: parsedTransport,
+// 			Authenticator: webauthn.Authenticator{
+// 				AAGUID:    []byte{}, // Don't care about device type
+// 				SignCount: uint32(cred.SignCount),
+// 			},
+// 			AttestationType: "none", // Don't care about device type
+// 			Flags: webauthn.CredentialFlags{
+// 				UserPresent:  true, // User confirmed action
+// 				UserVerified: true, // User provided biometric/PIN
+// 			},
+// 		}
+
+// 		parsedCreds[i] = parsedCred
+// 	}
+
+// 	result := &UserWithCredentials{
+// 		user,
+// 		parsedCreds,
+// 	}
+
+// 	return result, nil
+// }
+
+// // following methods are required by webauthn.User interface
+
+// func (user *UserWithCredentials) WebAuthnID() []byte {
+// 	return user.WebauthnUserHandle
+// }
+
+// func (user *UserWithCredentials) WebAuthnName() string {
+// 	return user.Email
+// }
+
+// func (user *UserWithCredentials) WebAuthnDisplayName() string {
+// 	return user.Username
+// }
+
+// func (user *UserWithCredentials) WebAuthnCredentials() []webauthn.Credential {
+// 	return user.Credentials
+// }
+
+// Temporary user for WebAuthn (not stored in DB yet)
+type TempUser struct {
+	ID                 []byte
+	Email              string
+	Username           string
+	WebauthnUserHandle []byte
 }
 
-// UserWithCredentials factory which takes raw db.User and db.WebauthnCredentials
-func NewUserWithCredentials(user db.User, creds []db.WebauthnCredential) (*UserWithCredentials, error) {
-	parsedCreds := make([]webauthn.Credential, len(creds))
+// Implement webauthn.User interface
+func (u *TempUser) WebAuthnID() []byte                         { return u.WebauthnUserHandle }
+func (u *TempUser) WebAuthnName() string                       { return u.Email }
+func (u *TempUser) WebAuthnDisplayName() string                { return u.Username }
+func (u *TempUser) WebAuthnCredentials() []webauthn.Credential { return []webauthn.Credential{} } // Empty for new user
 
-	for i, cred := range creds {
-		parsedTransport := []protocol.AuthenticatorTransport{}
-		if err := json.Unmarshal(cred.Transports, &parsedTransport); err != nil {
-			return nil, fmt.Errorf("failed to parse transports for credential %x: %w", cred.ID, err)
-		}
-
-		parsedCred := webauthn.Credential{
-			ID:        cred.ID,
-			PublicKey: cred.PublicKey,
-			Transport: parsedTransport,
-			Authenticator: webauthn.Authenticator{
-				AAGUID:    []byte{}, // Don't care about device type
-				SignCount: uint32(cred.SignCount),
-			},
-			AttestationType: "none", // Don't care about device type
-			Flags: webauthn.CredentialFlags{
-				UserPresent:  true, // User confirmed action
-				UserVerified: true, // User provided biometric/PIN
-			},
-		}
-
-		parsedCreds[i] = parsedCred
-	}
-
-	result := &UserWithCredentials{
-		user,
-		parsedCreds,
-	}
-
-	return result, nil
-}
-
-// following methods are required by webauthn.User interface
-
-func (user *UserWithCredentials) WebAuthnID() []byte {
-	return user.WebauthnUserHandle
-}
-
-func (user *UserWithCredentials) WebAuthnName() string {
-	return user.Email
-}
-
-func (user *UserWithCredentials) WebAuthnDisplayName() string {
-	return user.Username
-}
-
-func (user *UserWithCredentials) WebAuthnCredentials() []webauthn.Credential {
-	return user.Credentials
+// Data stored in memory during registration
+type PendingRegistration struct {
+	Email              string                `json:"email"`
+	Username           string                `json:"username"`
+	WebauthnUserHandle []byte                `json:"webauthn_user_handle"`
+	SessionData        *webauthn.SessionData `json:"session_data"`
+	ExpiresAt          time.Time             `json:"expires_at"`
 }
 
 type SignupStartRequest struct {
@@ -132,5 +153,41 @@ func (service *Service) SignupStart(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: finish it
+	tempUser := &TempUser{
+		ID:                 userHandle,
+		Email:              req.Email,
+		Username:           req.Username,
+		WebauthnUserHandle: userHandle,
+	}
+
+	create, session, err := service.webauthnConfig.BeginRegistration(tempUser)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	// Store registration session in Redis
+	registrationData := PendingRegistration{
+		Email:              req.Email,
+		Username:           req.Username,
+		WebauthnUserHandle: userHandle,
+		SessionData:        session,
+		ExpiresAt:          time.Now().Add(service.config.RegistrationSessionTTL),
+	}
+
+	err = service.redisStore.SaveUserRegSession(
+		ctx,
+		session.Challenge,
+		registrationData,
+		service.config.RegistrationSessionTTL,
+	)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, SignupStartResponse{
+		CredentialCreation: create,
+	})
 }

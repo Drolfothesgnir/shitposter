@@ -18,13 +18,18 @@ type Service struct {
 	// tokenMaker token.Maker
 	server         *http.Server
 	webauthnConfig *webauthn.WebAuthn
+	redisStore     *Store
 }
 
 // Returns new service instance with provided config and store.
 func NewService(config util.Config, store db.Store) (*Service, error) {
+
+	rs := NewStore(&config)
+
 	service := &Service{
-		config: config,
-		store:  store,
+		config:     config,
+		store:      store,
+		redisStore: rs,
 	}
 
 	server := &http.Server{
@@ -74,6 +79,9 @@ func (service *Service) SetupRouter(server *http.Server) {
 	router.GET("/ping", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "pong")
 	})
+
+	// auth
+	router.POST("/signup/start", service.SignupStart)
 
 	server.Handler = router
 }

@@ -78,8 +78,8 @@ func TestExtractHostPort(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := Config{HTTPServerAddress: tt.addr}
-			host, port, err := cfg.ExtractHostPort()
+			addr := URLString(tt.addr)
+			host, port, err := addr.ExtractHostPort()
 
 			if tt.wantError {
 				require.Error(t, err, "expected error for addr=%q", tt.addr)

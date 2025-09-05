@@ -13,7 +13,9 @@ type Config struct {
 	Environment            string        `mapstructure:"ENVIRONMENT"`
 	DBSource               string        `mapstructure:"DB_SOURCE"`
 	MigrationURL           string        `mapstructure:"MIGRATION_URL"`
-	HTTPServerAddress      string        `mapstructure:"HTTP_SERVER_ADDRESS"`
+	HTTPServerAddress      URLString     `mapstructure:"HTTP_SERVER_ADDRESS"`
+	PublicOrigin           URLString     `mapstructure:"PUBLIC_ORIGIN"`
+	AllowedOrigins         []string      `mapstructure:"ALLOWED_ORIGINS"`
 	RedisAddress           string        `mapstructure:"REDIS_ADDRESS"`
 	RegistrationSessionTTL time.Duration `mapstructure:"REGISTRATION_SESSION_TTL"`
 	TokenSymmetricKey      string        `mapstructure:"TOKEN_SYMMETRIC_KEY"`
@@ -39,11 +41,17 @@ func LoadConfig(path string) (config Config, err error) {
 	return
 }
 
+type URLString string
+
+func (u URLString) String() string {
+	return string(u)
+}
+
 // ExtractHostPort parses the HTTP server address and returns the host and port components.
 // If no port is specified in the URL, port will be an empty string.
-func (config *Config) ExtractHostPort() (host string, port string, err error) {
+func (urlStr URLString) ExtractHostPort() (host string, port string, err error) {
 	// prefixing address string in case it has no schema in it
-	addr := config.HTTPServerAddress
+	addr := string(urlStr)
 	if !strings.Contains(addr, "://") {
 		addr = "http://" + addr
 	}

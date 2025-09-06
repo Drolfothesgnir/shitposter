@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Drolfothesgnir/shitposter/util"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,7 +21,7 @@ func createRandomUser(t *testing.T) User {
 
 	arg := CreateUserParams{
 		Username:           util.RandomOwner(),
-		ProfileImgUrl:      util.RandomURL(),
+		ProfileImgUrl:      pgtype.Text{String: util.RandomURL(), Valid: true},
 		Email:              util.RandomEmail(),
 		WebauthnUserHandle: randomUserHandle(t),
 	}

@@ -2,7 +2,7 @@ CREATE TABLE "users" (
   "id" bigserial PRIMARY KEY,
   "username" varchar UNIQUE NOT NULL,
   "webauthn_user_handle" bytea UNIQUE NOT NULL,
-  "profile_img_url" varchar NOT NULL,
+  "profile_img_url" varchar,
   "email" varchar UNIQUE NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT (now())
 );

@@ -48,3 +48,30 @@ func (store *Store) SaveUserRegSession(
 	key := PendingRegistrationPrefix + sessionID
 	return store.client.Set(ctx, key, jsonData, ttl).Err()
 }
+
+// Function to retrieve user data pending registration.
+// Returns error if not found or expired.
+func (store *Store) GetUserRegSession(ctx context.Context, sessionID string) (*PendingRegistration, error) {
+	key := PendingRegistrationPrefix + sessionID
+
+	jsonData, err := store.client.Get(ctx, key).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return nil, fmt.Errorf("registration session not found or expired")
+		}
+		return nil, fmt.Errorf("failed to get registration session: %w", err)
+	}
+
+	var session PendingRegistration
+	if err := json.Unmarshal([]byte(jsonData), &session); err != nil {
+		return nil, fmt.Errorf("failed to parse registration session json: %w", err)
+	}
+
+	return &session, nil
+}
+
+// Helper function to clean temporary user data from Redis.
+func (store *Store) DeleteUserRegSession(ctx context.Context, sessionID string) error {
+	key := PendingRegistrationPrefix + sessionID
+	return store.client.Del(ctx, key).Err()
+}

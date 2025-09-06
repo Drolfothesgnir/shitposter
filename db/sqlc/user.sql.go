@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -21,10 +23,10 @@ INSERT INTO users (
 `
 
 type CreateUserParams struct {
-	Username           string `json:"username"`
-	ProfileImgUrl      string `json:"profile_img_url"`
-	Email              string `json:"email"`
-	WebauthnUserHandle []byte `json:"webauthn_user_handle"`
+	Username           string      `json:"username"`
+	ProfileImgUrl      pgtype.Text `json:"profile_img_url"`
+	Email              string      `json:"email"`
+	WebauthnUserHandle []byte      `json:"webauthn_user_handle"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {

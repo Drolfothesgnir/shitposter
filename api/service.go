@@ -5,12 +5,18 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/webauthn"
+)
+
+const (
+	WebauthnChallengeHeader = "X-Webauthn-Challenge"
+	WebauthnTransportHeader = "X-Webauthn-Transports"
 )
 
 type Service struct {
@@ -83,8 +89,9 @@ func (service *Service) SetupRouter(server *http.Server) {
 		ctx.String(http.StatusOK, "pong")
 	})
 
-	// auth
+	// passkey auth
 	router.POST("/signup/start", service.SignupStart)
+	router.POST("/signup/finish", service.SignupFinish)
 
 	server.Handler = router
 }
@@ -99,7 +106,15 @@ func (service *Service) corsMiddleware() gin.HandlerFunc {
 		}
 
 		ctx.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		ctx.Header("Access-Control-Allow-Headers", "Content-Type")
+
+		// X-Webauthn-Challenge and X-Webauthn-Transports are critical for passkey auth
+		allowedHeaders := []string{
+			"Content-Type",
+			WebauthnChallengeHeader,
+			WebauthnTransportHeader,
+		}
+
+		ctx.Header("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ","))
 
 		if ctx.Request.Method == http.MethodOptions {
 			ctx.AbortWithStatus(http.StatusNoContent)

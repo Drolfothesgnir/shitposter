@@ -12,6 +12,7 @@ type Querier interface {
 	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
 	CreatePost(ctx context.Context, arg CreatePostParams) (Post, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	CreateWebauthnCredentials(ctx context.Context, arg CreateWebauthnCredentialsParams) (WebauthnCredential, error)
 	DeleteComment(ctx context.Context, id int64) (Comment, error)
 	DeleteCommentVote(ctx context.Context, arg DeleteCommentVoteParams) error
 	DeletePost(ctx context.Context, id int64) error

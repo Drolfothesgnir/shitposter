@@ -9,6 +9,47 @@ import (
 	"context"
 )
 
+const createWebauthnCredentials = `-- name: CreateWebauthnCredentials :one
+INSERT INTO webauthn_credentials (
+  id,
+  user_id,
+  public_key,
+  sign_count,
+  transports
+) VALUES (
+  $1, $2, $3, $4, $5
+) RETURNING id, user_id, public_key, sign_count, transports, created_at, last_used_at
+`
+
+type CreateWebauthnCredentialsParams struct {
+	ID         []byte `json:"id"`
+	UserID     int64  `json:"user_id"`
+	PublicKey  []byte `json:"public_key"`
+	SignCount  int64  `json:"sign_count"`
+	Transports []byte `json:"transports"`
+}
+
+func (q *Queries) CreateWebauthnCredentials(ctx context.Context, arg CreateWebauthnCredentialsParams) (WebauthnCredential, error) {
+	row := q.db.QueryRow(ctx, createWebauthnCredentials,
+		arg.ID,
+		arg.UserID,
+		arg.PublicKey,
+		arg.SignCount,
+		arg.Transports,
+	)
+	var i WebauthnCredential
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PublicKey,
+		&i.SignCount,
+		&i.Transports,
+		&i.CreatedAt,
+		&i.LastUsedAt,
+	)
+	return i, err
+}
+
 const getUserCredentials = `-- name: GetUserCredentials :many
 SELECT id, user_id, public_key, sign_count, transports, created_at, last_used_at FROM webauthn_credentials
 WHERE user_id = $1

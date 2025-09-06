@@ -72,12 +72,12 @@ type Session struct {
 }
 
 type User struct {
-	ID                 int64     `json:"id"`
-	Username           string    `json:"username"`
-	WebauthnUserHandle []byte    `json:"webauthn_user_handle"`
-	ProfileImgUrl      string    `json:"profile_img_url"`
-	Email              string    `json:"email"`
-	CreatedAt          time.Time `json:"created_at"`
+	ID                 int64       `json:"id"`
+	Username           string      `json:"username"`
+	WebauthnUserHandle []byte      `json:"webauthn_user_handle"`
+	ProfileImgUrl      pgtype.Text `json:"profile_img_url"`
+	Email              string      `json:"email"`
+	CreatedAt          time.Time   `json:"created_at"`
 }
 
 type WebauthnCredential struct {

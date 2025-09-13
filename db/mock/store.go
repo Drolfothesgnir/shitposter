@@ -13,7 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	sqlc "github.com/Drolfothesgnir/shitposter/db/sqlc"
+	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -42,10 +42,10 @@ func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 }
 
 // CreateComment mocks base method.
-func (m *MockStore) CreateComment(ctx context.Context, arg sqlc.CreateCommentParams) (sqlc.Comment, error) {
+func (m *MockStore) CreateComment(ctx context.Context, arg db.CreateCommentParams) (db.Comment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateComment", ctx, arg)
-	ret0, _ := ret[0].(sqlc.Comment)
+	ret0, _ := ret[0].(db.Comment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -57,10 +57,10 @@ func (mr *MockStoreMockRecorder) CreateComment(ctx, arg any) *gomock.Call {
 }
 
 // CreatePost mocks base method.
-func (m *MockStore) CreatePost(ctx context.Context, arg sqlc.CreatePostParams) (sqlc.Post, error) {
+func (m *MockStore) CreatePost(ctx context.Context, arg db.CreatePostParams) (db.Post, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreatePost", ctx, arg)
-	ret0, _ := ret[0].(sqlc.Post)
+	ret0, _ := ret[0].(db.Post)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -72,10 +72,10 @@ func (mr *MockStoreMockRecorder) CreatePost(ctx, arg any) *gomock.Call {
 }
 
 // CreateUser mocks base method.
-func (m *MockStore) CreateUser(ctx context.Context, arg sqlc.CreateUserParams) (sqlc.User, error) {
+func (m *MockStore) CreateUser(ctx context.Context, arg db.CreateUserParams) (db.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateUser", ctx, arg)
-	ret0, _ := ret[0].(sqlc.User)
+	ret0, _ := ret[0].(db.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -87,10 +87,10 @@ func (mr *MockStoreMockRecorder) CreateUser(ctx, arg any) *gomock.Call {
 }
 
 // CreateUserWithCredentialsTx mocks base method.
-func (m *MockStore) CreateUserWithCredentialsTx(ctx context.Context, arg sqlc.CreateUserWithCredentialsTxParams) (sqlc.CreateUserWithCredentialsTxResult, error) {
+func (m *MockStore) CreateUserWithCredentialsTx(ctx context.Context, arg db.CreateUserWithCredentialsTxParams) (db.CreateUserWithCredentialsTxResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateUserWithCredentialsTx", ctx, arg)
-	ret0, _ := ret[0].(sqlc.CreateUserWithCredentialsTxResult)
+	ret0, _ := ret[0].(db.CreateUserWithCredentialsTxResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -102,10 +102,10 @@ func (mr *MockStoreMockRecorder) CreateUserWithCredentialsTx(ctx, arg any) *gomo
 }
 
 // CreateWebauthnCredentials mocks base method.
-func (m *MockStore) CreateWebauthnCredentials(ctx context.Context, arg sqlc.CreateWebauthnCredentialsParams) (sqlc.WebauthnCredential, error) {
+func (m *MockStore) CreateWebauthnCredentials(ctx context.Context, arg db.CreateWebauthnCredentialsParams) (db.WebauthnCredential, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateWebauthnCredentials", ctx, arg)
-	ret0, _ := ret[0].(sqlc.WebauthnCredential)
+	ret0, _ := ret[0].(db.WebauthnCredential)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -117,10 +117,10 @@ func (mr *MockStoreMockRecorder) CreateWebauthnCredentials(ctx, arg any) *gomock
 }
 
 // DeleteComment mocks base method.
-func (m *MockStore) DeleteComment(ctx context.Context, id int64) (sqlc.Comment, error) {
+func (m *MockStore) DeleteComment(ctx context.Context, id int64) (db.Comment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteComment", ctx, id)
-	ret0, _ := ret[0].(sqlc.Comment)
+	ret0, _ := ret[0].(db.Comment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -132,7 +132,7 @@ func (mr *MockStoreMockRecorder) DeleteComment(ctx, id any) *gomock.Call {
 }
 
 // DeleteCommentVote mocks base method.
-func (m *MockStore) DeleteCommentVote(ctx context.Context, arg sqlc.DeleteCommentVoteParams) error {
+func (m *MockStore) DeleteCommentVote(ctx context.Context, arg db.DeleteCommentVoteParams) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteCommentVote", ctx, arg)
 	ret0, _ := ret[0].(error)
@@ -160,7 +160,7 @@ func (mr *MockStoreMockRecorder) DeletePost(ctx, id any) *gomock.Call {
 }
 
 // DeletePostVote mocks base method.
-func (m *MockStore) DeletePostVote(ctx context.Context, arg sqlc.DeletePostVoteParams) error {
+func (m *MockStore) DeletePostVote(ctx context.Context, arg db.DeletePostVoteParams) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeletePostVote", ctx, arg)
 	ret0, _ := ret[0].(error)
@@ -189,10 +189,10 @@ func (mr *MockStoreMockRecorder) EmailExists(ctx, email any) *gomock.Call {
 }
 
 // GetComment mocks base method.
-func (m *MockStore) GetComment(ctx context.Context, id int64) (sqlc.Comment, error) {
+func (m *MockStore) GetComment(ctx context.Context, id int64) (db.Comment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetComment", ctx, id)
-	ret0, _ := ret[0].(sqlc.Comment)
+	ret0, _ := ret[0].(db.Comment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -204,10 +204,10 @@ func (mr *MockStoreMockRecorder) GetComment(ctx, id any) *gomock.Call {
 }
 
 // GetCommentVote mocks base method.
-func (m *MockStore) GetCommentVote(ctx context.Context, arg sqlc.GetCommentVoteParams) (sqlc.CommentVote, error) {
+func (m *MockStore) GetCommentVote(ctx context.Context, arg db.GetCommentVoteParams) (db.CommentVote, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetCommentVote", ctx, arg)
-	ret0, _ := ret[0].(sqlc.CommentVote)
+	ret0, _ := ret[0].(db.CommentVote)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -219,10 +219,10 @@ func (mr *MockStoreMockRecorder) GetCommentVote(ctx, arg any) *gomock.Call {
 }
 
 // GetCommentsByPopularity mocks base method.
-func (m *MockStore) GetCommentsByPopularity(ctx context.Context, arg sqlc.GetCommentsByPopularityParams) ([]sqlc.Comment, error) {
+func (m *MockStore) GetCommentsByPopularity(ctx context.Context, arg db.GetCommentsByPopularityParams) ([]db.Comment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetCommentsByPopularity", ctx, arg)
-	ret0, _ := ret[0].([]sqlc.Comment)
+	ret0, _ := ret[0].([]db.Comment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -234,10 +234,10 @@ func (mr *MockStoreMockRecorder) GetCommentsByPopularity(ctx, arg any) *gomock.C
 }
 
 // GetNewestPosts mocks base method.
-func (m *MockStore) GetNewestPosts(ctx context.Context, arg sqlc.GetNewestPostsParams) ([]sqlc.Post, error) {
+func (m *MockStore) GetNewestPosts(ctx context.Context, arg db.GetNewestPostsParams) ([]db.Post, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetNewestPosts", ctx, arg)
-	ret0, _ := ret[0].([]sqlc.Post)
+	ret0, _ := ret[0].([]db.Post)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -249,10 +249,10 @@ func (mr *MockStoreMockRecorder) GetNewestPosts(ctx, arg any) *gomock.Call {
 }
 
 // GetOldestPosts mocks base method.
-func (m *MockStore) GetOldestPosts(ctx context.Context, arg sqlc.GetOldestPostsParams) ([]sqlc.Post, error) {
+func (m *MockStore) GetOldestPosts(ctx context.Context, arg db.GetOldestPostsParams) ([]db.Post, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOldestPosts", ctx, arg)
-	ret0, _ := ret[0].([]sqlc.Post)
+	ret0, _ := ret[0].([]db.Post)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -264,10 +264,10 @@ func (mr *MockStoreMockRecorder) GetOldestPosts(ctx, arg any) *gomock.Call {
 }
 
 // GetPost mocks base method.
-func (m *MockStore) GetPost(ctx context.Context, id int64) (sqlc.Post, error) {
+func (m *MockStore) GetPost(ctx context.Context, id int64) (db.Post, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetPost", ctx, id)
-	ret0, _ := ret[0].(sqlc.Post)
+	ret0, _ := ret[0].(db.Post)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -279,10 +279,10 @@ func (mr *MockStoreMockRecorder) GetPost(ctx, id any) *gomock.Call {
 }
 
 // GetPostVote mocks base method.
-func (m *MockStore) GetPostVote(ctx context.Context, arg sqlc.GetPostVoteParams) (sqlc.PostVote, error) {
+func (m *MockStore) GetPostVote(ctx context.Context, arg db.GetPostVoteParams) (db.PostVote, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetPostVote", ctx, arg)
-	ret0, _ := ret[0].(sqlc.PostVote)
+	ret0, _ := ret[0].(db.PostVote)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -294,10 +294,10 @@ func (mr *MockStoreMockRecorder) GetPostVote(ctx, arg any) *gomock.Call {
 }
 
 // GetPostsByPopularity mocks base method.
-func (m *MockStore) GetPostsByPopularity(ctx context.Context, arg sqlc.GetPostsByPopularityParams) ([]sqlc.Post, error) {
+func (m *MockStore) GetPostsByPopularity(ctx context.Context, arg db.GetPostsByPopularityParams) ([]db.Post, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetPostsByPopularity", ctx, arg)
-	ret0, _ := ret[0].([]sqlc.Post)
+	ret0, _ := ret[0].([]db.Post)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -309,10 +309,10 @@ func (mr *MockStoreMockRecorder) GetPostsByPopularity(ctx, arg any) *gomock.Call
 }
 
 // GetUser mocks base method.
-func (m *MockStore) GetUser(ctx context.Context, id int64) (sqlc.User, error) {
+func (m *MockStore) GetUser(ctx context.Context, id int64) (db.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUser", ctx, id)
-	ret0, _ := ret[0].(sqlc.User)
+	ret0, _ := ret[0].(db.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -323,11 +323,26 @@ func (mr *MockStoreMockRecorder) GetUser(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUser", reflect.TypeOf((*MockStore)(nil).GetUser), ctx, id)
 }
 
+// GetUserByUsername mocks base method.
+func (m *MockStore) GetUserByUsername(ctx context.Context, username string) (db.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserByUsername", ctx, username)
+	ret0, _ := ret[0].(db.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserByUsername indicates an expected call of GetUserByUsername.
+func (mr *MockStoreMockRecorder) GetUserByUsername(ctx, username any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByUsername", reflect.TypeOf((*MockStore)(nil).GetUserByUsername), ctx, username)
+}
+
 // GetUserCredentials mocks base method.
-func (m *MockStore) GetUserCredentials(ctx context.Context, userID int64) ([]sqlc.WebauthnCredential, error) {
+func (m *MockStore) GetUserCredentials(ctx context.Context, userID int64) ([]db.WebauthnCredential, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserCredentials", ctx, userID)
-	ret0, _ := ret[0].([]sqlc.WebauthnCredential)
+	ret0, _ := ret[0].([]db.WebauthnCredential)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -351,10 +366,10 @@ func (mr *MockStoreMockRecorder) Shutdown() *gomock.Call {
 }
 
 // UpdateComment mocks base method.
-func (m *MockStore) UpdateComment(ctx context.Context, arg sqlc.UpdateCommentParams) (sqlc.Comment, error) {
+func (m *MockStore) UpdateComment(ctx context.Context, arg db.UpdateCommentParams) (db.Comment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateComment", ctx, arg)
-	ret0, _ := ret[0].(sqlc.Comment)
+	ret0, _ := ret[0].(db.Comment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -366,10 +381,10 @@ func (mr *MockStoreMockRecorder) UpdateComment(ctx, arg any) *gomock.Call {
 }
 
 // UpdatePost mocks base method.
-func (m *MockStore) UpdatePost(ctx context.Context, arg sqlc.UpdatePostParams) (sqlc.Post, error) {
+func (m *MockStore) UpdatePost(ctx context.Context, arg db.UpdatePostParams) (db.Post, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdatePost", ctx, arg)
-	ret0, _ := ret[0].(sqlc.Post)
+	ret0, _ := ret[0].(db.Post)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -396,10 +411,10 @@ func (mr *MockStoreMockRecorder) UsernameExists(ctx, username any) *gomock.Call 
 }
 
 // VoteComment mocks base method.
-func (m *MockStore) VoteComment(ctx context.Context, arg sqlc.VoteCommentParams) (sqlc.Comment, error) {
+func (m *MockStore) VoteComment(ctx context.Context, arg db.VoteCommentParams) (db.Comment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VoteComment", ctx, arg)
-	ret0, _ := ret[0].(sqlc.Comment)
+	ret0, _ := ret[0].(db.Comment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -411,10 +426,10 @@ func (mr *MockStoreMockRecorder) VoteComment(ctx, arg any) *gomock.Call {
 }
 
 // VotePost mocks base method.
-func (m *MockStore) VotePost(ctx context.Context, arg sqlc.VotePostParams) (sqlc.Post, error) {
+func (m *MockStore) VotePost(ctx context.Context, arg db.VotePostParams) (db.Post, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VotePost", ctx, arg)
-	ret0, _ := ret[0].(sqlc.Post)
+	ret0, _ := ret[0].(db.Post)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

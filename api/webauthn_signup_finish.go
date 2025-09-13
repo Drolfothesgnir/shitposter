@@ -34,10 +34,10 @@ func extractTransportData(ctx *gin.Context, cred *webauthn.Credential) []string 
 // We only need response struct because incoming request must be raw and unparsed
 // to be used in Webauthn.FinishRegistration function.
 type SignupFinishResponse struct {
-	User User `json:"user"`
+	User UserResponse `json:"user"`
 }
 
-func (service *Service) SignupFinish(ctx *gin.Context) {
+func (service *Service) signupFinish(ctx *gin.Context) {
 	// I decided to get challenge as HTTP header because it is the easiest way to get it so far
 	chal := ctx.GetHeader(WebauthnChallengeHeader)
 	if chal == "" {
@@ -109,7 +109,13 @@ func (service *Service) SignupFinish(ctx *gin.Context) {
 	_ = service.redisStore.DeleteUserRegSession(ctx, chal)
 
 	// 6) return user data to the client
-	ctx.JSON(http.StatusOK, SignupFinishResponse{
-		User: createUserResponse(user.User),
-	})
+	res, err := service.generateAuthTokens(ctx, user.User, ctx.Request.UserAgent(), ctx.ClientIP())
+
+	if err != nil {
+		err := fmt.Errorf("failed to generate auth tokens: %w", err)
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, res)
 }

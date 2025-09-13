@@ -6,11 +6,14 @@ package db
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type Querier interface {
 	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
 	CreatePost(ctx context.Context, arg CreatePostParams) (Post, error)
+	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateWebauthnCredentials(ctx context.Context, arg CreateWebauthnCredentialsParams) (WebauthnCredential, error)
 	DeleteComment(ctx context.Context, id int64) (Comment, error)
@@ -26,7 +29,9 @@ type Querier interface {
 	GetPost(ctx context.Context, id int64) (Post, error)
 	GetPostVote(ctx context.Context, arg GetPostVoteParams) (PostVote, error)
 	GetPostsByPopularity(ctx context.Context, arg GetPostsByPopularityParams) ([]Post, error)
+	GetSession(ctx context.Context, id uuid.UUID) (Session, error)
 	GetUser(ctx context.Context, id int64) (User, error)
+	GetUserByUsername(ctx context.Context, username string) (User, error)
 	GetUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error)
 	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)
 	UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, error)

@@ -10,20 +10,21 @@ import (
 )
 
 type Config struct {
-	Environment            string        `mapstructure:"ENVIRONMENT"`
-	DBSource               string        `mapstructure:"DB_SOURCE"`
-	MigrationURL           string        `mapstructure:"MIGRATION_URL"`
-	HTTPServerAddress      URLString     `mapstructure:"HTTP_SERVER_ADDRESS"`
-	PublicOrigin           URLString     `mapstructure:"PUBLIC_ORIGIN"`
-	AllowedOrigins         []string      `mapstructure:"ALLOWED_ORIGINS"`
-	RedisAddress           string        `mapstructure:"REDIS_ADDRESS"`
-	RegistrationSessionTTL time.Duration `mapstructure:"REGISTRATION_SESSION_TTL"`
-	TokenSymmetricKey      string        `mapstructure:"TOKEN_SYMMETRIC_KEY"`
-	EmailSenderName        string        `mapstructure:"EMAIL_SENDER_NAME"`
-	EmailSenderAddress     string        `mapstructure:"EMAIL_SENDER_ADDRESS"`
-	EmailSenderPassword    string        `mapstructure:"EMAIL_SENDER_PASSWORD"`
-	AccessTokenDuration    time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
-	RefreshTokenDuration   time.Duration `mapstructure:"REFRESH_TOKEN_DURATION"`
+	Environment              string        `mapstructure:"ENVIRONMENT"`
+	DBSource                 string        `mapstructure:"DB_SOURCE"`
+	MigrationURL             string        `mapstructure:"MIGRATION_URL"`
+	HTTPServerAddress        URLString     `mapstructure:"HTTP_SERVER_ADDRESS"`
+	PublicOrigin             URLString     `mapstructure:"PUBLIC_ORIGIN"`
+	AllowedOrigins           []string      `mapstructure:"ALLOWED_ORIGINS"`
+	RedisAddress             string        `mapstructure:"REDIS_ADDRESS"`
+	RegistrationSessionTTL   time.Duration `mapstructure:"REGISTRATION_SESSION_TTL"`
+	AuthenticationSessionTTL time.Duration `mapstructure:"AUTHENTICATION_SESSION_TTL"`
+	TokenSymmetricKey        string        `mapstructure:"TOKEN_SYMMETRIC_KEY"`
+	EmailSenderName          string        `mapstructure:"EMAIL_SENDER_NAME"`
+	EmailSenderAddress       string        `mapstructure:"EMAIL_SENDER_ADDRESS"`
+	EmailSenderPassword      string        `mapstructure:"EMAIL_SENDER_PASSWORD"`
+	AccessTokenDuration      time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
+	RefreshTokenDuration     time.Duration `mapstructure:"REFRESH_TOKEN_DURATION"`
 }
 
 func LoadConfig(path string) (config Config, err error) {

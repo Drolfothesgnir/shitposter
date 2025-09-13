@@ -50,7 +50,7 @@ type SignupStartResponse struct {
 }
 
 // TODO: add profile image handling during registration
-func (service *Service) SignupStart(ctx *gin.Context) {
+func (service *Service) signupStart(ctx *gin.Context) {
 	var req SignupStartRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))

@@ -1,12 +1,16 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
+	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/webauthn"
 )
 
-type User struct {
+type UserResponse struct {
 	ID              int64     `json:"id"`
 	Username        string    `json:"user_name"`
 	Email           string    `json:"email"`
@@ -15,7 +19,7 @@ type User struct {
 }
 
 // Helper function to map database User struct into an API response
-func createUserResponse(user db.User) User {
+func createUserResponse(user db.User) UserResponse {
 
 	var profileImgUrl *string
 
@@ -23,7 +27,7 @@ func createUserResponse(user db.User) User {
 		profileImgUrl = &user.ProfileImgUrl.String
 	}
 
-	return User{
+	return UserResponse{
 		ID:              user.ID,
 		Username:        user.Username,
 		Email:           user.Email,
@@ -32,62 +36,62 @@ func createUserResponse(user db.User) User {
 	}
 }
 
-// // Aggregated type which implements webauthn.User interface
-// type UserWithCredentials struct {
-// 	db.User
-// 	Credentials []webauthn.Credential
-// }
+// Aggregated type which implements webauthn.User interface
+type UserWithCredentials struct {
+	db.User
+	Credentials []webauthn.Credential
+}
 
-// // UserWithCredentials factory which takes raw db.User and db.WebauthnCredentials
-// func NewUserWithCredentials(user db.User, creds []db.WebauthnCredential) (*UserWithCredentials, error) {
-// 	parsedCreds := make([]webauthn.Credential, len(creds))
+// UserWithCredentials factory which takes raw db.User and db.WebauthnCredentials
+func NewUserWithCredentials(user db.User, creds []db.WebauthnCredential) (*UserWithCredentials, error) {
+	parsedCreds := make([]webauthn.Credential, len(creds))
 
-// 	for i, cred := range creds {
-// 		parsedTransport := []protocol.AuthenticatorTransport{}
-// 		if err := json.Unmarshal(cred.Transports, &parsedTransport); err != nil {
-// 			return nil, fmt.Errorf("failed to parse transports for credential %x: %w", cred.ID, err)
-// 		}
+	for i, cred := range creds {
+		parsedTransport := []protocol.AuthenticatorTransport{}
+		if err := json.Unmarshal(cred.Transports, &parsedTransport); err != nil {
+			return nil, fmt.Errorf("failed to parse transports for credential %x: %w", cred.ID, err)
+		}
 
-// 		parsedCred := webauthn.Credential{
-// 			ID:        cred.ID,
-// 			PublicKey: cred.PublicKey,
-// 			Transport: parsedTransport,
-// 			Authenticator: webauthn.Authenticator{
-// 				AAGUID:    []byte{}, // Don't care about device type
-// 				SignCount: uint32(cred.SignCount),
-// 			},
-// 			AttestationType: "none", // Don't care about device type
-// 			Flags: webauthn.CredentialFlags{
-// 				UserPresent:  true, // User confirmed action
-// 				UserVerified: true, // User provided biometric/PIN
-// 			},
-// 		}
+		parsedCred := webauthn.Credential{
+			ID:        cred.ID,
+			PublicKey: cred.PublicKey,
+			Transport: parsedTransport,
+			Authenticator: webauthn.Authenticator{
+				AAGUID:    []byte{}, // Don't care about device type
+				SignCount: uint32(cred.SignCount),
+			},
+			AttestationType: "none", // Don't care about device type
+			Flags: webauthn.CredentialFlags{
+				UserPresent:  true, // User confirmed action
+				UserVerified: true, // User provided biometric/PIN
+			},
+		}
 
-// 		parsedCreds[i] = parsedCred
-// 	}
+		parsedCreds[i] = parsedCred
+	}
 
-// 	result := &UserWithCredentials{
-// 		user,
-// 		parsedCreds,
-// 	}
+	result := &UserWithCredentials{
+		user,
+		parsedCreds,
+	}
 
-// 	return result, nil
-// }
+	return result, nil
+}
 
-// // following methods are required by webauthn.User interface
+// following methods are required by webauthn.User interface
 
-// func (user *UserWithCredentials) WebAuthnID() []byte {
-// 	return user.WebauthnUserHandle
-// }
+func (user *UserWithCredentials) WebAuthnID() []byte {
+	return user.WebauthnUserHandle
+}
 
-// func (user *UserWithCredentials) WebAuthnName() string {
-// 	return user.Email
-// }
+func (user *UserWithCredentials) WebAuthnName() string {
+	return user.Email
+}
 
-// func (user *UserWithCredentials) WebAuthnDisplayName() string {
-// 	return user.Username
-// }
+func (user *UserWithCredentials) WebAuthnDisplayName() string {
+	return user.Username
+}
 
-// func (user *UserWithCredentials) WebAuthnCredentials() []webauthn.Credential {
-// 	return user.Credentials
-// }
+func (user *UserWithCredentials) WebAuthnCredentials() []webauthn.Credential {
+	return user.Credentials
+}

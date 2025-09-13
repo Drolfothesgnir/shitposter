@@ -9,6 +9,7 @@ import (
 	"time"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
+	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -20,9 +21,9 @@ const (
 )
 
 type Service struct {
-	config util.Config
-	store  db.Store
-	// tokenMaker token.Maker
+	config         util.Config
+	store          db.Store
+	tokenMaker     token.Maker
 	server         *http.Server
 	webauthnConfig *webauthn.WebAuthn
 	redisStore     *Store
@@ -31,11 +32,18 @@ type Service struct {
 // Returns new service instance with provided config and store.
 func NewService(config util.Config, store db.Store) (*Service, error) {
 
+	tokenMaker, err := token.NewJWTMaker(config.TokenSymmetricKey)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create token maker: %w", err)
+	}
+
 	rs := NewStore(&config)
 
 	service := &Service{
 		config:     config,
 		store:      store,
+		tokenMaker: tokenMaker,
 		redisStore: rs,
 	}
 
@@ -90,8 +98,9 @@ func (service *Service) SetupRouter(server *http.Server) {
 	})
 
 	// passkey auth
-	router.POST("/signup/start", service.SignupStart)
-	router.POST("/signup/finish", service.SignupFinish)
+	router.POST("/signup/start", service.signupStart)
+	router.POST("/signup/finish", service.signupFinish)
+	router.POST("/signin/start", service.signinStart)
 
 	server.Handler = router
 }

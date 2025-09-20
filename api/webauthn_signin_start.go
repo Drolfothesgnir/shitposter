@@ -37,6 +37,7 @@ func (service *Service) signinStart(ctx *gin.Context) {
 	user, err := service.store.GetUserByUsername(ctx, req.Username)
 	if err != nil {
 		// Don't reveal if user exists or not
+		// TODO: rethink this
 		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("invalid credentials")))
 		return
 	}

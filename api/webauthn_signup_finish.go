@@ -10,6 +10,8 @@ import (
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // Helper function to extract credential transport info from user creds or from the HTTP header.
@@ -29,12 +31,6 @@ func extractTransportData(ctx *gin.Context, cred *webauthn.Credential) []string 
 	transport := ctx.GetHeader(WebauthnTransportHeader)
 	return strings.Split(transport, ",")
 
-}
-
-// We only need response struct because incoming request must be raw and unparsed
-// to be used in Webauthn.FinishRegistration function.
-type SignupFinishResponse struct {
-	User UserResponse `json:"user"`
 }
 
 func (service *Service) signupFinish(ctx *gin.Context) {
@@ -89,10 +85,19 @@ func (service *Service) signupFinish(ctx *gin.Context) {
 			WebauthnUserHandle: pending.WebauthnUserHandle,
 		},
 		Cred: db.CreateCredentialsTxParams{
-			ID:         cred.ID,
-			PublicKey:  cred.PublicKey,
-			SignCount:  int64(cred.Authenticator.SignCount),
-			Transports: jsonTransport,
+			ID:                      cred.ID,
+			PublicKey:               cred.PublicKey,
+			Transports:              jsonTransport,
+			AttestationType:         pgtype.Text{String: cred.AttestationType, Valid: cred.AttestationType != ""},
+			UserPresent:             cred.Flags.UserPresent,
+			UserVerified:            cred.Flags.UserVerified,
+			BackupEligible:          cred.Flags.BackupEligible,
+			BackupState:             cred.Flags.BackupState,
+			Aaguid:                  uuid.UUID(cred.Authenticator.AAGUID),
+			CloneWarning:            cred.Authenticator.CloneWarning,
+			AuthenticatorAttachment: db.AuthenticatorAttachment(cred.Authenticator.Attachment),
+			AuthenticatorData:       cred.Attestation.AuthenticatorData,
+			PublicKeyAlgorithm:      int32(cred.Attestation.PublicKeyAlgorithm),
 		},
 	}
 

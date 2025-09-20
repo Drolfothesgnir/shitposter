@@ -57,13 +57,21 @@ func NewUserWithCredentials(user db.User, creds []db.WebauthnCredential) (*UserW
 			PublicKey: cred.PublicKey,
 			Transport: parsedTransport,
 			Authenticator: webauthn.Authenticator{
-				AAGUID:    []byte{}, // Don't care about device type
-				SignCount: uint32(cred.SignCount),
+				AAGUID:       cred.Aaguid[:],
+				SignCount:    uint32(cred.SignCount),
+				CloneWarning: cred.CloneWarning,
+				Attachment:   protocol.AuthenticatorAttachment(cred.AuthenticatorAttachment),
 			},
-			AttestationType: "none", // Don't care about device type
+			AttestationType: cred.AttestationType.String,
+			Attestation: webauthn.CredentialAttestation{
+				AuthenticatorData:  cred.AuthenticatorData,
+				PublicKeyAlgorithm: int64(cred.PublicKeyAlgorithm),
+			},
 			Flags: webauthn.CredentialFlags{
-				UserPresent:  true, // User confirmed action
-				UserVerified: true, // User provided biometric/PIN
+				UserPresent:    cred.UserPresent,
+				UserVerified:   cred.UserVerified,
+				BackupState:    cred.BackupState,
+				BackupEligible: cred.BackupEligible,
 			},
 		}
 

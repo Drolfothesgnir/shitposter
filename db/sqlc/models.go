@@ -5,11 +5,55 @@
 package db
 
 import (
+	"database/sql/driver"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type AuthenticatorAttachment string
+
+const (
+	AuthenticatorAttachmentPlatform      AuthenticatorAttachment = "platform"
+	AuthenticatorAttachmentCrossPlatform AuthenticatorAttachment = "cross-platform"
+)
+
+func (e *AuthenticatorAttachment) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AuthenticatorAttachment(s)
+	case string:
+		*e = AuthenticatorAttachment(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AuthenticatorAttachment: %T", src)
+	}
+	return nil
+}
+
+type NullAuthenticatorAttachment struct {
+	AuthenticatorAttachment AuthenticatorAttachment `json:"authenticator_attachment"`
+	Valid                   bool                    `json:"valid"` // Valid is true if AuthenticatorAttachment is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAuthenticatorAttachment) Scan(value interface{}) error {
+	if value == nil {
+		ns.AuthenticatorAttachment, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AuthenticatorAttachment.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAuthenticatorAttachment) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AuthenticatorAttachment), nil
+}
 
 type Comment struct {
 	ID             int64       `json:"id"`
@@ -81,11 +125,21 @@ type User struct {
 }
 
 type WebauthnCredential struct {
-	ID         []byte             `json:"id"`
-	UserID     int64              `json:"user_id"`
-	PublicKey  []byte             `json:"public_key"`
-	SignCount  int64              `json:"sign_count"`
-	Transports []byte             `json:"transports"`
-	CreatedAt  time.Time          `json:"created_at"`
-	LastUsedAt pgtype.Timestamptz `json:"last_used_at"`
+	ID                      []byte                  `json:"id"`
+	UserID                  int64                   `json:"user_id"`
+	PublicKey               []byte                  `json:"public_key"`
+	AttestationType         pgtype.Text             `json:"attestation_type"`
+	Transports              []byte                  `json:"transports"`
+	UserPresent             bool                    `json:"user_present"`
+	UserVerified            bool                    `json:"user_verified"`
+	BackupEligible          bool                    `json:"backup_eligible"`
+	BackupState             bool                    `json:"backup_state"`
+	Aaguid                  uuid.UUID               `json:"aaguid"`
+	SignCount               int64                   `json:"sign_count"`
+	CloneWarning            bool                    `json:"clone_warning"`
+	AuthenticatorAttachment AuthenticatorAttachment `json:"authenticator_attachment"`
+	AuthenticatorData       []byte                  `json:"authenticator_data"`
+	PublicKeyAlgorithm      int32                   `json:"public_key_algorithm"`
+	CreatedAt               time.Time               `json:"created_at"`
+	LastUsedAt              pgtype.Timestamptz      `json:"last_used_at"`
 }

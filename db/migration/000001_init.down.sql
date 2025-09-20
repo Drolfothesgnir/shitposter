@@ -51,3 +51,6 @@ DROP TABLE IF EXISTS posts CASCADE;
 DROP TABLE IF EXISTS sessions CASCADE;
 DROP TABLE IF EXISTS webauthn_credentials CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
+
+-- Drop all types
+DROP TYPE IF EXISTS authenticator_attachment;

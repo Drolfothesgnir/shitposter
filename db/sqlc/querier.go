@@ -34,6 +34,7 @@ type Querier interface {
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	GetUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error)
 	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)
+	UpdateCredentialSignCount(ctx context.Context, arg UpdateCredentialSignCountParams) error
 	UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, error)
 	UsernameExists(ctx context.Context, username string) (bool, error)
 	VoteComment(ctx context.Context, arg VoteCommentParams) (Comment, error)

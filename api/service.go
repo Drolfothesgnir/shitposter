@@ -101,11 +101,16 @@ func (service *Service) SetupRouter(server *http.Server) {
 	router.POST("/signup/start", service.signupStart)
 	router.POST("/signup/finish", service.signupFinish)
 	router.POST("/signin/start", service.signinStart)
+	router.POST("/signin/finish", service.signinFinish)
 
 	server.Handler = router
 }
 
 // handling CORS
+//
+// TODO: if I want my server as a REST API platform
+// then I need to be able to handle requests from different clients
+// and not only from predefined domains.
 func (service *Service) corsMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		origin := ctx.Request.Header.Get("Origin")

@@ -7,26 +7,51 @@ package db
 
 import (
 	"context"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createWebauthnCredentials = `-- name: CreateWebauthnCredentials :one
 INSERT INTO webauthn_credentials (
   id,
-  user_id,
-  public_key,
-  sign_count,
-  transports
+  user_id,                  
+  public_key,               
+  attestation_type,         
+  transports,               
+  user_present,             
+  user_verified,            
+  backup_eligible,          
+  backup_state,             
+  aaguid,                   
+  sign_count,               
+  clone_warning,            
+  authenticator_attachment, 
+  authenticator_data,       
+  public_key_algorithm
 ) VALUES (
-  $1, $2, $3, $4, $5
-) RETURNING id, user_id, public_key, sign_count, transports, created_at, last_used_at
+  $1, $2, $3, $4, $5,
+  $6, $7, $8, $9, $10,
+  $11, $12, $13, $14, $15
+) RETURNING id, user_id, public_key, attestation_type, transports, user_present, user_verified, backup_eligible, backup_state, aaguid, sign_count, clone_warning, authenticator_attachment, authenticator_data, public_key_algorithm, created_at, last_used_at
 `
 
 type CreateWebauthnCredentialsParams struct {
-	ID         []byte `json:"id"`
-	UserID     int64  `json:"user_id"`
-	PublicKey  []byte `json:"public_key"`
-	SignCount  int64  `json:"sign_count"`
-	Transports []byte `json:"transports"`
+	ID                      []byte                  `json:"id"`
+	UserID                  int64                   `json:"user_id"`
+	PublicKey               []byte                  `json:"public_key"`
+	AttestationType         pgtype.Text             `json:"attestation_type"`
+	Transports              []byte                  `json:"transports"`
+	UserPresent             bool                    `json:"user_present"`
+	UserVerified            bool                    `json:"user_verified"`
+	BackupEligible          bool                    `json:"backup_eligible"`
+	BackupState             bool                    `json:"backup_state"`
+	Aaguid                  uuid.UUID               `json:"aaguid"`
+	SignCount               int64                   `json:"sign_count"`
+	CloneWarning            bool                    `json:"clone_warning"`
+	AuthenticatorAttachment AuthenticatorAttachment `json:"authenticator_attachment"`
+	AuthenticatorData       []byte                  `json:"authenticator_data"`
+	PublicKeyAlgorithm      int32                   `json:"public_key_algorithm"`
 }
 
 func (q *Queries) CreateWebauthnCredentials(ctx context.Context, arg CreateWebauthnCredentialsParams) (WebauthnCredential, error) {
@@ -34,16 +59,36 @@ func (q *Queries) CreateWebauthnCredentials(ctx context.Context, arg CreateWebau
 		arg.ID,
 		arg.UserID,
 		arg.PublicKey,
-		arg.SignCount,
+		arg.AttestationType,
 		arg.Transports,
+		arg.UserPresent,
+		arg.UserVerified,
+		arg.BackupEligible,
+		arg.BackupState,
+		arg.Aaguid,
+		arg.SignCount,
+		arg.CloneWarning,
+		arg.AuthenticatorAttachment,
+		arg.AuthenticatorData,
+		arg.PublicKeyAlgorithm,
 	)
 	var i WebauthnCredential
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.PublicKey,
-		&i.SignCount,
+		&i.AttestationType,
 		&i.Transports,
+		&i.UserPresent,
+		&i.UserVerified,
+		&i.BackupEligible,
+		&i.BackupState,
+		&i.Aaguid,
+		&i.SignCount,
+		&i.CloneWarning,
+		&i.AuthenticatorAttachment,
+		&i.AuthenticatorData,
+		&i.PublicKeyAlgorithm,
 		&i.CreatedAt,
 		&i.LastUsedAt,
 	)
@@ -51,7 +96,7 @@ func (q *Queries) CreateWebauthnCredentials(ctx context.Context, arg CreateWebau
 }
 
 const getUserCredentials = `-- name: GetUserCredentials :many
-SELECT id, user_id, public_key, sign_count, transports, created_at, last_used_at FROM webauthn_credentials
+SELECT id, user_id, public_key, attestation_type, transports, user_present, user_verified, backup_eligible, backup_state, aaguid, sign_count, clone_warning, authenticator_attachment, authenticator_data, public_key_algorithm, created_at, last_used_at FROM webauthn_credentials
 WHERE user_id = $1
 `
 
@@ -68,8 +113,18 @@ func (q *Queries) GetUserCredentials(ctx context.Context, userID int64) ([]Webau
 			&i.ID,
 			&i.UserID,
 			&i.PublicKey,
-			&i.SignCount,
+			&i.AttestationType,
 			&i.Transports,
+			&i.UserPresent,
+			&i.UserVerified,
+			&i.BackupEligible,
+			&i.BackupState,
+			&i.Aaguid,
+			&i.SignCount,
+			&i.CloneWarning,
+			&i.AuthenticatorAttachment,
+			&i.AuthenticatorData,
+			&i.PublicKeyAlgorithm,
 			&i.CreatedAt,
 			&i.LastUsedAt,
 		); err != nil {
@@ -81,4 +136,21 @@ func (q *Queries) GetUserCredentials(ctx context.Context, userID int64) ([]Webau
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateCredentialSignCount = `-- name: UpdateCredentialSignCount :exec
+UPDATE webauthn_credentials
+SET
+  sign_count = $2
+WHERE id = $1
+`
+
+type UpdateCredentialSignCountParams struct {
+	ID        []byte `json:"id"`
+	SignCount int64  `json:"sign_count"`
+}
+
+func (q *Queries) UpdateCredentialSignCount(ctx context.Context, arg UpdateCredentialSignCountParams) error {
+	_, err := q.db.Exec(ctx, updateCredentialSignCount, arg.ID, arg.SignCount)
+	return err
 }

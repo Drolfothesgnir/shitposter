@@ -9,6 +9,7 @@ import (
 	"time"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
+	"github.com/Drolfothesgnir/shitposter/tmpstore"
 	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/gin-gonic/gin"
@@ -26,19 +27,17 @@ type Service struct {
 	tokenMaker     token.Maker
 	server         *http.Server
 	webauthnConfig *webauthn.WebAuthn
-	redisStore     *Store
+	redisStore     tmpstore.Store
 }
 
 // Returns new service instance with provided config and store.
-func NewService(config util.Config, store db.Store) (*Service, error) {
+func NewService(config util.Config, store db.Store, rs tmpstore.Store) (*Service, error) {
 
 	tokenMaker, err := token.NewJWTMaker(config.TokenSymmetricKey)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token maker: %w", err)
 	}
-
-	rs := NewStore(&config)
 
 	service := &Service{
 		config:     config,

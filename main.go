@@ -11,6 +11,7 @@ import (
 
 	"github.com/Drolfothesgnir/shitposter/api"
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
+	"github.com/Drolfothesgnir/shitposter/tmpstore"
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -85,7 +86,8 @@ func RunGinServer(
 	config util.Config,
 	store db.Store,
 ) {
-	service, err := api.NewService(config, store)
+	rs := tmpstore.NewStore(&config)
+	service, err := api.NewService(config, store, rs)
 
 	if err != nil {
 		log.Error().Err(err).Msg("cannot create HTTP service")

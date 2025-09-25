@@ -1,4 +1,4 @@
-package api
+package tmpstore
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Drolfothesgnir/shitposter/util"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -18,24 +19,49 @@ const (
 	SessionPrefix               = "session:"
 )
 
-type Store struct {
+// Data stored in memory during registration
+type PendingRegistration struct {
+	Email              string                `json:"email"`
+	Username           string                `json:"username"`
+	WebauthnUserHandle []byte                `json:"webauthn_user_handle"`
+	SessionData        *webauthn.SessionData `json:"session_data"`
+	ExpiresAt          time.Time             `json:"expires_at"`
+}
+
+type PendingAuthentication struct {
+	UserID      int64                 `json:"user_id"`
+	Username    string                `json:"username"`
+	SessionData *webauthn.SessionData `json:"session_data"`
+	ExpiresAt   time.Time             `json:"expires_at"`
+}
+
+type Store interface {
+	SaveUserRegSession(ctx context.Context, sessionID string, data PendingRegistration, ttl time.Duration) error
+	GetUserRegSession(ctx context.Context, sessionID string) (*PendingRegistration, error)
+	DeleteUserRegSession(ctx context.Context, sessionID string) error
+	SaveUserAuthSession(ctx context.Context, sessionID string, data PendingAuthentication, ttl time.Duration) error
+	GetUserAuthSession(ctx context.Context, sessionID string) (*PendingAuthentication, error)
+	DeleteUserAuthSession(ctx context.Context, sessionID string) error
+}
+
+type RedisStore struct {
 	client *redis.Client
 }
 
-func NewStore(config *util.Config) *Store {
+func NewStore(config *util.Config) Store {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     config.RedisAddress, //  default "localhost:6379"
 		Password: "",                  // "" for no password, ok for now
 		DB:       0,                   // 0 for default database
 	})
 
-	return &Store{client: rdb}
+	return &RedisStore{client: rdb}
 }
 
 // Function to save user data between requests
 // while his device solves the challenge
 // during registration
-func (store *Store) SaveUserRegSession(
+func (store *RedisStore) SaveUserRegSession(
 	ctx context.Context,
 	sessionID string,
 	data PendingRegistration,
@@ -52,7 +78,7 @@ func (store *Store) SaveUserRegSession(
 
 // Function to retrieve user data pending registration session.
 // Returns error if not found or expired.
-func (store *Store) GetUserRegSession(ctx context.Context, sessionID string) (*PendingRegistration, error) {
+func (store *RedisStore) GetUserRegSession(ctx context.Context, sessionID string) (*PendingRegistration, error) {
 	key := PendingRegistrationPrefix + sessionID
 
 	jsonData, err := store.client.Get(ctx, key).Result()
@@ -72,14 +98,14 @@ func (store *Store) GetUserRegSession(ctx context.Context, sessionID string) (*P
 }
 
 // Helper function to clean temporary user data from Redis.
-func (store *Store) DeleteUserRegSession(ctx context.Context, sessionID string) error {
+func (store *RedisStore) DeleteUserRegSession(ctx context.Context, sessionID string) error {
 	key := PendingRegistrationPrefix + sessionID
 	return store.client.Del(ctx, key).Err()
 }
 
 // When user tries to authenticate their session must be stored between requests.
 // This function does this. Same thing as with registration.
-func (store *Store) SaveUserAuthSession(
+func (store *RedisStore) SaveUserAuthSession(
 	ctx context.Context,
 	sessionID string,
 	data PendingAuthentication,
@@ -96,7 +122,7 @@ func (store *Store) SaveUserAuthSession(
 
 // Function to retrieve user data pending authentication session.
 // Returns error if not found or expired.
-func (store *Store) GetUserAuthSession(ctx context.Context, sessionID string) (*PendingAuthentication, error) {
+func (store *RedisStore) GetUserAuthSession(ctx context.Context, sessionID string) (*PendingAuthentication, error) {
 	key := PendingAuthenticationPrefix + sessionID
 
 	jsonData, err := store.client.Get(ctx, key).Result()
@@ -116,7 +142,7 @@ func (store *Store) GetUserAuthSession(ctx context.Context, sessionID string) (*
 }
 
 // Helper function to clean temporary user data from Redis.
-func (store *Store) DeleteUserAuthSession(ctx context.Context, sessionID string) error {
+func (store *RedisStore) DeleteUserAuthSession(ctx context.Context, sessionID string) error {
 	key := PendingAuthenticationPrefix + sessionID
 	return store.client.Del(ctx, key).Err()
 }

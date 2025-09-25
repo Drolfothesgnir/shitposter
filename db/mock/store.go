@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
+	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -69,6 +70,21 @@ func (m *MockStore) CreatePost(ctx context.Context, arg db.CreatePostParams) (db
 func (mr *MockStoreMockRecorder) CreatePost(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePost", reflect.TypeOf((*MockStore)(nil).CreatePost), ctx, arg)
+}
+
+// CreateSession mocks base method.
+func (m *MockStore) CreateSession(ctx context.Context, arg db.CreateSessionParams) (db.Session, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSession", ctx, arg)
+	ret0, _ := ret[0].(db.Session)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateSession indicates an expected call of CreateSession.
+func (mr *MockStoreMockRecorder) CreateSession(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSession", reflect.TypeOf((*MockStore)(nil).CreateSession), ctx, arg)
 }
 
 // CreateUser mocks base method.
@@ -308,6 +324,21 @@ func (mr *MockStoreMockRecorder) GetPostsByPopularity(ctx, arg any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostsByPopularity", reflect.TypeOf((*MockStore)(nil).GetPostsByPopularity), ctx, arg)
 }
 
+// GetSession mocks base method.
+func (m *MockStore) GetSession(ctx context.Context, id uuid.UUID) (db.Session, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSession", ctx, id)
+	ret0, _ := ret[0].(db.Session)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSession indicates an expected call of GetSession.
+func (mr *MockStoreMockRecorder) GetSession(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSession", reflect.TypeOf((*MockStore)(nil).GetSession), ctx, id)
+}
+
 // GetUser mocks base method.
 func (m *MockStore) GetUser(ctx context.Context, id int64) (db.User, error) {
 	m.ctrl.T.Helper()
@@ -378,6 +409,20 @@ func (m *MockStore) UpdateComment(ctx context.Context, arg db.UpdateCommentParam
 func (mr *MockStoreMockRecorder) UpdateComment(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateComment", reflect.TypeOf((*MockStore)(nil).UpdateComment), ctx, arg)
+}
+
+// UpdateCredentialSignCount mocks base method.
+func (m *MockStore) UpdateCredentialSignCount(ctx context.Context, arg db.UpdateCredentialSignCountParams) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateCredentialSignCount", ctx, arg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateCredentialSignCount indicates an expected call of UpdateCredentialSignCount.
+func (mr *MockStoreMockRecorder) UpdateCredentialSignCount(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateCredentialSignCount", reflect.TypeOf((*MockStore)(nil).UpdateCredentialSignCount), ctx, arg)
 }
 
 // UpdatePost mocks base method.

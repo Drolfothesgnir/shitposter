@@ -26,6 +26,7 @@ sqlc:
 
 mock:
 	mockgen -package mockdb -destination db/mock/store.go github.com/Drolfothesgnir/shitposter/db/sqlc Store
+	mockgen -package mockst -destination tmpstore/mock/store.go github.com/Drolfothesgnir/shitposter/tmpstore Store
 
 test:
 	go test -v -cover -short ./...

@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Drolfothesgnir/shitposter/tmpstore"
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/protocol"
-	"github.com/go-webauthn/webauthn/webauthn"
 )
 
 // Passkey registration process outline:
@@ -17,32 +17,9 @@ import (
 // 3. Client solves the challenge, creates public and private keys, saves private for themselves and sends public to the server
 // 4. Server saves user data and credentials in the db and returns user object to the client
 
-// Temporary user for WebAuthn (not stored in DB yet)
-type TempUser struct {
-	ID                 []byte
-	Email              string
-	Username           string
-	WebauthnUserHandle []byte
-}
-
-// Implement webauthn.User interface
-func (u *TempUser) WebAuthnID() []byte                         { return u.WebauthnUserHandle }
-func (u *TempUser) WebAuthnName() string                       { return u.Email }
-func (u *TempUser) WebAuthnDisplayName() string                { return u.Username }
-func (u *TempUser) WebAuthnCredentials() []webauthn.Credential { return []webauthn.Credential{} } // Empty for new user
-
-// Data stored in memory during registration
-type PendingRegistration struct {
-	Email              string                `json:"email"`
-	Username           string                `json:"username"`
-	WebauthnUserHandle []byte                `json:"webauthn_user_handle"`
-	SessionData        *webauthn.SessionData `json:"session_data"`
-	ExpiresAt          time.Time             `json:"expires_at"`
-}
-
 type SignupStartRequest struct {
 	Email    string `json:"email" binding:"required,email"`
-	Username string `json:"username" binding:"required,min=3,max=50"`
+	Username string `json:"username" binding:"required,min=3,max=50,alphanum"`
 }
 
 type SignupStartResponse struct {
@@ -65,8 +42,8 @@ func (service *Service) signupStart(ctx *gin.Context) {
 	}
 
 	if usernameExists {
-		err := fmt.Errorf("user with username \"%s\" already exists", req.Username)
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		err := fmt.Errorf("user with username [%s] already exists", req.Username)
+		ctx.JSON(http.StatusConflict, errorResponse(err))
 		return
 	}
 
@@ -77,8 +54,8 @@ func (service *Service) signupStart(ctx *gin.Context) {
 	}
 
 	if emailExists {
-		err := fmt.Errorf("user with email \"%s\" already exists", req.Email)
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		err := fmt.Errorf("user with email [%s] already exists", req.Email)
+		ctx.JSON(http.StatusConflict, errorResponse(err))
 		return
 	}
 
@@ -106,7 +83,7 @@ func (service *Service) signupStart(ctx *gin.Context) {
 	}
 
 	// 4) Store registration session in Redis
-	registrationData := PendingRegistration{
+	registrationData := tmpstore.PendingRegistration{
 		Email:              req.Email,
 		Username:           req.Username,
 		WebauthnUserHandle: userHandle,

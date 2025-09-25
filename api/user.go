@@ -103,3 +103,17 @@ func (user *UserWithCredentials) WebAuthnDisplayName() string {
 func (user *UserWithCredentials) WebAuthnCredentials() []webauthn.Credential {
 	return user.Credentials
 }
+
+// Temporary user for WebAuthn (not stored in DB yet)
+type TempUser struct {
+	ID                 []byte
+	Email              string
+	Username           string
+	WebauthnUserHandle []byte
+}
+
+// Implement webauthn.User interface
+func (u *TempUser) WebAuthnID() []byte                         { return u.WebauthnUserHandle }
+func (u *TempUser) WebAuthnName() string                       { return u.Email }
+func (u *TempUser) WebAuthnDisplayName() string                { return u.Username }
+func (u *TempUser) WebAuthnCredentials() []webauthn.Credential { return []webauthn.Credential{} } // Empty for new user

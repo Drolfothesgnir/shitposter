@@ -5,17 +5,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Drolfothesgnir/shitposter/tmpstore"
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/protocol"
-	"github.com/go-webauthn/webauthn/webauthn"
 )
-
-type PendingAuthentication struct {
-	UserID      int64                 `json:"user_id"`
-	Username    string                `json:"username"`
-	SessionData *webauthn.SessionData `json:"session_data"`
-	ExpiresAt   time.Time             `json:"expires_at"`
-}
 
 type SigninStartRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=50"`
@@ -64,7 +57,7 @@ func (service *Service) signinStart(ctx *gin.Context) {
 	}
 
 	// 5) Saving session in the Redis
-	pendingAuth := PendingAuthentication{
+	pendingAuth := tmpstore.PendingAuthentication{
 		UserID:      user.ID,
 		Username:    req.Username,
 		SessionData: session,

@@ -12,8 +12,8 @@ import (
 	"github.com/Drolfothesgnir/shitposter/tmpstore"
 	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/Drolfothesgnir/shitposter/util"
+	"github.com/Drolfothesgnir/shitposter/wauthn"
 	"github.com/gin-gonic/gin"
-	"github.com/go-webauthn/webauthn/webauthn"
 )
 
 const (
@@ -26,12 +26,12 @@ type Service struct {
 	store          db.Store
 	tokenMaker     token.Maker
 	server         *http.Server
-	webauthnConfig *webauthn.WebAuthn
+	webauthnConfig wauthn.WebAuthnConfig
 	redisStore     tmpstore.Store
 }
 
 // Returns new service instance with provided config and store.
-func NewService(config util.Config, store db.Store, rs tmpstore.Store) (*Service, error) {
+func NewService(config util.Config, store db.Store, rs tmpstore.Store, wa wauthn.WebAuthnConfig) (*Service, error) {
 
 	tokenMaker, err := token.NewJWTMaker(config.TokenSymmetricKey)
 
@@ -40,33 +40,15 @@ func NewService(config util.Config, store db.Store, rs tmpstore.Store) (*Service
 	}
 
 	service := &Service{
-		config:     config,
-		store:      store,
-		tokenMaker: tokenMaker,
-		redisStore: rs,
+		config:         config,
+		store:          store,
+		tokenMaker:     tokenMaker,
+		redisStore:     rs,
+		webauthnConfig: wa,
 	}
 
 	server := &http.Server{
 		Addr: config.HTTPServerAddress.String(),
-	}
-
-	// Relay Party id must be the same as domain of the server and most NOT be changed
-	// otherwise all stored creds will be lost
-	host, _, err := config.PublicOrigin.ExtractHostPort()
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse server http address: %w", err)
-	}
-
-	waConfig := &webauthn.Config{
-		RPDisplayName: "Shitposter",
-		RPID:          host,
-		RPOrigins:     config.AllowedOrigins,
-	}
-
-	service.webauthnConfig, err = webauthn.New(waConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Webauthn config: %w", err)
 	}
 
 	// caps how long a client can take to send just the headers (blocks slowloris).

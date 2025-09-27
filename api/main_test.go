@@ -8,6 +8,7 @@ import (
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/Drolfothesgnir/shitposter/tmpstore"
 	"github.com/Drolfothesgnir/shitposter/util"
+	"github.com/Drolfothesgnir/shitposter/wauthn"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +18,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func newTestService(t *testing.T, store db.Store, rs tmpstore.Store) *Service {
+func newTestService(t *testing.T, store db.Store, rs tmpstore.Store, wa wauthn.WebAuthnConfig) *Service {
 	config := util.Config{
 		TokenSymmetricKey:   util.RandomString(32),
 		AccessTokenDuration: time.Minute,
@@ -25,7 +26,7 @@ func newTestService(t *testing.T, store db.Store, rs tmpstore.Store) *Service {
 		AllowedOrigins:      []string{"*"},
 	}
 
-	service, err := NewService(config, store, rs)
+	service, err := NewService(config, store, rs, wa)
 	require.NoError(t, err)
 	return service
 }

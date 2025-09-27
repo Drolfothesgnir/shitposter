@@ -15,6 +15,7 @@ type Config struct {
 	MigrationURL             string        `mapstructure:"MIGRATION_URL"`
 	HTTPServerAddress        URLString     `mapstructure:"HTTP_SERVER_ADDRESS"`
 	PublicOrigin             URLString     `mapstructure:"PUBLIC_ORIGIN"`
+	RPDisplayName            string        `mapstructure:"RP_DISPLAY_NAME"`
 	AllowedOrigins           []string      `mapstructure:"ALLOWED_ORIGINS"`
 	RedisAddress             string        `mapstructure:"REDIS_ADDRESS"`
 	RegistrationSessionTTL   time.Duration `mapstructure:"REGISTRATION_SESSION_TTL"`

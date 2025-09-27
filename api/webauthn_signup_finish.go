@@ -42,6 +42,7 @@ func (service *Service) signupFinish(ctx *gin.Context) {
 	}
 
 	// 1) Load pending registration session from Redis
+	// TODO: Error parsing
 	pending, err := service.redisStore.GetUserRegSession(ctx, chal)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))

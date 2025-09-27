@@ -13,6 +13,7 @@ import (
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/Drolfothesgnir/shitposter/tmpstore"
 	"github.com/Drolfothesgnir/shitposter/util"
+	"github.com/Drolfothesgnir/shitposter/wauthn"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -87,7 +88,14 @@ func RunGinServer(
 	store db.Store,
 ) {
 	rs := tmpstore.NewStore(&config)
-	service, err := api.NewService(config, store, rs)
+
+	wa, err := wauthn.NewWebAuthnConfig(config)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to create Webauthn config")
+		return
+	}
+
+	service, err := api.NewService(config, store, rs, wa)
 
 	if err != nil {
 		log.Error().Err(err).Msg("cannot create HTTP service")

@@ -10,6 +10,7 @@ import (
 
 	mockdb "github.com/Drolfothesgnir/shitposter/db/mock"
 	mockst "github.com/Drolfothesgnir/shitposter/tmpstore/mock"
+	mocktk "github.com/Drolfothesgnir/shitposter/token/mock"
 	mockwa "github.com/Drolfothesgnir/shitposter/wauthn/mock"
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/protocol"
@@ -172,24 +173,29 @@ func TestSignupStart(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			// mock store
 			dbCtrl := gomock.NewController(t)
 			defer dbCtrl.Finish()
-
 			store := mockdb.NewMockStore(dbCtrl)
 
+			// mock redis
 			rsCtrl := gomock.NewController(t)
 			defer rsCtrl.Finish()
-
 			rs := mockst.NewMockStore(rsCtrl)
 
+			// mock webauthn-go lib
 			waCtrl := gomock.NewController(t)
 			defer waCtrl.Finish()
-
 			wa := mockwa.NewMockWebAuthnConfig(waCtrl)
+
+			// mock token maker
+			tkCtrl := gomock.NewController(t)
+			defer tkCtrl.Finish()
+			tk := mocktk.NewMockMaker(tkCtrl)
 
 			tc.buildStubs(store, rs, wa)
 
-			service := newTestService(t, store, rs, wa)
+			service := newTestService(t, store, tk, rs, wa)
 			recorder := httptest.NewRecorder()
 
 			data, err := json.Marshal(tc.body)

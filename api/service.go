@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -31,13 +30,13 @@ type Service struct {
 }
 
 // Returns new service instance with provided config and store.
-func NewService(config util.Config, store db.Store, rs tmpstore.Store, wa wauthn.WebAuthnConfig) (*Service, error) {
-
-	tokenMaker, err := token.NewJWTMaker(config.TokenSymmetricKey)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to create token maker: %w", err)
-	}
+func NewService(
+	config util.Config,
+	store db.Store,
+	tokenMaker token.Maker,
+	rs tmpstore.Store,
+	wa wauthn.WebAuthnConfig,
+) (*Service, error) {
 
 	service := &Service{
 		config:         config,

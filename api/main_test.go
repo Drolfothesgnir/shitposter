@@ -7,6 +7,7 @@ import (
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/Drolfothesgnir/shitposter/tmpstore"
+	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/Drolfothesgnir/shitposter/wauthn"
 	"github.com/gin-gonic/gin"
@@ -18,15 +19,22 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func newTestService(t *testing.T, store db.Store, rs tmpstore.Store, wa wauthn.WebAuthnConfig) *Service {
+func newTestService(
+	t *testing.T,
+	store db.Store,
+	tokenMaker token.Maker,
+	rs tmpstore.Store,
+	wa wauthn.WebAuthnConfig,
+) *Service {
 	config := util.Config{
-		TokenSymmetricKey:   util.RandomString(32),
-		AccessTokenDuration: time.Minute,
-		PublicOrigin:        "http://localhost:8080",
-		AllowedOrigins:      []string{"*"},
+		TokenSymmetricKey:    util.RandomString(32),
+		AccessTokenDuration:  time.Minute,
+		RefreshTokenDuration: time.Minute,
+		PublicOrigin:         "http://localhost:8080",
+		AllowedOrigins:       []string{"*"},
 	}
 
-	service, err := NewService(config, store, rs, wa)
+	service, err := NewService(config, store, tokenMaker, rs, wa)
 	require.NoError(t, err)
 	return service
 }

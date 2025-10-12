@@ -12,6 +12,7 @@ import (
 	"github.com/Drolfothesgnir/shitposter/api"
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/Drolfothesgnir/shitposter/tmpstore"
+	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/Drolfothesgnir/shitposter/wauthn"
 	"github.com/golang-migrate/migrate/v4"
@@ -95,7 +96,13 @@ func RunGinServer(
 		return
 	}
 
-	service, err := api.NewService(config, store, rs, wa)
+	tokenMaker, err := token.NewJWTMaker(config.TokenSymmetricKey)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to create JWT token maker")
+		return
+	}
+
+	service, err := api.NewService(config, store, tokenMaker, rs, wa)
 
 	if err != nil {
 		log.Error().Err(err).Msg("cannot create HTTP service")

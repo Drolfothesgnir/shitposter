@@ -85,18 +85,18 @@ func (mr *MockWebAuthnConfigMockRecorder) BeginRegistration(user any, opts ...an
 }
 
 // FinishLogin mocks base method.
-func (m *MockWebAuthnConfig) FinishLogin(user webauthn.User, session webauthn.SessionData, response *http.Request) (*webauthn.Credential, error) {
+func (m *MockWebAuthnConfig) FinishLogin(user webauthn.User, session webauthn.SessionData, request *http.Request) (*webauthn.Credential, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FinishLogin", user, session, response)
+	ret := m.ctrl.Call(m, "FinishLogin", user, session, request)
 	ret0, _ := ret[0].(*webauthn.Credential)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FinishLogin indicates an expected call of FinishLogin.
-func (mr *MockWebAuthnConfigMockRecorder) FinishLogin(user, session, response any) *gomock.Call {
+func (mr *MockWebAuthnConfigMockRecorder) FinishLogin(user, session, request any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinishLogin", reflect.TypeOf((*MockWebAuthnConfig)(nil).FinishLogin), user, session, response)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinishLogin", reflect.TypeOf((*MockWebAuthnConfig)(nil).FinishLogin), user, session, request)
 }
 
 // FinishRegistration mocks base method.

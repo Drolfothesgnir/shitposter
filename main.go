@@ -30,6 +30,7 @@ var interruptSignals = []os.Signal{
 	syscall.SIGINT,
 }
 
+// TODO: how to remove stale sessions and other garbage data from the db?
 func main() {
 	// reading .env config file
 	config, err := util.LoadConfig(".")

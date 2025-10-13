@@ -14,7 +14,7 @@ type WebAuthnConfig interface {
 	BeginRegistration(user webauthn.User, opts ...webauthn.RegistrationOption) (creation *protocol.CredentialCreation, session *webauthn.SessionData, err error)
 	FinishRegistration(user webauthn.User, session webauthn.SessionData, request *http.Request) (credential *webauthn.Credential, err error)
 	BeginLogin(user webauthn.User, opts ...webauthn.LoginOption) (*protocol.CredentialAssertion, *webauthn.SessionData, error)
-	FinishLogin(user webauthn.User, session webauthn.SessionData, response *http.Request) (credential *webauthn.Credential, err error)
+	FinishLogin(user webauthn.User, session webauthn.SessionData, request *http.Request) (credential *webauthn.Credential, err error)
 }
 
 func NewWebAuthnConfig(config util.Config) (*webauthn.WebAuthn, error) {

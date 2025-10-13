@@ -36,7 +36,7 @@ func (service *Service) signinFinish(ctx *gin.Context) {
 	// 2. Load user and credentials
 	user, err := service.store.GetUser(ctx, pending.UserID)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
@@ -66,6 +66,7 @@ func (service *Service) signinFinish(ctx *gin.Context) {
 	})
 	if err != nil {
 		// Log error but don't fail authentication
+		// TODO: rethink this
 		fmt.Printf("Failed to update sign count: %v\n", err)
 	}
 

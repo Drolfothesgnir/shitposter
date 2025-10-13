@@ -8,10 +8,11 @@ import (
 	"github.com/Drolfothesgnir/shitposter/tmpstore"
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/jackc/pgx/v5"
 )
 
 type SigninStartRequest struct {
-	Username string `json:"username" binding:"required,min=3,max=50"`
+	Username string `json:"username" binding:"required,min=3,max=50,alphanum"`
 }
 
 type SigninStartResponse struct {
@@ -29,9 +30,14 @@ func (service *Service) signinStart(ctx *gin.Context) {
 	// 1) Get user from the database, reject if not found
 	user, err := service.store.GetUserByUsername(ctx, req.Username)
 	if err != nil {
-		// Don't reveal if user exists or not
-		// TODO: rethink this
-		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("invalid credentials")))
+		if err == pgx.ErrNoRows {
+			// Don't reveal if user exists or not
+			// TODO: rethink this
+			ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("invalid credentials")))
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 

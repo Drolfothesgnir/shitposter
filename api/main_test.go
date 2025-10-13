@@ -27,11 +27,12 @@ func newTestService(
 	wa wauthn.WebAuthnConfig,
 ) *Service {
 	config := util.Config{
-		TokenSymmetricKey:    util.RandomString(32),
-		AccessTokenDuration:  time.Minute,
-		RefreshTokenDuration: time.Minute,
-		PublicOrigin:         "http://localhost:8080",
-		AllowedOrigins:       []string{"*"},
+		TokenSymmetricKey:        util.RandomString(32),
+		AccessTokenDuration:      time.Minute,
+		RefreshTokenDuration:     time.Minute,
+		PublicOrigin:             "http://localhost:8080",
+		AllowedOrigins:           []string{"*"},
+		AuthenticationSessionTTL: time.Minute,
 	}
 
 	service, err := NewService(config, store, tokenMaker, rs, wa)

@@ -330,7 +330,6 @@ func TestSignupFinish(t *testing.T) {
 			setupHeaders: func(req *http.Request) {
 				req.Header.Add(WebauthnChallengeHeader, "session_id")
 				req.Header.Add("User-Agent", "chrome")
-				// req.Header.Add("X-Forwarded-For", "198.162.0.0")
 				req.RemoteAddr = "198.162.0.0:12345"
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {

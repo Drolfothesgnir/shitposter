@@ -11,7 +11,10 @@ import (
 
 	"github.com/Drolfothesgnir/shitposter/api"
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
+	"github.com/Drolfothesgnir/shitposter/tmpstore"
+	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/Drolfothesgnir/shitposter/util"
+	"github.com/Drolfothesgnir/shitposter/wauthn"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -27,6 +30,7 @@ var interruptSignals = []os.Signal{
 	syscall.SIGINT,
 }
 
+// TODO: how to remove stale sessions and other garbage data from the db?
 func main() {
 	// reading .env config file
 	config, err := util.LoadConfig(".")
@@ -85,7 +89,26 @@ func RunGinServer(
 	config util.Config,
 	store db.Store,
 ) {
-	service := api.NewService(config, store)
+	rs := tmpstore.NewStore(&config)
+
+	wa, err := wauthn.NewWebAuthnConfig(config)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to create Webauthn config")
+		return
+	}
+
+	tokenMaker, err := token.NewJWTMaker(config.TokenSymmetricKey)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to create JWT token maker")
+		return
+	}
+
+	service, err := api.NewService(config, store, tokenMaker, rs, wa)
+
+	if err != nil {
+		log.Error().Err(err).Msg("cannot create HTTP service")
+		return
+	}
 
 	waitGroup.Go(func() error {
 		log.Info().Msgf("start HTTP server at %s", config.HTTPServerAddress)

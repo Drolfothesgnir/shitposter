@@ -38,3 +38,12 @@ func RandomEmail() string {
 func RandomURL() string {
 	return fmt.Sprintf("https://%s.com", RandomString(8))
 }
+
+func RandomByteArray(n int) []byte {
+	arr := make([]byte, n)
+	for i := range n {
+		arr[i] = byte(RandomInt(0, 255))
+	}
+
+	return arr
+}

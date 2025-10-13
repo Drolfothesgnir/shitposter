@@ -3,29 +3,51 @@ package api
 import (
 	"context"
 	"net/http"
+	"slices"
+	"strings"
 	"time"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
+	"github.com/Drolfothesgnir/shitposter/tmpstore"
+	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/Drolfothesgnir/shitposter/util"
+	"github.com/Drolfothesgnir/shitposter/wauthn"
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	WebauthnChallengeHeader = "X-Webauthn-Challenge"
+	WebauthnTransportHeader = "X-Webauthn-Transports"
+)
+
 type Service struct {
-	config util.Config
-	store  db.Store
-	// tokenMaker token.Maker
-	server *http.Server
+	config         util.Config
+	store          db.Store
+	tokenMaker     token.Maker
+	server         *http.Server
+	webauthnConfig wauthn.WebAuthnConfig
+	redisStore     tmpstore.Store
 }
 
 // Returns new service instance with provided config and store.
-func NewService(config util.Config, store db.Store) *Service {
-	service := Service{
-		config: config,
-		store:  store,
+func NewService(
+	config util.Config,
+	store db.Store,
+	tokenMaker token.Maker,
+	rs tmpstore.Store,
+	wa wauthn.WebAuthnConfig,
+) (*Service, error) {
+
+	service := &Service{
+		config:         config,
+		store:          store,
+		tokenMaker:     tokenMaker,
+		redisStore:     rs,
+		webauthnConfig: wa,
 	}
 
 	server := &http.Server{
-		Addr: config.HTTPServerAddress,
+		Addr: config.HTTPServerAddress.String(),
 	}
 
 	// caps how long a client can take to send just the headers (blocks slowloris).
@@ -41,19 +63,60 @@ func NewService(config util.Config, store db.Store) *Service {
 
 	service.server = server
 
-	return &service
+	return service, nil
 }
 
 // Establishes HTTP router.
 func (service *Service) SetupRouter(server *http.Server) {
 	router := gin.Default()
 
+	router.Use(service.corsMiddleware())
+
 	// TODO: add some routes
 	router.GET("/ping", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "pong")
 	})
 
+	// passkey auth
+	router.POST("/signup/start", service.signupStart)
+	router.POST("/signup/finish", service.signupFinish)
+	router.POST("/signin/start", service.signinStart)
+	router.POST("/signin/finish", service.signinFinish)
+
 	server.Handler = router
+}
+
+// handling CORS
+//
+// TODO: if I want my server as a REST API platform
+// then I need to be able to handle requests from different clients
+// and not only from predefined domains.
+func (service *Service) corsMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		origin := ctx.Request.Header.Get("Origin")
+
+		if slices.Contains(service.config.AllowedOrigins, origin) {
+			ctx.Header("Access-Control-Allow-Origin", origin)
+		}
+
+		ctx.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
+		// X-Webauthn-Challenge and X-Webauthn-Transports are critical for passkey auth
+		allowedHeaders := []string{
+			"Content-Type",
+			WebauthnChallengeHeader,
+			WebauthnTransportHeader,
+		}
+
+		ctx.Header("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ","))
+
+		if ctx.Request.Method == http.MethodOptions {
+			ctx.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+
+		ctx.Next()
+	}
 }
 
 // Start runs the HTTP server
@@ -63,4 +126,8 @@ func (service *Service) Start() error {
 
 func (service *Service) Shutdown(ctx context.Context) error {
 	return service.server.Shutdown(ctx)
+}
+
+func errorResponse(err error) gin.H {
+	return gin.H{"error": err.Error()}
 }

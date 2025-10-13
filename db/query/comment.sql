@@ -23,7 +23,8 @@ RETURNING *;
 -- name: GetCommentsByPopularity :many
 SELECT * FROM get_comments_by_popularity(
   p_post_id := $1,
-  p_root_limit := $2
+  p_root_limit := $2,
+  p_root_offset := $3
 );
 
 -- name: VoteComment :one

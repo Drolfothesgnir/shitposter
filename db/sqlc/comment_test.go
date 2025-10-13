@@ -101,6 +101,11 @@ func TestGetCommentsByPopularity(t *testing.T) {
 	// ↓ a- = Depth                     |      |      |           |     |     |           |     |     |
 	//                                 1-#1   1-#2   1-#3        1-#2  1-#3  1-#1        1-#3  1-#2  1-#1
 
+	userIds := make([]int64, 12)
+	for i := range 12 {
+		userIds[i] = createRandomUser(t).ID
+	}
+
 	post := createRandomPost(t)
 
 	roots := make([]Comment, 3)
@@ -111,7 +116,7 @@ func TestGetCommentsByPopularity(t *testing.T) {
 	for i := range 3 {
 		var err error
 		roots[i], err = testStore.CreateComment(context.Background(), CreateCommentParams{
-			PUserID:    post.UserID,
+			PUserID:    userIds[i],
 			PPostID:    post.ID,
 			PBody:      fmt.Sprintf("Root comment #%d", i),
 			PUpvotes:   pgtype.Int8{Int64: root_upvotes[i], Valid: true},
@@ -138,9 +143,10 @@ func TestGetCommentsByPopularity(t *testing.T) {
 	for i := range 3 {
 		replies[i] = make([]Comment, 3)
 		for j := range 3 {
+			userIdx := int64(3 + i*3 + j)
 			var err error
 			replies[i][j], err = testStore.CreateComment(context.Background(), CreateCommentParams{
-				PUserID:    post.UserID,
+				PUserID:    userIds[userIdx],
 				PPostID:    post.ID,
 				PBody:      fmt.Sprintf("%d reply to the root comment #%d", j, i),
 				PUpvotes:   pgtype.Int8{Int64: reply_upvotes[i][j], Valid: true},
@@ -208,7 +214,7 @@ func TestVoteComment(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, int64(1), vote2.Vote)
+	require.Equal(t, int16(1), vote2.Vote)
 
 	// vote change to -1
 	comment3, err := testStore.VoteComment(context.Background(), VoteCommentParams{
@@ -226,7 +232,7 @@ func TestVoteComment(t *testing.T) {
 		CommentID: comment1.ID,
 	})
 	require.NoError(t, err)
-	require.Equal(t, int64(-1), vote3.Vote)
+	require.Equal(t, int16(-1), vote3.Vote)
 
 	// check voting idempotency
 	comment4, err := testStore.VoteComment(context.Background(), VoteCommentParams{
@@ -266,7 +272,7 @@ func TestDeleteCommentVote(t *testing.T) {
 
 	require.NotEmpty(t, vote1)
 	require.NoError(t, err)
-	require.Equal(t, int64(1), vote1.Vote)
+	require.Equal(t, int16(1), vote1.Vote)
 
 	err = testStore.DeleteCommentVote(context.Background(), DeleteCommentVoteParams{
 		PCommentID: comment1.ID,

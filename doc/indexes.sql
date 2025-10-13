@@ -1,10 +1,8 @@
+CREATE INDEX IF NOT EXISTS webauthn_credentials_user_id_idx ON webauthn_credentials(user_id);
+
 CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id);
 
 CREATE INDEX IF NOT EXISTS sessions_expires_at_idx ON sessions(expires_at);
-
-CREATE INDEX IF NOT EXISTS verification_emails_expires_at_idx ON verification_emails(expires_at);
-
-CREATE INDEX IF NOT EXISTS verification_emails_user_id_secret_code_idx ON verification_emails(user_id, secret_code);
 
 CREATE INDEX IF NOT EXISTS posts_user_id_idx ON posts(user_id);
 
@@ -16,6 +14,8 @@ CREATE INDEX IF NOT EXISTS comments_post_id_idx ON comments(post_id);
 
 -- used for faster cascade deletion of comments children
 CREATE INDEX IF NOT EXISTS comments_parent_id_idx ON comments(parent_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_users_email_idx on users(id, email);
 
 CREATE UNIQUE INDEX IF NOT EXISTS post_votes_user_id_post_id ON post_votes(user_id, post_id);
 

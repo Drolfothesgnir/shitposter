@@ -1,12 +1,15 @@
 package db
 
 import (
+	"context"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Store interface {
 	Querier
 	Shutdown() // Graceful DB shutdown.
+	CreateUserWithCredentialsTx(ctx context.Context, arg CreateUserWithCredentialsTxParams) (CreateUserWithCredentialsTxResult, error)
 }
 
 type SQLStore struct {

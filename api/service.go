@@ -78,10 +78,10 @@ func (service *Service) SetupRouter(server *http.Server) {
 	})
 
 	// passkey auth
-	router.POST("/signup/start", service.signupStart)
-	router.POST("/signup/finish", service.signupFinish)
-	router.POST("/signin/start", service.signinStart)
-	router.POST("/signin/finish", service.signinFinish)
+	router.POST("/users/signup/start", service.signupStart)
+	router.POST("/users/signup/finish", service.signupFinish)
+	router.POST("/users/signin/start", service.signinStart)
+	router.POST("/users/signin/finish", service.signinFinish)
 
 	server.Handler = router
 }

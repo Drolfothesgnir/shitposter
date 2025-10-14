@@ -119,8 +119,10 @@ The goal is to learn and demonstrate web dev skills.
       ```
 4. Assigning methods to operations on Resources
    - Users
-      - **POST** /signup → Create new user with passkey
-      - **POST** /users/login/passkey → Login existing user
+      - **POST** /users/signup/start → Start Webauthn registration process
+      - **POST** /users/signup/finish → Finish Webauthn registration process
+      - **POST** /users/signin/start → Start Webauthn login process
+      - **POST** /users/signin/finish → Finish Webauthn login process
       - **PATCH** /users/{user-id} → Update user's data
       - **POST** /users/renew_access → Renew access token via refresh token
       - **DELETE** /users/{user-id} → Delete user

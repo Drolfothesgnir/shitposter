@@ -18,6 +18,10 @@ import (
 const (
 	WebauthnChallengeHeader = "X-Webauthn-Challenge"
 	WebauthnTransportHeader = "X-Webauthn-Transports"
+	UsersSignupStartURL     = "/users/signup/start"
+	UsersSignupFinishURL    = "/users/signup/finish"
+	UsersSigninStartURL     = "/users/signin/start"
+	UsersSigninFinishURL    = "/users/signin/finish"
 )
 
 type Service struct {
@@ -78,10 +82,10 @@ func (service *Service) SetupRouter(server *http.Server) {
 	})
 
 	// passkey auth
-	router.POST("/users/signup/start", service.signupStart)
-	router.POST("/users/signup/finish", service.signupFinish)
-	router.POST("/users/signin/start", service.signinStart)
-	router.POST("/users/signin/finish", service.signinFinish)
+	router.POST(UsersSignupStartURL, service.signupStart)
+	router.POST(UsersSignupFinishURL, service.signupFinish)
+	router.POST(UsersSigninStartURL, service.signinStart)
+	router.POST(UsersSigninFinishURL, service.signinFinish)
 
 	server.Handler = router
 }

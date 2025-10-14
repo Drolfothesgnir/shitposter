@@ -365,8 +365,7 @@ func TestSignupFinish(t *testing.T) {
 			service := newTestService(t, store, tk, rs, wa)
 			recorder := httptest.NewRecorder()
 
-			url := "/signup/finish"
-			request, err := http.NewRequest(http.MethodPost, url, nil)
+			request, err := http.NewRequest(http.MethodPost, UsersSignupFinishURL, nil)
 			require.NoError(t, err)
 
 			tc.setupHeaders(request)

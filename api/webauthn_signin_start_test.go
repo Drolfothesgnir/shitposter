@@ -226,8 +226,7 @@ func TestSignInStart(t *testing.T) {
 			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
 
-			url := "/signin/start"
-			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
+			request, err := http.NewRequest(http.MethodPost, UsersSigninStartURL, bytes.NewReader(data))
 			require.NoError(t, err)
 
 			service.server.Handler.ServeHTTP(recorder, request)

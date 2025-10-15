@@ -30,32 +30,32 @@ type SignupStartResponse struct {
 func (service *Service) signupStart(ctx *gin.Context) {
 	var req SignupStartRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		ctx.JSON(http.StatusBadRequest, NewErrorResponse(err))
 		return
 	}
 
 	// 1) check if provided username and email are unique, reject with 400 otherwise
 	usernameExists, err := service.store.UsernameExists(ctx, req.Username)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 
 	if usernameExists {
 		err := fmt.Errorf("user with username [%s] already exists", req.Username)
-		ctx.JSON(http.StatusConflict, errorResponse(err))
+		ctx.JSON(http.StatusConflict, NewErrorResponse(err))
 		return
 	}
 
 	emailExists, err := service.store.EmailExists(ctx, req.Email)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 
 	if emailExists {
 		err := fmt.Errorf("user with email [%s] already exists", req.Email)
-		ctx.JSON(http.StatusConflict, errorResponse(err))
+		ctx.JSON(http.StatusConflict, NewErrorResponse(err))
 		return
 	}
 
@@ -64,7 +64,7 @@ func (service *Service) signupStart(ctx *gin.Context) {
 	_, err = rand.Read(userHandle)
 	if err != nil {
 		err := fmt.Errorf("failed to generate handle")
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 
@@ -78,7 +78,7 @@ func (service *Service) signupStart(ctx *gin.Context) {
 	// 3) init registration process with temporary user
 	create, session, err := service.webauthnConfig.BeginRegistration(tempUser)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 
@@ -99,7 +99,7 @@ func (service *Service) signupStart(ctx *gin.Context) {
 	)
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 

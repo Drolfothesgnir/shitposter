@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"net/http"
 	"time"
 
@@ -18,44 +19,44 @@ import (
 func (service *Service) signinFinish(ctx *gin.Context) {
 	chal := ctx.GetHeader(WebauthnChallengeHeader)
 	if chal == "" {
-		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("missing challenge header")))
+		ctx.JSON(http.StatusBadRequest, NewErrorResponse(fmt.Errorf("missing challenge header")))
 		return
 	}
 
 	// 1. Get pending authentication session
 	pending, err := service.redisStore.GetUserAuthSession(ctx, chal)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		ctx.JSON(http.StatusBadRequest, NewErrorResponse(err))
 		return
 	}
 	if time.Now().After(pending.ExpiresAt) {
-		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("registration session expired")))
+		ctx.JSON(http.StatusBadRequest, NewErrorResponse(fmt.Errorf("registration session expired")))
 		return
 	}
 
 	// 2. Load user and credentials
 	user, err := service.store.GetUser(ctx, pending.UserID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 
 	credentials, err := service.store.GetUserCredentials(ctx, user.ID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 
 	userWithCreds, err := NewUserWithCredentials(user, credentials)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 
 	// 3. Finish authentication
 	credential, err := service.webauthnConfig.FinishLogin(userWithCreds, *pending.SessionData, ctx.Request)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, errorResponse(fmt.Errorf("authentication failed: %w", err)))
+		ctx.JSON(http.StatusUnauthorized, NewErrorResponse(fmt.Errorf("authentication failed: %w", err)))
 		return
 	}
 
@@ -67,7 +68,7 @@ func (service *Service) signinFinish(ctx *gin.Context) {
 	if err != nil {
 		// Log error but don't fail authentication
 		// TODO: rethink this
-		fmt.Printf("Failed to update sign count: %v\n", err)
+		log.Error().Err(err).Msg("Failed to update sign count")
 	}
 
 	// 5. Generate access token
@@ -79,7 +80,7 @@ func (service *Service) signinFinish(ctx *gin.Context) {
 	)
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 

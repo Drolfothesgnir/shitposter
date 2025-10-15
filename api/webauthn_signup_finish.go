@@ -37,7 +37,7 @@ func (service *Service) signupFinish(ctx *gin.Context) {
 	// I decided to get challenge as HTTP header because it is the easiest way to get it so far
 	chal := ctx.GetHeader(WebauthnChallengeHeader)
 	if chal == "" {
-		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("missing challenge header")))
+		ctx.JSON(http.StatusBadRequest, NewErrorResponse(fmt.Errorf("missing challenge header")))
 		return
 	}
 
@@ -45,11 +45,11 @@ func (service *Service) signupFinish(ctx *gin.Context) {
 	// TODO: Error parsing
 	pending, err := service.redisStore.GetUserRegSession(ctx, chal)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		ctx.JSON(http.StatusBadRequest, NewErrorResponse(err))
 		return
 	}
 	if time.Now().After(pending.ExpiresAt) {
-		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("registration session expired")))
+		ctx.JSON(http.StatusBadRequest, NewErrorResponse(fmt.Errorf("registration session expired")))
 		return
 	}
 
@@ -64,7 +64,7 @@ func (service *Service) signupFinish(ctx *gin.Context) {
 	// 3) Finish registration (validates challenge/origin, builds credential)
 	cred, err := service.webauthnConfig.FinishRegistration(tmp, *pending.SessionData, ctx.Request)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("webauthn finish failed: %w", err)))
+		ctx.JSON(http.StatusBadRequest, NewErrorResponse(fmt.Errorf("webauthn finish failed: %w", err)))
 		return
 	}
 
@@ -75,7 +75,7 @@ func (service *Service) signupFinish(ctx *gin.Context) {
 	jsonTransport, err := json.Marshal(tr)
 	if err != nil {
 		err := fmt.Errorf("failed to marshal creds transport: %w", err)
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 
@@ -107,7 +107,7 @@ func (service *Service) signupFinish(ctx *gin.Context) {
 	user, err := service.store.CreateUserWithCredentialsTx(ctx, txArg)
 	if err != nil {
 		err := fmt.Errorf("failed to save user data to the database: %w", err)
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 
@@ -119,7 +119,7 @@ func (service *Service) signupFinish(ctx *gin.Context) {
 
 	if err != nil {
 		err := fmt.Errorf("failed to generate auth tokens: %w", err)
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 

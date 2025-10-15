@@ -23,7 +23,7 @@ type SigninStartResponse struct {
 func (service *Service) signinStart(ctx *gin.Context) {
 	var req SigninStartRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		ctx.JSON(http.StatusBadRequest, NewErrorResponse(err))
 		return
 	}
 
@@ -33,32 +33,32 @@ func (service *Service) signinStart(ctx *gin.Context) {
 		if err == pgx.ErrNoRows {
 			// Don't reveal if user exists or not
 			// TODO: rethink this
-			ctx.JSON(http.StatusBadRequest, errorResponse(fmt.Errorf("invalid credentials")))
+			ctx.JSON(http.StatusBadRequest, NewErrorResponse(fmt.Errorf("invalid credentials")))
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 
 	// 2) Get users creds
 	creds, err := service.store.GetUserCredentials(ctx, user.ID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 
 	// 3) Creating user with creds struct to begin the auth process
 	userWithCreds, err := NewUserWithCredentials(user, creds)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 
 	// 4) Begin authentication
 	assertion, session, err := service.webauthnConfig.BeginLogin(userWithCreds)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 
@@ -78,7 +78,7 @@ func (service *Service) signinStart(ctx *gin.Context) {
 	)
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
 		return
 	}
 

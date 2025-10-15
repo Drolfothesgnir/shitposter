@@ -145,7 +145,3 @@ func (service *Service) Start() error {
 func (service *Service) Shutdown(ctx context.Context) error {
 	return service.server.Shutdown(ctx)
 }
-
-func errorResponse(err error) gin.H {
-	return gin.H{"error": err.Error()}
-}

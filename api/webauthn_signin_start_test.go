@@ -14,7 +14,6 @@ import (
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/Drolfothesgnir/shitposter/tmpstore"
 	mockst "github.com/Drolfothesgnir/shitposter/tmpstore/mock"
-	mocktk "github.com/Drolfothesgnir/shitposter/token/mock"
 	"github.com/Drolfothesgnir/shitposter/util"
 	mockwa "github.com/Drolfothesgnir/shitposter/wauthn/mock"
 	"github.com/gin-gonic/gin"
@@ -213,14 +212,9 @@ func TestSignInStart(t *testing.T) {
 			defer waCtrl.Finish()
 			wa := mockwa.NewMockWebAuthnConfig(waCtrl)
 
-			// mock token maker
-			tkCtrl := gomock.NewController(t)
-			defer tkCtrl.Finish()
-			tk := mocktk.NewMockMaker(tkCtrl)
-
 			tc.buildStubs(store, rs, wa)
 
-			service := newTestService(t, store, tk, rs, wa)
+			service := newTestService(t, store, nil, rs, wa)
 			recorder := httptest.NewRecorder()
 
 			data, err := json.Marshal(tc.body)

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"slices"
 	"strings"
@@ -16,12 +17,22 @@ import (
 )
 
 const (
+	// api routes
 	WebauthnChallengeHeader = "X-Webauthn-Challenge"
 	WebauthnTransportHeader = "X-Webauthn-Transports"
 	UsersSignupStartURL     = "/users/signup/start"
 	UsersSignupFinishURL    = "/users/signup/finish"
 	UsersSigninStartURL     = "/users/signin/start"
 	UsersSigninFinishURL    = "/users/signin/finish"
+	UsersRenewAccessURL     = "/users/renew_access"
+)
+
+var (
+	// api errors
+	ErrSessionBlocked              = errors.New("session is blocked")
+	ErrSessionUserMismatch         = errors.New("incorrect session user")
+	ErrSessionRefreshTokenMismatch = errors.New("refresh token mismatch")
+	ErrSessionExpired              = errors.New("session is expired")
 )
 
 type Service struct {
@@ -86,6 +97,9 @@ func (service *Service) SetupRouter(server *http.Server) {
 	router.POST(UsersSignupFinishURL, service.signupFinish)
 	router.POST(UsersSigninStartURL, service.signinStart)
 	router.POST(UsersSigninFinishURL, service.signinFinish)
+
+	// renew access token
+	router.POST(UsersRenewAccessURL, service.renewAccessToken)
 
 	server.Handler = router
 }

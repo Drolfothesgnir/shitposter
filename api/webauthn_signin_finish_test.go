@@ -341,7 +341,7 @@ func TestSigninFinish(t *testing.T) {
 
 			tc.setupHeaders(request)
 
-			service.server.Handler.ServeHTTP(recorder, request)
+			service.router.ServeHTTP(recorder, request)
 			tc.checkResponse(t, recorder)
 		})
 	}

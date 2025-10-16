@@ -40,6 +40,7 @@ type Service struct {
 	store          db.Store
 	tokenMaker     token.Maker
 	server         *http.Server
+	router         *gin.Engine
 	webauthnConfig wauthn.WebAuthnConfig
 	redisStore     tmpstore.Store
 }
@@ -102,6 +103,7 @@ func (service *Service) SetupRouter(server *http.Server) {
 	router.POST(UsersRenewAccessURL, service.renewAccessToken)
 
 	server.Handler = router
+	service.router = router
 }
 
 // handling CORS

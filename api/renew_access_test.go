@@ -269,7 +269,7 @@ func TestRenewAccess(t *testing.T) {
 			request, err := http.NewRequest(http.MethodPost, UsersRenewAccessURL, bytes.NewReader(data))
 			require.NoError(t, err)
 
-			service.server.Handler.ServeHTTP(recorder, request)
+			service.router.ServeHTTP(recorder, request)
 			tc.checkResponse(t, recorder)
 		})
 	}

@@ -9,8 +9,9 @@ INSERT INTO posts (
 ) RETURNING *;
 
 -- name: GetPost :one
-SELECT * FROM posts
-WHERE id = $1 LIMIT 1;
+SELECT * FROM posts_with_author
+WHERE id = $1
+LIMIT 1;
 
 -- name: UpdatePost :one
 UPDATE posts
@@ -23,23 +24,21 @@ WHERE id = $1
 RETURNING *;
 
 -- name: GetPostsByPopularity :many
-SELECT * FROM posts
-WHERE created_at >= (NOW() - sqlc.arg(interval)::INTERVAL)
-ORDER BY (upvotes - downvotes) DESC
+SELECT * FROM posts_with_author
+WHERE p.created_at >= (NOW() - sqlc.arg(interval)::INTERVAL)
+ORDER BY (p.upvotes - p.downvotes) DESC
 LIMIT $1
 OFFSET $2;
 
 -- name: GetOldestPosts :many
-SELECT * FROM posts
+SELECT * FROM posts_with_author
 ORDER BY created_at ASC, id ASC
-LIMIT $1
-OFFSET $2;
+LIMIT $1 OFFSET $2;
 
 -- name: GetNewestPosts :many
-SELECT * FROM posts
+SELECT * FROM posts_with_author
 ORDER BY created_at DESC, id DESC
-LIMIT $1
-OFFSET $2;
+LIMIT $1 OFFSET $2;
 
 -- name: VotePost :one
 SELECT * FROM vote_post(

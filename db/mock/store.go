@@ -189,6 +189,21 @@ func (mr *MockStoreMockRecorder) DeletePostVote(ctx, arg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePostVote", reflect.TypeOf((*MockStore)(nil).DeletePostVote), ctx, arg)
 }
 
+// DeleteUser mocks base method.
+func (m *MockStore) DeleteUser(ctx context.Context, id int64) (db.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteUser", ctx, id)
+	ret0, _ := ret[0].(db.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteUser indicates an expected call of DeleteUser.
+func (mr *MockStoreMockRecorder) DeleteUser(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockStore)(nil).DeleteUser), ctx, id)
+}
+
 // EmailExists mocks base method.
 func (m *MockStore) EmailExists(ctx context.Context, email string) (bool, error) {
 	m.ctrl.T.Helper()
@@ -250,10 +265,10 @@ func (mr *MockStoreMockRecorder) GetCommentsByPopularity(ctx, arg any) *gomock.C
 }
 
 // GetNewestPosts mocks base method.
-func (m *MockStore) GetNewestPosts(ctx context.Context, arg db.GetNewestPostsParams) ([]db.Post, error) {
+func (m *MockStore) GetNewestPosts(ctx context.Context, arg db.GetNewestPostsParams) ([]db.PostsWithAuthor, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetNewestPosts", ctx, arg)
-	ret0, _ := ret[0].([]db.Post)
+	ret0, _ := ret[0].([]db.PostsWithAuthor)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -265,10 +280,10 @@ func (mr *MockStoreMockRecorder) GetNewestPosts(ctx, arg any) *gomock.Call {
 }
 
 // GetOldestPosts mocks base method.
-func (m *MockStore) GetOldestPosts(ctx context.Context, arg db.GetOldestPostsParams) ([]db.Post, error) {
+func (m *MockStore) GetOldestPosts(ctx context.Context, arg db.GetOldestPostsParams) ([]db.PostsWithAuthor, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOldestPosts", ctx, arg)
-	ret0, _ := ret[0].([]db.Post)
+	ret0, _ := ret[0].([]db.PostsWithAuthor)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -280,10 +295,10 @@ func (mr *MockStoreMockRecorder) GetOldestPosts(ctx, arg any) *gomock.Call {
 }
 
 // GetPost mocks base method.
-func (m *MockStore) GetPost(ctx context.Context, id int64) (db.Post, error) {
+func (m *MockStore) GetPost(ctx context.Context, id int64) (db.PostsWithAuthor, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetPost", ctx, id)
-	ret0, _ := ret[0].(db.Post)
+	ret0, _ := ret[0].(db.PostsWithAuthor)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -310,10 +325,10 @@ func (mr *MockStoreMockRecorder) GetPostVote(ctx, arg any) *gomock.Call {
 }
 
 // GetPostsByPopularity mocks base method.
-func (m *MockStore) GetPostsByPopularity(ctx context.Context, arg db.GetPostsByPopularityParams) ([]db.Post, error) {
+func (m *MockStore) GetPostsByPopularity(ctx context.Context, arg db.GetPostsByPopularityParams) ([]db.PostsWithAuthor, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetPostsByPopularity", ctx, arg)
-	ret0, _ := ret[0].([]db.Post)
+	ret0, _ := ret[0].([]db.PostsWithAuthor)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

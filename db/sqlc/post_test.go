@@ -97,6 +97,26 @@ func TestGetNewestPosts(t *testing.T) {
 		require.NoError(t, err)
 	}
 
+	postsWithAuthor := make([]PostsWithAuthor, n)
+
+	for i, p := range posts {
+		postsWithAuthor[i] = PostsWithAuthor{
+			ID:                p.ID,
+			UserID:            p.UserID,
+			Title:             p.Title,
+			Topics:            p.Topics,
+			Body:              p.Body,
+			Upvotes:           p.Upvotes,
+			Downvotes:         p.Downvotes,
+			Popularity:        p.Popularity,
+			CreatedAt:         p.CreatedAt,
+			LastModifiedAt:    p.LastModifiedAt,
+			UserDisplayName:   user.DisplayName,
+			UserProfileImgUrl: user.ProfileImgUrl,
+			UserIsDeleted:     user.IsDeleted,
+		}
+	}
+
 	// get all n new posts first
 	query_result1, err := testStore.GetNewestPosts(context.Background(), GetNewestPostsParams{
 		Limit:  int32(n),
@@ -104,7 +124,7 @@ func TestGetNewestPosts(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, posts, query_result1)
+	require.Equal(t, postsWithAuthor, query_result1)
 
 	// get first 5 posts
 	query_result2, err := testStore.GetNewestPosts(context.Background(), GetNewestPostsParams{
@@ -113,7 +133,7 @@ func TestGetNewestPosts(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, posts[:5], query_result2)
+	require.Equal(t, postsWithAuthor[:5], query_result2)
 
 	// get second 5 posts
 	query_result3, err := testStore.GetNewestPosts(context.Background(), GetNewestPostsParams{
@@ -122,7 +142,7 @@ func TestGetNewestPosts(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, posts[5:], query_result3)
+	require.Equal(t, postsWithAuthor[5:], query_result3)
 }
 
 func TestVotePost(t *testing.T) {

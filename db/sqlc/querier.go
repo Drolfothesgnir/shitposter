@@ -20,15 +20,16 @@ type Querier interface {
 	DeleteCommentVote(ctx context.Context, arg DeleteCommentVoteParams) error
 	DeletePost(ctx context.Context, id int64) error
 	DeletePostVote(ctx context.Context, arg DeletePostVoteParams) error
+	DeleteUser(ctx context.Context, id int64) (User, error)
 	EmailExists(ctx context.Context, email string) (bool, error)
 	GetComment(ctx context.Context, id int64) (Comment, error)
 	GetCommentVote(ctx context.Context, arg GetCommentVoteParams) (CommentVote, error)
 	GetCommentsByPopularity(ctx context.Context, arg GetCommentsByPopularityParams) ([]Comment, error)
-	GetNewestPosts(ctx context.Context, arg GetNewestPostsParams) ([]Post, error)
-	GetOldestPosts(ctx context.Context, arg GetOldestPostsParams) ([]Post, error)
-	GetPost(ctx context.Context, id int64) (Post, error)
+	GetNewestPosts(ctx context.Context, arg GetNewestPostsParams) ([]PostsWithAuthor, error)
+	GetOldestPosts(ctx context.Context, arg GetOldestPostsParams) ([]PostsWithAuthor, error)
+	GetPost(ctx context.Context, id int64) (PostsWithAuthor, error)
 	GetPostVote(ctx context.Context, arg GetPostVoteParams) (PostVote, error)
-	GetPostsByPopularity(ctx context.Context, arg GetPostsByPopularityParams) ([]Post, error)
+	GetPostsByPopularity(ctx context.Context, arg GetPostsByPopularityParams) ([]PostsWithAuthor, error)
 	GetSession(ctx context.Context, id uuid.UUID) (Session, error)
 	GetUser(ctx context.Context, id int64) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)

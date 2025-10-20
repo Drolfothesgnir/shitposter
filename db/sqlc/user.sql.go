@@ -14,12 +14,13 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
   username, 
+  display_name,
   profile_img_url,
   email,
   webauthn_user_handle
 ) VALUES (
-  $1, $2, $3, $4
-) RETURNING id, username, webauthn_user_handle, profile_img_url, email, created_at
+  $1, $1, $2, $3, $4
+) RETURNING id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name
 `
 
 type CreateUserParams struct {
@@ -44,6 +45,36 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.ProfileImgUrl,
 		&i.Email,
 		&i.CreatedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.DisplayName,
+	)
+	return i, err
+}
+
+const deleteUser = `-- name: DeleteUser :one
+UPDATE users
+  SET 
+    is_deleted = true,
+    display_name = '[deleted]',
+    deleted_at = NOW()
+WHERE id = $1
+RETURNING id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id int64) (User, error) {
+	row := q.db.QueryRow(ctx, deleteUser, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.WebauthnUserHandle,
+		&i.ProfileImgUrl,
+		&i.Email,
+		&i.CreatedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.DisplayName,
 	)
 	return i, err
 }
@@ -60,7 +91,7 @@ func (q *Queries) EmailExists(ctx context.Context, email string) (bool, error) {
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at FROM users
+SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name FROM users
 WHERE id = $1 LIMIT 1
 `
 
@@ -74,12 +105,15 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 		&i.ProfileImgUrl,
 		&i.Email,
 		&i.CreatedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.DisplayName,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at FROM users
+SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name FROM users
 WHERE username = $1
 `
 
@@ -93,6 +127,9 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.ProfileImgUrl,
 		&i.Email,
 		&i.CreatedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.DisplayName,
 	)
 	return i, err
 }

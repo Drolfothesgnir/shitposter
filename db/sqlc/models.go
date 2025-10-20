@@ -104,6 +104,22 @@ type PostVote struct {
 	LastModifiedAt time.Time `json:"last_modified_at"`
 }
 
+type PostsWithAuthor struct {
+	ID                int64       `json:"id"`
+	UserID            int64       `json:"user_id"`
+	Title             string      `json:"title"`
+	Topics            []byte      `json:"topics"`
+	Body              []byte      `json:"body"`
+	Upvotes           int64       `json:"upvotes"`
+	Downvotes         int64       `json:"downvotes"`
+	Popularity        pgtype.Int8 `json:"popularity"`
+	CreatedAt         time.Time   `json:"created_at"`
+	LastModifiedAt    time.Time   `json:"last_modified_at"`
+	UserDisplayName   string      `json:"user_display_name"`
+	UserProfileImgUrl pgtype.Text `json:"user_profile_img_url"`
+	UserIsDeleted     bool        `json:"user_is_deleted"`
+}
+
 type Session struct {
 	ID           uuid.UUID `json:"id"`
 	UserID       int64     `json:"user_id"`
@@ -122,6 +138,9 @@ type User struct {
 	ProfileImgUrl      pgtype.Text `json:"profile_img_url"`
 	Email              string      `json:"email"`
 	CreatedAt          time.Time   `json:"created_at"`
+	IsDeleted          bool        `json:"is_deleted"`
+	DeletedAt          time.Time   `json:"deleted_at"`
+	DisplayName        string      `json:"display_name"`
 }
 
 type WebauthnCredential struct {

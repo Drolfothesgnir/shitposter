@@ -141,6 +141,8 @@ type User struct {
 	IsDeleted          bool        `json:"is_deleted"`
 	DeletedAt          time.Time   `json:"deleted_at"`
 	DisplayName        string      `json:"display_name"`
+	ArchivedUsername   string      `json:"archived_username"`
+	ArchivedEmail      string      `json:"archived_email"`
 }
 
 type WebauthnCredential struct {

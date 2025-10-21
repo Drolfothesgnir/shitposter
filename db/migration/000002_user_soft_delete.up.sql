@@ -2,7 +2,9 @@
 ALTER TABLE users
   ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT false,
   ADD COLUMN deleted_at TIMESTAMPTZ NOT NULL DEFAULT '0001-01-01 00:00:00Z',
-  ADD COLUMN display_name VARCHAR NOT NULL DEFAULT '';
+  ADD COLUMN display_name VARCHAR NOT NULL DEFAULT '',
+  ADD COLUMN archived_username VARCHAR NOT NULL DEFAULT '',
+  ADD COLUMN archived_email VARCHAR NOT NULL DEFAULT '';
 
 -- we need to drop unique email/username constraints to make those
 -- emails and usenames available to 'live' users
@@ -17,10 +19,18 @@ CREATE UNIQUE INDEX uniq_users_username_active
   ON users(username)
   WHERE is_deleted = false;
 
--- adding default display_name to all users
+-- adding default display_name, archived_username and archived_email to all users
 UPDATE users
   SET display_name = username
   WHERE display_name = '';
+
+UPDATE users
+  SET archived_username = username
+  WHERE archived_username = '';
+
+UPDATE users
+  SET archived_email = email
+  WHERE archived_email = '';
 
 -- helper view for usage in differently-ordered post extraction
 CREATE OR REPLACE VIEW posts_with_author AS

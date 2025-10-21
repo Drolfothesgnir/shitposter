@@ -20,7 +20,7 @@ INSERT INTO users (
   webauthn_user_handle
 ) VALUES (
   $1, $1, $2, $3, $4
-) RETURNING id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name
+) RETURNING id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email
 `
 
 type CreateUserParams struct {
@@ -48,18 +48,25 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.IsDeleted,
 		&i.DeletedAt,
 		&i.DisplayName,
+		&i.ArchivedUsername,
+		&i.ArchivedEmail,
 	)
 	return i, err
 }
 
 const deleteUser = `-- name: DeleteUser :one
 UPDATE users
-  SET 
-    is_deleted = true,
-    display_name = '[deleted]',
-    deleted_at = NOW()
-WHERE id = $1
-RETURNING id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name
+SET
+  is_deleted = TRUE,
+  display_name = '[deleted]',
+  deleted_at = NOW(),
+  archived_username = username,
+  archived_email    = email,
+  username = CONCAT('deleted_user_', id),
+  email    = CONCAT('deleted_', id, '@invalid.local'),
+  profile_img_url = ''
+WHERE id = $1 AND is_deleted = FALSE
+RETURNING id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email
 `
 
 func (q *Queries) DeleteUser(ctx context.Context, id int64) (User, error) {
@@ -75,6 +82,8 @@ func (q *Queries) DeleteUser(ctx context.Context, id int64) (User, error) {
 		&i.IsDeleted,
 		&i.DeletedAt,
 		&i.DisplayName,
+		&i.ArchivedUsername,
+		&i.ArchivedEmail,
 	)
 	return i, err
 }
@@ -91,7 +100,7 @@ func (q *Queries) EmailExists(ctx context.Context, email string) (bool, error) {
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name FROM users
+SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email FROM users
 WHERE id = $1 LIMIT 1
 `
 
@@ -108,12 +117,14 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 		&i.IsDeleted,
 		&i.DeletedAt,
 		&i.DisplayName,
+		&i.ArchivedUsername,
+		&i.ArchivedEmail,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name FROM users
+SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email FROM users
 WHERE username = $1
 `
 
@@ -130,6 +141,8 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.IsDeleted,
 		&i.DeletedAt,
 		&i.DisplayName,
+		&i.ArchivedUsername,
+		&i.ArchivedEmail,
 	)
 	return i, err
 }

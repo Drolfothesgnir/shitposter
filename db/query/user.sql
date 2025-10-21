@@ -25,9 +25,14 @@ WHERE username = $1;
 
 -- name: DeleteUser :one
 UPDATE users
-  SET 
-    is_deleted = true,
-    display_name = '[deleted]',
-    deleted_at = NOW()
-WHERE id = $1
+SET
+  is_deleted = TRUE,
+  display_name = '[deleted]',
+  deleted_at = NOW(),
+  archived_username = username,
+  archived_email    = email,
+  username = CONCAT('deleted_user_', id),
+  email    = CONCAT('deleted_', id, '@invalid.local'),
+  profile_img_url = ''
+WHERE id = $1 AND is_deleted = FALSE
 RETURNING *;

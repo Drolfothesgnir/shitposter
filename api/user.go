@@ -13,6 +13,9 @@ import (
 type UserResponse struct {
 	ID              int64     `json:"id"`
 	Username        string    `json:"user_name"`
+	DisplayName     string    `json:"display_name"`
+	IsDeleted       bool      `json:"is_deleted"`
+	DeletedAt       time.Time `json:"deleted_at"`
 	Email           string    `json:"email"`
 	ProfileImageURL *string   `json:"profile_img_url"`
 	CreatedAt       time.Time `json:"created_at"`
@@ -30,9 +33,12 @@ func createUserResponse(user db.User) UserResponse {
 	return UserResponse{
 		ID:              user.ID,
 		Username:        user.Username,
+		DisplayName:     user.DisplayName,
 		Email:           user.Email,
 		ProfileImageURL: profileImgUrl,
 		CreatedAt:       user.CreatedAt,
+		IsDeleted:       user.IsDeleted,
+		DeletedAt:       user.DeletedAt,
 	}
 }
 

@@ -23,7 +23,7 @@ SELECT EXISTS (SELECT 1 from users WHERE email = $1) AS email_exists;
 SELECT * FROM users
 WHERE username = $1;
 
--- name: DeleteUser :one
+-- name: SoftDeleteUser :exec
 UPDATE users
 SET
   is_deleted = TRUE,
@@ -34,5 +34,4 @@ SET
   username = CONCAT('deleted_user_', id),
   email    = CONCAT('deleted_', id, '@invalid.local'),
   profile_img_url = ''
-WHERE id = $1 AND is_deleted = FALSE
-RETURNING *;
+WHERE id = $1 AND is_deleted = FALSE;

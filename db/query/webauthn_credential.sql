@@ -30,3 +30,11 @@ UPDATE webauthn_credentials
 SET
   sign_count = $2
 WHERE id = $1;
+
+-- name: DeleteUserCredentials :exec
+DELETE FROM webauthn_credentials
+WHERE user_id = $1;
+
+-- name: ListUserCredentials :many
+SELECT * FROM webauthn_credentials
+WHERE user_id = $1;

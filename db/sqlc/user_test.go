@@ -40,7 +40,10 @@ func TestCreateUser(t *testing.T) {
 func TestSoftUserDelete(t *testing.T) {
 	user1 := createRandomUser(t)
 
-	user2, err := testStore.DeleteUser(context.Background(), user1.ID)
+	err := testStore.SoftDeleteUser(context.Background(), user1.ID)
+	require.NoError(t, err)
+
+	user2, err := testStore.GetUser(context.Background(), user1.ID)
 	require.NoError(t, err)
 
 	require.Equal(t, user1.ID, user2.ID)
@@ -61,7 +64,7 @@ func TestAvailableCredsAfterDelete(t *testing.T) {
 	user1, err := testStore.CreateUser(context.Background(), arg1)
 	require.NoError(t, err)
 
-	_, err = testStore.DeleteUser(context.Background(), user1.ID)
+	err = testStore.SoftDeleteUser(context.Background(), user1.ID)
 	require.NoError(t, err)
 
 	arg2 := CreateUserParams{

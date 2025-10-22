@@ -95,6 +95,16 @@ func (q *Queries) CreateWebauthnCredentials(ctx context.Context, arg CreateWebau
 	return i, err
 }
 
+const deleteUserCredentials = `-- name: DeleteUserCredentials :exec
+DELETE FROM webauthn_credentials
+WHERE user_id = $1
+`
+
+func (q *Queries) DeleteUserCredentials(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteUserCredentials, userID)
+	return err
+}
+
 const getUserCredentials = `-- name: GetUserCredentials :many
 SELECT id, user_id, public_key, attestation_type, transports, user_present, user_verified, backup_eligible, backup_state, aaguid, sign_count, clone_warning, authenticator_attachment, authenticator_data, public_key_algorithm, created_at, last_used_at FROM webauthn_credentials
 WHERE user_id = $1
@@ -102,6 +112,49 @@ WHERE user_id = $1
 
 func (q *Queries) GetUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error) {
 	rows, err := q.db.Query(ctx, getUserCredentials, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WebauthnCredential{}
+	for rows.Next() {
+		var i WebauthnCredential
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.PublicKey,
+			&i.AttestationType,
+			&i.Transports,
+			&i.UserPresent,
+			&i.UserVerified,
+			&i.BackupEligible,
+			&i.BackupState,
+			&i.Aaguid,
+			&i.SignCount,
+			&i.CloneWarning,
+			&i.AuthenticatorAttachment,
+			&i.AuthenticatorData,
+			&i.PublicKeyAlgorithm,
+			&i.CreatedAt,
+			&i.LastUsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserCredentials = `-- name: ListUserCredentials :many
+SELECT id, user_id, public_key, attestation_type, transports, user_present, user_verified, backup_eligible, backup_state, aaguid, sign_count, clone_warning, authenticator_attachment, authenticator_data, public_key_algorithm, created_at, last_used_at FROM webauthn_credentials
+WHERE user_id = $1
+`
+
+func (q *Queries) ListUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error) {
+	rows, err := q.db.Query(ctx, listUserCredentials, userID)
 	if err != nil {
 		return nil, err
 	}

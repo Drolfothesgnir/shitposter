@@ -189,19 +189,32 @@ func (mr *MockStoreMockRecorder) DeletePostVote(ctx, arg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePostVote", reflect.TypeOf((*MockStore)(nil).DeletePostVote), ctx, arg)
 }
 
-// DeleteUser mocks base method.
-func (m *MockStore) DeleteUser(ctx context.Context, id int64) (db.User, error) {
+// DeleteUserCredentials mocks base method.
+func (m *MockStore) DeleteUserCredentials(ctx context.Context, userID int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteUser", ctx, id)
-	ret0, _ := ret[0].(db.User)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "DeleteUserCredentials", ctx, userID)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
-// DeleteUser indicates an expected call of DeleteUser.
-func (mr *MockStoreMockRecorder) DeleteUser(ctx, id any) *gomock.Call {
+// DeleteUserCredentials indicates an expected call of DeleteUserCredentials.
+func (mr *MockStoreMockRecorder) DeleteUserCredentials(ctx, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockStore)(nil).DeleteUser), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUserCredentials", reflect.TypeOf((*MockStore)(nil).DeleteUserCredentials), ctx, userID)
+}
+
+// DeleteUserSessions mocks base method.
+func (m *MockStore) DeleteUserSessions(ctx context.Context, userID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteUserSessions", ctx, userID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteUserSessions indicates an expected call of DeleteUserSessions.
+func (mr *MockStoreMockRecorder) DeleteUserSessions(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUserSessions", reflect.TypeOf((*MockStore)(nil).DeleteUserSessions), ctx, userID)
 }
 
 // EmailExists mocks base method.
@@ -399,6 +412,36 @@ func (mr *MockStoreMockRecorder) GetUserCredentials(ctx, userID any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserCredentials", reflect.TypeOf((*MockStore)(nil).GetUserCredentials), ctx, userID)
 }
 
+// ListSessionsByUser mocks base method.
+func (m *MockStore) ListSessionsByUser(ctx context.Context, userID int64) ([]db.Session, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListSessionsByUser", ctx, userID)
+	ret0, _ := ret[0].([]db.Session)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListSessionsByUser indicates an expected call of ListSessionsByUser.
+func (mr *MockStoreMockRecorder) ListSessionsByUser(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSessionsByUser", reflect.TypeOf((*MockStore)(nil).ListSessionsByUser), ctx, userID)
+}
+
+// ListUserCredentials mocks base method.
+func (m *MockStore) ListUserCredentials(ctx context.Context, userID int64) ([]db.WebauthnCredential, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListUserCredentials", ctx, userID)
+	ret0, _ := ret[0].([]db.WebauthnCredential)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListUserCredentials indicates an expected call of ListUserCredentials.
+func (mr *MockStoreMockRecorder) ListUserCredentials(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUserCredentials", reflect.TypeOf((*MockStore)(nil).ListUserCredentials), ctx, userID)
+}
+
 // Shutdown mocks base method.
 func (m *MockStore) Shutdown() {
 	m.ctrl.T.Helper()
@@ -409,6 +452,34 @@ func (m *MockStore) Shutdown() {
 func (mr *MockStoreMockRecorder) Shutdown() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shutdown", reflect.TypeOf((*MockStore)(nil).Shutdown))
+}
+
+// SoftDeleteUser mocks base method.
+func (m *MockStore) SoftDeleteUser(ctx context.Context, id int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SoftDeleteUser", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SoftDeleteUser indicates an expected call of SoftDeleteUser.
+func (mr *MockStoreMockRecorder) SoftDeleteUser(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SoftDeleteUser", reflect.TypeOf((*MockStore)(nil).SoftDeleteUser), ctx, id)
+}
+
+// SoftDeleteUserTx mocks base method.
+func (m *MockStore) SoftDeleteUserTx(ctx context.Context, userID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SoftDeleteUserTx", ctx, userID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SoftDeleteUserTx indicates an expected call of SoftDeleteUserTx.
+func (mr *MockStoreMockRecorder) SoftDeleteUserTx(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SoftDeleteUserTx", reflect.TypeOf((*MockStore)(nil).SoftDeleteUserTx), ctx, userID)
 }
 
 // UpdateComment mocks base method.

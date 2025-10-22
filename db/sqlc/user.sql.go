@@ -54,40 +54,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
-const deleteUser = `-- name: DeleteUser :one
-UPDATE users
-SET
-  is_deleted = TRUE,
-  display_name = '[deleted]',
-  deleted_at = NOW(),
-  archived_username = username,
-  archived_email    = email,
-  username = CONCAT('deleted_user_', id),
-  email    = CONCAT('deleted_', id, '@invalid.local'),
-  profile_img_url = ''
-WHERE id = $1 AND is_deleted = FALSE
-RETURNING id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email
-`
-
-func (q *Queries) DeleteUser(ctx context.Context, id int64) (User, error) {
-	row := q.db.QueryRow(ctx, deleteUser, id)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Username,
-		&i.WebauthnUserHandle,
-		&i.ProfileImgUrl,
-		&i.Email,
-		&i.CreatedAt,
-		&i.IsDeleted,
-		&i.DeletedAt,
-		&i.DisplayName,
-		&i.ArchivedUsername,
-		&i.ArchivedEmail,
-	)
-	return i, err
-}
-
 const emailExists = `-- name: EmailExists :one
 SELECT EXISTS (SELECT 1 from users WHERE email = $1) AS email_exists
 `
@@ -145,6 +111,25 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.ArchivedEmail,
 	)
 	return i, err
+}
+
+const softDeleteUser = `-- name: SoftDeleteUser :exec
+UPDATE users
+SET
+  is_deleted = TRUE,
+  display_name = '[deleted]',
+  deleted_at = NOW(),
+  archived_username = username,
+  archived_email    = email,
+  username = CONCAT('deleted_user_', id),
+  email    = CONCAT('deleted_', id, '@invalid.local'),
+  profile_img_url = ''
+WHERE id = $1 AND is_deleted = FALSE
+`
+
+func (q *Queries) SoftDeleteUser(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, softDeleteUser, id)
+	return err
 }
 
 const usernameExists = `-- name: UsernameExists :one

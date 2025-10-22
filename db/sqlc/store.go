@@ -10,6 +10,7 @@ type Store interface {
 	Querier
 	Shutdown() // Graceful DB shutdown.
 	CreateUserWithCredentialsTx(ctx context.Context, arg CreateUserWithCredentialsTxParams) (CreateUserWithCredentialsTxResult, error)
+	SoftDeleteUserTx(ctx context.Context, userID int64) error
 }
 
 type SQLStore struct {

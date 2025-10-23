@@ -89,7 +89,6 @@ func (service *Service) SetupRouter(server *http.Server) {
 
 	router.Use(service.corsMiddleware())
 
-	// TODO: add some routes
 	router.GET("/ping", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "pong")
 	})

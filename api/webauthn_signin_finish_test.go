@@ -79,7 +79,7 @@ func TestSigninFinish(t *testing.T) {
 	tokenStr := "access_token"
 
 	tokenPayload := &token.Payload{
-		ID:        uuid.UUID{byte(user.ID)},
+		ID:        uuid.New(),
 		UserID:    user.ID,
 		IssuedAt:  time.Now(),
 		ExpiredAt: time.Now().Add(time.Minute),

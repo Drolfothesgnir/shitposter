@@ -25,14 +25,14 @@ func TestRenewAccess(t *testing.T) {
 	refreshToken := "refresh_token"
 
 	payload := &token.Payload{
-		ID:        uuid.UUID{1},
+		ID:        uuid.New(),
 		UserID:    1,
 		IssuedAt:  time.Now(),
 		ExpiredAt: time.Now().Add(time.Minute),
 	}
 
 	session := db.Session{
-		ID:           uuid.UUID{byte(payload.UserID)},
+		ID:           uuid.New(),
 		UserID:       payload.UserID,
 		RefreshToken: refreshToken,
 		UserAgent:    "Chrome",

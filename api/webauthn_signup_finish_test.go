@@ -28,6 +28,8 @@ import (
 
 func TestSignupFinish(t *testing.T) {
 
+	sessionID := "session_id"
+
 	userHandle := util.RandomByteArray(32)
 
 	aaguid := util.RandomByteArray(16)
@@ -104,10 +106,20 @@ func TestSignupFinish(t *testing.T) {
 	}
 
 	tokenPayload := &token.Payload{
-		ID:        uuid.UUID{byte(user.ID)},
+		ID:        uuid.New(),
 		UserID:    user.ID,
 		IssuedAt:  time.Now(),
 		ExpiredAt: time.Now().Add(time.Minute),
+	}
+
+	sessionArg := db.CreateSessionParams{
+		ID:           tokenPayload.ID,
+		UserID:       tokenPayload.UserID,
+		RefreshToken: "refresh_token",
+		UserAgent:    "chrome",
+		ClientIp:     "198.162.0.0",
+		IsBlocked:    false,
+		ExpiresAt:    tokenPayload.ExpiredAt,
 	}
 
 	testCases := []struct {
@@ -145,11 +157,11 @@ func TestSignupFinish(t *testing.T) {
 				tokenMaker *mocktk.MockMaker,
 			) {
 				session := &tmpstore.PendingRegistration{}
-				rs.EXPECT().GetUserRegSession(gomock.Any(), "session_id").Times(1).Return(session, errors.New(""))
+				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(session, errors.New(""))
 				wa.EXPECT().FinishRegistration(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, "session_id")
+				req.Header.Add(WebauthnChallengeHeader, sessionID)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
@@ -166,11 +178,11 @@ func TestSignupFinish(t *testing.T) {
 				session := &tmpstore.PendingRegistration{
 					ExpiresAt: time.Now().Add(-time.Hour),
 				}
-				rs.EXPECT().GetUserRegSession(gomock.Any(), "session_id").Times(1).Return(session, nil)
+				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(session, nil)
 				wa.EXPECT().FinishRegistration(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, "session_id")
+				req.Header.Add(WebauthnChallengeHeader, sessionID)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
@@ -184,12 +196,12 @@ func TestSignupFinish(t *testing.T) {
 				wa *mockwa.MockWebAuthnConfig,
 				tokenMaker *mocktk.MockMaker,
 			) {
-				rs.EXPECT().GetUserRegSession(gomock.Any(), "session_id").Times(1).Return(pending, nil)
-				wa.EXPECT().FinishRegistration(gomock.Any(), *pending.SessionData, gomock.Any()).Times(1).Return(&webauthn.Credential{}, errors.New(""))
+				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(pending, nil)
+				wa.EXPECT().FinishRegistration(tmpUser, *pending.SessionData, gomock.Any()).Times(1).Return(&webauthn.Credential{}, errors.New(""))
 				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), gomock.Any()).Times(0)
 			},
 			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, "session_id")
+				req.Header.Add(WebauthnChallengeHeader, sessionID)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
@@ -203,13 +215,13 @@ func TestSignupFinish(t *testing.T) {
 				wa *mockwa.MockWebAuthnConfig,
 				tokenMaker *mocktk.MockMaker,
 			) {
-				rs.EXPECT().GetUserRegSession(gomock.Any(), "session_id").Times(1).Return(pending, nil)
+				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(pending, nil)
 				wa.EXPECT().FinishRegistration(tmpUser, *pending.SessionData, gomock.Any()).Times(1).Return(waCred, nil)
 				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(db.CreateUserWithCredentialsTxResult{}, pgx.ErrTxClosed)
-				rs.EXPECT().DeleteUserRegSession(gomock.Any(), "session_id").Times(0)
+				rs.EXPECT().DeleteUserRegSession(gomock.Any(), sessionID).Times(0)
 			},
 			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, "session_id")
+				req.Header.Add(WebauthnChallengeHeader, sessionID)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
@@ -223,17 +235,17 @@ func TestSignupFinish(t *testing.T) {
 				wa *mockwa.MockWebAuthnConfig,
 				tokenMaker *mocktk.MockMaker,
 			) {
-				rs.EXPECT().GetUserRegSession(gomock.Any(), "session_id").Times(1).Return(pending, nil)
+				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(pending, nil)
 				wa.EXPECT().FinishRegistration(tmpUser, *pending.SessionData, gomock.Any()).Times(1).Return(waCred, nil)
 				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(db.CreateUserWithCredentialsTxResult{
 					User: user,
 				}, nil)
-				rs.EXPECT().DeleteUserRegSession(gomock.Any(), "session_id").Times(1).Return(nil)
+				rs.EXPECT().DeleteUserRegSession(gomock.Any(), sessionID).Times(1).Return(nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("", &token.Payload{}, errors.New(""))
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(0)
 			},
 			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, "session_id")
+				req.Header.Add(WebauthnChallengeHeader, sessionID)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
@@ -247,18 +259,18 @@ func TestSignupFinish(t *testing.T) {
 				wa *mockwa.MockWebAuthnConfig,
 				tokenMaker *mocktk.MockMaker,
 			) {
-				rs.EXPECT().GetUserRegSession(gomock.Any(), "session_id").Times(1).Return(pending, nil)
+				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(pending, nil)
 				wa.EXPECT().FinishRegistration(tmpUser, *pending.SessionData, gomock.Any()).Times(1).Return(waCred, nil)
 				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(db.CreateUserWithCredentialsTxResult{
 					User: user,
 				}, nil)
-				rs.EXPECT().DeleteUserRegSession(gomock.Any(), "session_id").Times(1).Return(nil)
+				rs.EXPECT().DeleteUserRegSession(gomock.Any(), sessionID).Times(1).Return(nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("access_token", tokenPayload, nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("", &token.Payload{}, errors.New(""))
 				store.EXPECT().CreateSession(gomock.Any(), gomock.Any()).Times(0)
 			},
 			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, "session_id")
+				req.Header.Add(WebauthnChallengeHeader, sessionID)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
@@ -272,18 +284,20 @@ func TestSignupFinish(t *testing.T) {
 				wa *mockwa.MockWebAuthnConfig,
 				tokenMaker *mocktk.MockMaker,
 			) {
-				rs.EXPECT().GetUserRegSession(gomock.Any(), "session_id").Times(1).Return(pending, nil)
+				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(pending, nil)
 				wa.EXPECT().FinishRegistration(tmpUser, *pending.SessionData, gomock.Any()).Times(1).Return(waCred, nil)
 				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(db.CreateUserWithCredentialsTxResult{
 					User: user,
 				}, nil)
-				rs.EXPECT().DeleteUserRegSession(gomock.Any(), "session_id").Times(1).Return(nil)
+				rs.EXPECT().DeleteUserRegSession(gomock.Any(), sessionID).Times(1).Return(nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("access_token", tokenPayload, nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("refresh_token", tokenPayload, nil)
-				store.EXPECT().CreateSession(gomock.Any(), gomock.Any()).Times(1).Return(db.Session{}, pgx.ErrNoRows)
+				store.EXPECT().CreateSession(gomock.Any(), sessionArg).Times(1).Return(db.Session{}, pgx.ErrNoRows)
 			},
 			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, "session_id")
+				req.Header.Add(WebauthnChallengeHeader, sessionID)
+				req.Header.Add("User-Agent", "chrome")
+				req.RemoteAddr = "198.162.0.0:12345"
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
@@ -297,16 +311,6 @@ func TestSignupFinish(t *testing.T) {
 				wa *mockwa.MockWebAuthnConfig,
 				tokenMaker *mocktk.MockMaker,
 			) {
-				sessionArg := db.CreateSessionParams{
-					ID:           tokenPayload.ID,
-					UserID:       tokenPayload.UserID,
-					RefreshToken: "refresh_token",
-					UserAgent:    "chrome",
-					ClientIp:     "198.162.0.0",
-					IsBlocked:    false,
-					ExpiresAt:    tokenPayload.ExpiredAt,
-				}
-
 				session := db.Session{
 					ID:           tokenPayload.ID,
 					UserID:       tokenPayload.UserID,
@@ -317,18 +321,18 @@ func TestSignupFinish(t *testing.T) {
 					ExpiresAt:    tokenPayload.ExpiredAt,
 				}
 
-				rs.EXPECT().GetUserRegSession(gomock.Any(), "session_id").Times(1).Return(pending, nil)
+				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(pending, nil)
 				wa.EXPECT().FinishRegistration(tmpUser, *pending.SessionData, gomock.Any()).Times(1).Return(waCred, nil)
 				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(db.CreateUserWithCredentialsTxResult{
 					User: user,
 				}, nil)
-				rs.EXPECT().DeleteUserRegSession(gomock.Any(), "session_id").Times(1).Return(nil)
+				rs.EXPECT().DeleteUserRegSession(gomock.Any(), sessionID).Times(1).Return(nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("access_token", tokenPayload, nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("refresh_token", tokenPayload, nil)
 				store.EXPECT().CreateSession(gomock.Any(), sessionArg).Times(1).Return(session, nil)
 			},
 			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, "session_id")
+				req.Header.Add(WebauthnChallengeHeader, sessionID)
 				req.Header.Add("User-Agent", "chrome")
 				req.RemoteAddr = "198.162.0.0:12345"
 			},

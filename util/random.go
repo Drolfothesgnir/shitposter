@@ -42,7 +42,7 @@ func RandomURL() string {
 func RandomByteArray(n int) []byte {
 	arr := make([]byte, n)
 	for i := range n {
-		arr[i] = byte(RandomInt(0, 255))
+		arr[i] = byte(rand.Intn(256))
 	}
 
 	return arr

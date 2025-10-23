@@ -28,6 +28,7 @@ var testConfig = util.Config{
 	PublicOrigin:             "http://localhost:8080",
 	AllowedOrigins:           []string{"*"},
 	AuthenticationSessionTTL: time.Minute,
+	RegistrationSessionTTL:   time.Minute,
 }
 
 func newTestService(

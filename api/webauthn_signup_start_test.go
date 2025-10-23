@@ -2,15 +2,18 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	mockdb "github.com/Drolfothesgnir/shitposter/db/mock"
+	"github.com/Drolfothesgnir/shitposter/tmpstore"
 	mockst "github.com/Drolfothesgnir/shitposter/tmpstore/mock"
-	mocktk "github.com/Drolfothesgnir/shitposter/token/mock"
+	"github.com/Drolfothesgnir/shitposter/util"
 	mockwa "github.com/Drolfothesgnir/shitposter/wauthn/mock"
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/protocol"
@@ -21,6 +24,27 @@ import (
 )
 
 func TestSignupStart(t *testing.T) {
+	username := util.RandomOwner()
+	email := util.RandomEmail()
+
+	tmpUser := &TempUser{
+		Email:    email,
+		Username: username,
+	}
+
+	create := &protocol.CredentialCreation{}
+
+	session := &webauthn.SessionData{
+		Challenge: "chal",
+	}
+
+	registrationData := tmpstore.PendingRegistration{
+		Email:       email,
+		Username:    username,
+		SessionData: session,
+		ExpiresAt:   time.Now().Add(testConfig.RegistrationSessionTTL),
+	}
+
 	testCases := []struct {
 		name          string
 		body          gin.H
@@ -31,7 +55,7 @@ func TestSignupStart(t *testing.T) {
 			name: "InvalidUsername",
 			body: gin.H{
 				"username": ".,/",
-				"email":    "test@mail.com",
+				"email":    email,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
 				store.EXPECT().UsernameExists(gomock.Any(), gomock.Any()).Times(0)
@@ -43,7 +67,7 @@ func TestSignupStart(t *testing.T) {
 		{
 			name: "InvalidEmail",
 			body: gin.H{
-				"username": "test",
+				"username": username,
 				"email":    "123",
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
@@ -56,11 +80,11 @@ func TestSignupStart(t *testing.T) {
 		{
 			name: "UsernameExistsErr",
 			body: gin.H{
-				"username": "test",
-				"email":    "test@mail.com",
+				"username": username,
+				"email":    email,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
-				store.EXPECT().UsernameExists(gomock.Any(), gomock.Any()).Times(1).Return(false, pgx.ErrTxClosed)
+				store.EXPECT().UsernameExists(gomock.Any(), username).Times(1).Return(false, pgx.ErrTxClosed)
 				store.EXPECT().EmailExists(gomock.Any(), gomock.Any()).Times(0)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -70,11 +94,11 @@ func TestSignupStart(t *testing.T) {
 		{
 			name: "UsernameExists",
 			body: gin.H{
-				"username": "test",
-				"email":    "test@mail.com",
+				"username": username,
+				"email":    email,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
-				store.EXPECT().UsernameExists(gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+				store.EXPECT().UsernameExists(gomock.Any(), username).Times(1).Return(true, nil)
 				store.EXPECT().EmailExists(gomock.Any(), gomock.Any()).Times(0)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -84,12 +108,12 @@ func TestSignupStart(t *testing.T) {
 		{
 			name: "EmailExistsErr",
 			body: gin.H{
-				"username": "test",
-				"email":    "test@mail.com",
+				"username": username,
+				"email":    email,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
-				store.EXPECT().UsernameExists(gomock.Any(), gomock.Any()).Times(1).Return(false, nil)
-				store.EXPECT().EmailExists(gomock.Any(), gomock.Any()).Times(1).Return(false, pgx.ErrTxClosed)
+				store.EXPECT().UsernameExists(gomock.Any(), username).Times(1).Return(false, nil)
+				store.EXPECT().EmailExists(gomock.Any(), email).Times(1).Return(false, pgx.ErrTxClosed)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
@@ -98,12 +122,12 @@ func TestSignupStart(t *testing.T) {
 		{
 			name: "EmailExists",
 			body: gin.H{
-				"username": "test",
-				"email":    "test@mail.com",
+				"username": username,
+				"email":    email,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
-				store.EXPECT().UsernameExists(gomock.Any(), gomock.Any()).Times(1).Return(false, nil)
-				store.EXPECT().EmailExists(gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+				store.EXPECT().UsernameExists(gomock.Any(), username).Times(1).Return(false, nil)
+				store.EXPECT().EmailExists(gomock.Any(), email).Times(1).Return(true, nil)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusConflict, recorder.Code)
@@ -112,17 +136,21 @@ func TestSignupStart(t *testing.T) {
 		{
 			name: "BeginRegistrationErr",
 			body: gin.H{
-				"username": "test",
-				"email":    "test@mail.com",
+				"username": username,
+				"email":    email,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
-				store.EXPECT().UsernameExists(gomock.Any(), gomock.Any()).Times(1).Return(false, nil)
-				store.EXPECT().EmailExists(gomock.Any(), gomock.Any()).Times(1).Return(false, nil)
+				store.EXPECT().UsernameExists(gomock.Any(), username).Times(1).Return(false, nil)
+				store.EXPECT().EmailExists(gomock.Any(), email).Times(1).Return(false, nil)
 
-				var create protocol.CredentialCreation
-				var session webauthn.SessionData
-
-				wa.EXPECT().BeginRegistration(gomock.Any(), gomock.Any()).Times(1).Return(&create, &session, errors.New(""))
+				wa.EXPECT().
+					BeginRegistration(
+						gomock.AssignableToTypeOf(&TempUser{}),
+					).DoAndReturn(func(user *TempUser, _ ...[]webauthn.RegistrationOption) (*protocol.CredentialCreation, *webauthn.SessionData, error) {
+					require.Equal(t, tmpUser.Username, user.Username)
+					require.Equal(t, tmpUser.Email, user.Email)
+					return &protocol.CredentialCreation{}, &webauthn.SessionData{}, errors.New("")
+				})
 				rs.EXPECT().SaveUserRegSession(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -132,18 +160,36 @@ func TestSignupStart(t *testing.T) {
 		{
 			name: "SaveRegistrationErr",
 			body: gin.H{
-				"username": "test",
-				"email":    "test@mail.com",
+				"username": username,
+				"email":    email,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
-				store.EXPECT().UsernameExists(gomock.Any(), gomock.Any()).Times(1).Return(false, nil)
-				store.EXPECT().EmailExists(gomock.Any(), gomock.Any()).Times(1).Return(false, nil)
+				store.EXPECT().UsernameExists(gomock.Any(), username).Times(1).Return(false, nil)
+				store.EXPECT().EmailExists(gomock.Any(), email).Times(1).Return(false, nil)
 
-				var create protocol.CredentialCreation
-				var session webauthn.SessionData
-
-				wa.EXPECT().BeginRegistration(gomock.Any(), gomock.Any()).Times(1).Return(&create, &session, nil)
-				rs.EXPECT().SaveUserRegSession(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(errors.New(""))
+				wa.EXPECT().
+					BeginRegistration(
+						gomock.AssignableToTypeOf(&TempUser{}),
+					).DoAndReturn(func(user *TempUser, _ ...[]webauthn.RegistrationOption) (*protocol.CredentialCreation, *webauthn.SessionData, error) {
+					require.Equal(t, tmpUser.Username, user.Username)
+					require.Equal(t, tmpUser.Email, user.Email)
+					return create, session, nil
+				})
+				rs.EXPECT().
+					SaveUserRegSession(
+						gomock.Any(),
+						session.Challenge,
+						gomock.AssignableToTypeOf(tmpstore.PendingRegistration{}),
+						testConfig.RegistrationSessionTTL,
+					).
+					DoAndReturn(func(_ context.Context, chal string, pending tmpstore.PendingRegistration, ttl time.Duration) error {
+						require.Equal(t, session.Challenge, chal)
+						require.Equal(t, registrationData.Email, pending.Email)
+						require.Equal(t, registrationData.Username, pending.Username)
+						require.Equal(t, registrationData.SessionData, pending.SessionData)
+						require.WithinDuration(t, pending.ExpiresAt, registrationData.ExpiresAt, time.Second)
+						return errors.New("")
+					})
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
@@ -152,18 +198,35 @@ func TestSignupStart(t *testing.T) {
 		{
 			name: "OK",
 			body: gin.H{
-				"username": "test",
-				"email":    "test@mail.com",
+				"username": username,
+				"email":    email,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
-				store.EXPECT().UsernameExists(gomock.Any(), gomock.Any()).Times(1).Return(false, nil)
-				store.EXPECT().EmailExists(gomock.Any(), gomock.Any()).Times(1).Return(false, nil)
+				store.EXPECT().UsernameExists(gomock.Any(), username).Times(1).Return(false, nil)
+				store.EXPECT().EmailExists(gomock.Any(), email).Times(1).Return(false, nil)
 
-				var create protocol.CredentialCreation
-				var session webauthn.SessionData
-
-				wa.EXPECT().BeginRegistration(gomock.Any(), gomock.Any()).Times(1).Return(&create, &session, nil)
-				rs.EXPECT().SaveUserRegSession(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				wa.EXPECT().
+					BeginRegistration(
+						gomock.AssignableToTypeOf(&TempUser{}),
+					).DoAndReturn(func(user *TempUser, _ ...[]webauthn.RegistrationOption) (*protocol.CredentialCreation, *webauthn.SessionData, error) {
+					require.Equal(t, tmpUser.Username, user.Username)
+					require.Equal(t, tmpUser.Email, user.Email)
+					return create, session, nil
+				})
+				rs.EXPECT().SaveUserRegSession(
+					gomock.Any(),
+					session.Challenge,
+					gomock.AssignableToTypeOf(tmpstore.PendingRegistration{}),
+					testConfig.RegistrationSessionTTL,
+				).
+					DoAndReturn(func(_ context.Context, chal string, pending tmpstore.PendingRegistration, ttl time.Duration) error {
+						require.Equal(t, session.Challenge, chal)
+						require.Equal(t, registrationData.Email, pending.Email)
+						require.Equal(t, registrationData.Username, pending.Username)
+						require.Equal(t, registrationData.SessionData, pending.SessionData)
+						require.WithinDuration(t, pending.ExpiresAt, registrationData.ExpiresAt, time.Second)
+						return nil
+					})
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
@@ -188,14 +251,9 @@ func TestSignupStart(t *testing.T) {
 			defer waCtrl.Finish()
 			wa := mockwa.NewMockWebAuthnConfig(waCtrl)
 
-			// mock token maker
-			tkCtrl := gomock.NewController(t)
-			defer tkCtrl.Finish()
-			tk := mocktk.NewMockMaker(tkCtrl)
-
 			tc.buildStubs(store, rs, wa)
 
-			service := newTestService(t, store, tk, rs, wa)
+			service := newTestService(t, store, nil, rs, wa)
 			recorder := httptest.NewRecorder()
 
 			data, err := json.Marshal(tc.body)

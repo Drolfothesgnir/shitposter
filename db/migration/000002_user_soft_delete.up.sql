@@ -47,7 +47,6 @@ SELECT
   p.created_at,
   p.last_modified_at,
   u.display_name      AS user_display_name,
-  u.profile_img_url   AS user_profile_img_url,
-  u.is_deleted        AS user_is_deleted
+  u.profile_img_url   AS user_profile_img_url
 FROM posts AS p
 JOIN users AS u ON u.id = p.user_id;

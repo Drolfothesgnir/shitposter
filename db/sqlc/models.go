@@ -117,7 +117,6 @@ type PostsWithAuthor struct {
 	LastModifiedAt    time.Time   `json:"last_modified_at"`
 	UserDisplayName   string      `json:"user_display_name"`
 	UserProfileImgUrl pgtype.Text `json:"user_profile_img_url"`
-	UserIsDeleted     bool        `json:"user_is_deleted"`
 }
 
 type Session struct {

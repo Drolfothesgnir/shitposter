@@ -113,7 +113,6 @@ func TestGetNewestPosts(t *testing.T) {
 			LastModifiedAt:    p.LastModifiedAt,
 			UserDisplayName:   user.DisplayName,
 			UserProfileImgUrl: user.ProfileImgUrl,
-			UserIsDeleted:     user.IsDeleted,
 		}
 	}
 

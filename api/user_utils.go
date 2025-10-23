@@ -10,7 +10,31 @@ import (
 	"github.com/go-webauthn/webauthn/webauthn"
 )
 
-type UserResponse struct {
+type PublicUserResponse struct {
+	ID              int64     `json:"id"`
+	DisplayName     string    `json:"display_name"`
+	ProfileImageURL *string   `json:"profile_img_url"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+// Helper function to map database User struct into an API response
+func createPublicUserResponse(user db.User) PublicUserResponse {
+
+	var profileImgUrl *string
+
+	if user.ProfileImgUrl.Valid {
+		profileImgUrl = &user.ProfileImgUrl.String
+	}
+
+	return PublicUserResponse{
+		ID:              user.ID,
+		DisplayName:     user.DisplayName,
+		ProfileImageURL: profileImgUrl,
+		CreatedAt:       user.CreatedAt,
+	}
+}
+
+type PrivateUserResponse struct {
 	ID              int64     `json:"id"`
 	Username        string    `json:"user_name"`
 	DisplayName     string    `json:"display_name"`
@@ -22,7 +46,7 @@ type UserResponse struct {
 }
 
 // Helper function to map database User struct into an API response
-func createUserResponse(user db.User) UserResponse {
+func createPrivateUserResponse(user db.User) PrivateUserResponse {
 
 	var profileImgUrl *string
 
@@ -30,7 +54,7 @@ func createUserResponse(user db.User) UserResponse {
 		profileImgUrl = &user.ProfileImgUrl.String
 	}
 
-	return UserResponse{
+	return PrivateUserResponse{
 		ID:              user.ID,
 		Username:        user.Username,
 		DisplayName:     user.DisplayName,

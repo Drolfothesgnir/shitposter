@@ -123,6 +123,7 @@ The goal is to learn and demonstrate web dev skills.
       - **POST** /users/signup/finish → Finish Webauthn registration process
       - **POST** /users/signin/start → Start Webauthn login process
       - **POST** /users/signin/finish → Finish Webauthn login process
+      - **GET** /users/{user-id} → Get user's data
       - **PATCH** /users/{user-id} → Update user's data
       - **POST** /users/renew_access → Renew access token via refresh token
       - **DELETE** /users/{user-id} → Delete user

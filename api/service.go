@@ -26,6 +26,7 @@ const (
 	UsersSigninFinishURL    = "/users/signin/finish"
 	UsersRenewAccessURL     = "/users/renew_access"
 	UsersDeleteUser         = "/users"
+	UsersGetUser            = "/users"
 )
 
 var (
@@ -101,6 +102,8 @@ func (service *Service) SetupRouter(server *http.Server) {
 
 	// renew access token
 	router.POST(UsersRenewAccessURL, service.renewAccessToken)
+
+	router.GET(UsersGetUser+"/:id", service.getUser)
 
 	// protected routes
 	authGroup := router.Group("/").Use(authMiddleware(service.tokenMaker))

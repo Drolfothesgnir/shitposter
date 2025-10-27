@@ -30,7 +30,7 @@ type SignupStartResponse struct {
 func (service *Service) signupStart(ctx *gin.Context) {
 	var req SignupStartRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, NewErrorResponse(err))
+		ctx.JSON(http.StatusBadRequest, NewErrorResponse(err, ExtractErrorFields(err)...))
 		return
 	}
 

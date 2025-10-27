@@ -132,6 +132,51 @@ func (q *Queries) SoftDeleteUser(ctx context.Context, id int64) error {
 	return err
 }
 
+const updateUser = `-- name: UpdateUser :one
+UPDATE users
+SET
+  username = COALESCE($2, username),
+  display_name = COALESCE($2, display_name),
+  archived_username = COALESCE($2, archived_username),
+  email = COALESCE($3, email),
+  archived_email = COALESCE($3, archived_email),
+  profile_img_url = COALESCE($4, profile_img_url),
+  last_modified_at = NOW()
+WHERE id = $1 AND is_deleted = FALSE
+RETURNING id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email
+`
+
+type UpdateUserParams struct {
+	ID            int64       `json:"id"`
+	Username      pgtype.Text `json:"username"`
+	Email         pgtype.Text `json:"email"`
+	ProfileImgUrl pgtype.Text `json:"profile_img_url"`
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUser,
+		arg.ID,
+		arg.Username,
+		arg.Email,
+		arg.ProfileImgUrl,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.WebauthnUserHandle,
+		&i.ProfileImgUrl,
+		&i.Email,
+		&i.CreatedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.DisplayName,
+		&i.ArchivedUsername,
+		&i.ArchivedEmail,
+	)
+	return i, err
+}
+
 const usernameExists = `-- name: UsernameExists :one
 SELECT EXISTS (SELECT 1 from users WHERE username = $1) AS username_exists
 `

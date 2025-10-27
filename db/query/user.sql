@@ -35,3 +35,16 @@ SET
   email    = CONCAT('deleted_', id, '@invalid.local'),
   profile_img_url = ''
 WHERE id = $1 AND is_deleted = FALSE;
+
+-- name: UpdateUser :one
+UPDATE users
+SET
+  username = COALESCE(sqlc.narg(username), username),
+  display_name = COALESCE(sqlc.narg(username), display_name),
+  archived_username = COALESCE(sqlc.narg(username), archived_username),
+  email = COALESCE(sqlc.narg(email), email),
+  archived_email = COALESCE(sqlc.narg(email), archived_email),
+  profile_img_url = COALESCE(sqlc.narg(profile_img_url), profile_img_url),
+  last_modified_at = NOW()
+WHERE id = $1 AND is_deleted = FALSE
+RETURNING *;

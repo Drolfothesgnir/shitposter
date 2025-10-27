@@ -27,6 +27,7 @@ const (
 	UsersRenewAccessURL     = "/users/renew_access"
 	UsersDeleteUser         = "/users"
 	UsersGetUser            = "/users"
+	UsersUpdateUser         = "/users"
 )
 
 var (
@@ -108,6 +109,7 @@ func (service *Service) SetupRouter(server *http.Server) {
 	// protected routes
 	authGroup := router.Group("/").Use(authMiddleware(service.tokenMaker))
 	authGroup.DELETE(UsersDeleteUser, service.deleteUser)
+	authGroup.PATCH(UsersUpdateUser, service.updateUser)
 
 	server.Handler = router
 	service.router = router

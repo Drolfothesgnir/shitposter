@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// TODO: refactor this
 func (service *Service) deleteUser(ctx *gin.Context) {
 	payload, ok := ctx.Get(authorizationPayloadKey)
 	if !ok {

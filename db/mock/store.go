@@ -526,6 +526,21 @@ func (mr *MockStoreMockRecorder) UpdatePost(ctx, arg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePost", reflect.TypeOf((*MockStore)(nil).UpdatePost), ctx, arg)
 }
 
+// UpdateUser mocks base method.
+func (m *MockStore) UpdateUser(ctx context.Context, arg db.UpdateUserParams) (db.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUser", ctx, arg)
+	ret0, _ := ret[0].(db.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateUser indicates an expected call of UpdateUser.
+func (mr *MockStoreMockRecorder) UpdateUser(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUser", reflect.TypeOf((*MockStore)(nil).UpdateUser), ctx, arg)
+}
+
 // UsernameExists mocks base method.
 func (m *MockStore) UsernameExists(ctx context.Context, username string) (bool, error) {
 	m.ctrl.T.Helper()

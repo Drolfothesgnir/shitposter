@@ -41,6 +41,7 @@ type Querier interface {
 	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)
 	UpdateCredentialSignCount(ctx context.Context, arg UpdateCredentialSignCountParams) error
 	UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, error)
+	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UsernameExists(ctx context.Context, username string) (bool, error)
 	VoteComment(ctx context.Context, arg VoteCommentParams) (Comment, error)
 	VotePost(ctx context.Context, arg VotePostParams) (Post, error)

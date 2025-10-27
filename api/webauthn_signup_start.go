@@ -43,7 +43,11 @@ func (service *Service) signupStart(ctx *gin.Context) {
 
 	if usernameExists {
 		err := fmt.Errorf("user with username [%s] already exists", req.Username)
-		ctx.JSON(http.StatusConflict, NewErrorResponse(err))
+		field := ErrorField{
+			FieldName:    "username",
+			ErrorMessage: "already in use",
+		}
+		ctx.JSON(http.StatusConflict, NewErrorResponse(err, field))
 		return
 	}
 
@@ -55,7 +59,11 @@ func (service *Service) signupStart(ctx *gin.Context) {
 
 	if emailExists {
 		err := fmt.Errorf("user with email [%s] already exists", req.Email)
-		ctx.JSON(http.StatusConflict, NewErrorResponse(err))
+		field := ErrorField{
+			FieldName:    "email",
+			ErrorMessage: "already in use",
+		}
+		ctx.JSON(http.StatusConflict, NewErrorResponse(err, field))
 		return
 	}
 

@@ -58,7 +58,6 @@ func TestUpdateUser(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				// TODO: use native require funcs instead of my own in ALL test files
 				res, err := extractErrorFromBuffer(recorder.Body)
 				require.NoError(t, err)
 				require.Equal(t, "invalid params", res.Error)

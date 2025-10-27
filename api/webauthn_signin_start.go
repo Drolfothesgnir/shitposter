@@ -33,7 +33,11 @@ func (service *Service) signinStart(ctx *gin.Context) {
 		if err == pgx.ErrNoRows {
 			// Don't reveal if user exists or not
 			// TODO: rethink this
-			ctx.JSON(http.StatusBadRequest, NewErrorResponse(fmt.Errorf("invalid credentials")))
+			field := ErrorField{
+				FieldName:    "username",
+				ErrorMessage: "invalid input",
+			}
+			ctx.JSON(http.StatusBadRequest, NewErrorResponse(fmt.Errorf("invalid credentials"), field))
 			return
 		}
 

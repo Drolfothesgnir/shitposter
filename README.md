@@ -33,11 +33,22 @@ The goal is to learn and demonstrate web dev skills.
 2. Mapping Entities to URIs</br>
 ![diagram shows respective URI for each entity](./entities_to_uris.png)
 3. Resource representation
-   - User
+   - User (public)
+      ```json
+      {
+        "id": 1,
+        "display_name": "user1",
+        "profile_img_url": "localhost:4000/media/images/iamge1",
+        "created_at": "2025-07-21 15:11:55.039123+00"
+      }
+      ```
+   - User (private)
       ```json
       {
         "id": 1,
         "username": "user1",
+        "display_name": "user1",
+        "is_deleted": false,
         "email": "user@mail.com",
         "profile_img_url": "localhost:4000/media/images/iamge1",
         "created_at": "2025-07-21 15:11:55.039123+00"
@@ -124,9 +135,9 @@ The goal is to learn and demonstrate web dev skills.
       - **POST** /users/signin/start → Start Webauthn login process
       - **POST** /users/signin/finish → Finish Webauthn login process
       - **GET** /users/{user-id} → Get user's data
-      - **PATCH** /users/{user-id} → Update user's data
+      - **PATCH** /users → Update user's data
       - **POST** /users/renew_access → Renew access token via refresh token
-      - **DELETE** /users/{user-id} → Delete user
+      - **DELETE** /users → Delete user
    - Posts
       - **POST** /posts → Create new Post
       - **GET** /posts → View posts

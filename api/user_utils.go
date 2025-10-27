@@ -36,7 +36,7 @@ func createPublicUserResponse(user db.User) PublicUserResponse {
 
 type PrivateUserResponse struct {
 	ID              int64     `json:"id"`
-	Username        string    `json:"user_name"`
+	Username        string    `json:"username"`
 	DisplayName     string    `json:"display_name"`
 	IsDeleted       bool      `json:"is_deleted"`
 	DeletedAt       time.Time `json:"deleted_at"`

@@ -32,20 +32,10 @@ UPDATE users
   SET archived_email = email
   WHERE archived_email = '';
 
--- TODO: see if selector 'p.*' works
 -- helper view for usage in differently-ordered post extraction
 CREATE OR REPLACE VIEW posts_with_author AS
 SELECT 
-  p.id,
-  p.user_id,
-  p.title,
-  p.topics,
-  p.body,
-  p.upvotes,
-  p.downvotes,
-  p.popularity,
-  p.created_at,
-  p.last_modified_at,
+  p.*,
   u.display_name      AS user_display_name,
   u.profile_img_url   AS user_profile_img_url
 FROM posts AS p

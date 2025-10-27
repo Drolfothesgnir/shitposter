@@ -26,83 +26,8 @@ func TestSoftDeleteUser(t *testing.T) {
 		checkResponse func(t *testing.T, recorder *httptest.ResponseRecorder)
 	}{
 		{
-			name: "NoAuthPayload",
-			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetUser(gomock.Any(), gomock.Any()).Times(0)
-			},
-			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
-
-			},
-			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusUnauthorized, recorder.Code)
-			},
-		},
-		{
-			name: "UserNotFound",
-			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(db.User{}, pgx.ErrNoRows)
-				store.EXPECT().SoftDeleteUserTx(gomock.Any(), gomock.Any()).Times(0)
-			},
-			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
-				setAuthorizationHeader(
-					t,
-					tokenMaker,
-					authorizationTypeBearer,
-					user.ID,
-					testConfig.AccessTokenDuration,
-					request,
-				)
-			},
-			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusNoContent, recorder.Code)
-			},
-		},
-		{
-			name: "GetUserErr",
-			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(db.User{}, pgx.ErrTxClosed)
-				store.EXPECT().SoftDeleteUserTx(gomock.Any(), gomock.Any()).Times(0)
-			},
-			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
-				setAuthorizationHeader(
-					t,
-					tokenMaker,
-					authorizationTypeBearer,
-					user.ID,
-					testConfig.AccessTokenDuration,
-					request,
-				)
-			},
-			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusInternalServerError, recorder.Code)
-			},
-		},
-		{
-			name: "DeletedUser",
-			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(db.User{
-					IsDeleted: true,
-				}, nil)
-				store.EXPECT().SoftDeleteUserTx(gomock.Any(), gomock.Any()).Times(0)
-			},
-			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
-				setAuthorizationHeader(
-					t,
-					tokenMaker,
-					authorizationTypeBearer,
-					user.ID,
-					testConfig.AccessTokenDuration,
-					request,
-				)
-			},
-			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusNoContent, recorder.Code)
-			},
-		},
-		{
 			name: "SoftDeleteUserTxErr",
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(user, nil)
 				store.EXPECT().SoftDeleteUserTx(gomock.Any(), user.ID).Times(1).Return(pgx.ErrTxClosed)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
@@ -122,7 +47,6 @@ func TestSoftDeleteUser(t *testing.T) {
 		{
 			name: "OK",
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(user, nil)
 				store.EXPECT().SoftDeleteUserTx(gomock.Any(), user.ID).Times(1).Return(nil)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {

@@ -263,10 +263,10 @@ func (mr *MockStoreMockRecorder) GetCommentVote(ctx, arg any) *gomock.Call {
 }
 
 // GetCommentsByPopularity mocks base method.
-func (m *MockStore) GetCommentsByPopularity(ctx context.Context, arg db.GetCommentsByPopularityParams) ([]db.Comment, error) {
+func (m *MockStore) GetCommentsByPopularity(ctx context.Context, arg db.GetCommentsByPopularityParams) ([]db.CommentsWithAuthor, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetCommentsByPopularity", ctx, arg)
-	ret0, _ := ret[0].([]db.Comment)
+	ret0, _ := ret[0].([]db.CommentsWithAuthor)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

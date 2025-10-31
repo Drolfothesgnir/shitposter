@@ -80,7 +80,7 @@ func (q *Queries) DeletePostVote(ctx context.Context, arg DeletePostVoteParams) 
 }
 
 const getNewestPosts = `-- name: GetNewestPosts :many
-SELECT id, user_id, title, topics, body, upvotes, downvotes, popularity, created_at, last_modified_at, user_display_name, user_profile_img_url FROM posts_with_author
+SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity, user_display_name, user_profile_img_url FROM posts_with_author
 ORDER BY created_at DESC, id DESC
 LIMIT $1 OFFSET $2
 `
@@ -107,9 +107,9 @@ func (q *Queries) GetNewestPosts(ctx context.Context, arg GetNewestPostsParams) 
 			&i.Body,
 			&i.Upvotes,
 			&i.Downvotes,
-			&i.Popularity,
 			&i.CreatedAt,
 			&i.LastModifiedAt,
+			&i.Popularity,
 			&i.UserDisplayName,
 			&i.UserProfileImgUrl,
 		); err != nil {
@@ -124,7 +124,7 @@ func (q *Queries) GetNewestPosts(ctx context.Context, arg GetNewestPostsParams) 
 }
 
 const getOldestPosts = `-- name: GetOldestPosts :many
-SELECT id, user_id, title, topics, body, upvotes, downvotes, popularity, created_at, last_modified_at, user_display_name, user_profile_img_url FROM posts_with_author
+SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity, user_display_name, user_profile_img_url FROM posts_with_author
 ORDER BY created_at ASC, id ASC
 LIMIT $1 OFFSET $2
 `
@@ -151,9 +151,9 @@ func (q *Queries) GetOldestPosts(ctx context.Context, arg GetOldestPostsParams) 
 			&i.Body,
 			&i.Upvotes,
 			&i.Downvotes,
-			&i.Popularity,
 			&i.CreatedAt,
 			&i.LastModifiedAt,
+			&i.Popularity,
 			&i.UserDisplayName,
 			&i.UserProfileImgUrl,
 		); err != nil {
@@ -168,7 +168,7 @@ func (q *Queries) GetOldestPosts(ctx context.Context, arg GetOldestPostsParams) 
 }
 
 const getPost = `-- name: GetPost :one
-SELECT id, user_id, title, topics, body, upvotes, downvotes, popularity, created_at, last_modified_at, user_display_name, user_profile_img_url FROM posts_with_author
+SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity, user_display_name, user_profile_img_url FROM posts_with_author
 WHERE id = $1
 LIMIT 1
 `
@@ -184,9 +184,9 @@ func (q *Queries) GetPost(ctx context.Context, id int64) (PostsWithAuthor, error
 		&i.Body,
 		&i.Upvotes,
 		&i.Downvotes,
-		&i.Popularity,
 		&i.CreatedAt,
 		&i.LastModifiedAt,
+		&i.Popularity,
 		&i.UserDisplayName,
 		&i.UserProfileImgUrl,
 	)
@@ -194,7 +194,7 @@ func (q *Queries) GetPost(ctx context.Context, id int64) (PostsWithAuthor, error
 }
 
 const getPostsByPopularity = `-- name: GetPostsByPopularity :many
-SELECT id, user_id, title, topics, body, upvotes, downvotes, popularity, created_at, last_modified_at, user_display_name, user_profile_img_url FROM posts_with_author
+SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity, user_display_name, user_profile_img_url FROM posts_with_author
 WHERE p.created_at >= (NOW() - $3::INTERVAL)
 ORDER BY (p.upvotes - p.downvotes) DESC
 LIMIT $1
@@ -224,9 +224,9 @@ func (q *Queries) GetPostsByPopularity(ctx context.Context, arg GetPostsByPopula
 			&i.Body,
 			&i.Upvotes,
 			&i.Downvotes,
-			&i.Popularity,
 			&i.CreatedAt,
 			&i.LastModifiedAt,
+			&i.Popularity,
 			&i.UserDisplayName,
 			&i.UserProfileImgUrl,
 		); err != nil {

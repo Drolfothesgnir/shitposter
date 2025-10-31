@@ -135,7 +135,7 @@ func (q *Queries) GetComment(ctx context.Context, id int64) (Comment, error) {
 }
 
 const getCommentsByPopularity = `-- name: GetCommentsByPopularity :many
-SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity FROM get_comments_by_popularity(
+SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity, user_display_name, user_profile_img_url FROM get_comments_by_popularity(
   p_post_id := $1,
   p_root_limit := $2,
   p_root_offset := $3
@@ -148,15 +148,15 @@ type GetCommentsByPopularityParams struct {
 	PRootOffset int32 `json:"p_root_offset"`
 }
 
-func (q *Queries) GetCommentsByPopularity(ctx context.Context, arg GetCommentsByPopularityParams) ([]Comment, error) {
+func (q *Queries) GetCommentsByPopularity(ctx context.Context, arg GetCommentsByPopularityParams) ([]CommentsWithAuthor, error) {
 	rows, err := q.db.Query(ctx, getCommentsByPopularity, arg.PPostID, arg.PRootLimit, arg.PRootOffset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Comment{}
+	items := []CommentsWithAuthor{}
 	for rows.Next() {
-		var i Comment
+		var i CommentsWithAuthor
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -171,6 +171,8 @@ func (q *Queries) GetCommentsByPopularity(ctx context.Context, arg GetCommentsBy
 			&i.IsDeleted,
 			&i.DeletedAt,
 			&i.Popularity,
+			&i.UserDisplayName,
+			&i.UserProfileImgUrl,
 		); err != nil {
 			return nil, err
 		}

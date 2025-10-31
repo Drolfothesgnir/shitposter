@@ -25,7 +25,7 @@ type Querier interface {
 	EmailExists(ctx context.Context, email string) (bool, error)
 	GetComment(ctx context.Context, id int64) (Comment, error)
 	GetCommentVote(ctx context.Context, arg GetCommentVoteParams) (CommentVote, error)
-	GetCommentsByPopularity(ctx context.Context, arg GetCommentsByPopularityParams) ([]Comment, error)
+	GetCommentsByPopularity(ctx context.Context, arg GetCommentsByPopularityParams) ([]CommentsWithAuthor, error)
 	GetNewestPosts(ctx context.Context, arg GetNewestPostsParams) ([]PostsWithAuthor, error)
 	GetOldestPosts(ctx context.Context, arg GetOldestPostsParams) ([]PostsWithAuthor, error)
 	GetPost(ctx context.Context, id int64) (PostsWithAuthor, error)

@@ -48,3 +48,8 @@ SET
   last_modified_at = NOW()
 WHERE id = $1 AND is_deleted = FALSE
 RETURNING *;
+
+-- name: TestUtilGetActiveUsers :many
+SELECT * FROM users
+WHERE is_deleted = FALSE
+LIMIT $1;

@@ -482,6 +482,21 @@ func (mr *MockStoreMockRecorder) SoftDeleteUserTx(ctx, userID any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SoftDeleteUserTx", reflect.TypeOf((*MockStore)(nil).SoftDeleteUserTx), ctx, userID)
 }
 
+// TestUtilGetActiveUsers mocks base method.
+func (m *MockStore) TestUtilGetActiveUsers(ctx context.Context, limit int32) ([]db.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TestUtilGetActiveUsers", ctx, limit)
+	ret0, _ := ret[0].([]db.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TestUtilGetActiveUsers indicates an expected call of TestUtilGetActiveUsers.
+func (mr *MockStoreMockRecorder) TestUtilGetActiveUsers(ctx, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TestUtilGetActiveUsers", reflect.TypeOf((*MockStore)(nil).TestUtilGetActiveUsers), ctx, limit)
+}
+
 // UpdateComment mocks base method.
 func (m *MockStore) UpdateComment(ctx context.Context, arg db.UpdateCommentParams) (db.Comment, error) {
 	m.ctrl.T.Helper()

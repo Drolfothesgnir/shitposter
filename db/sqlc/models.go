@@ -112,9 +112,9 @@ type PostsWithAuthor struct {
 	Body              []byte      `json:"body"`
 	Upvotes           int64       `json:"upvotes"`
 	Downvotes         int64       `json:"downvotes"`
-	Popularity        pgtype.Int8 `json:"popularity"`
 	CreatedAt         time.Time   `json:"created_at"`
 	LastModifiedAt    time.Time   `json:"last_modified_at"`
+	Popularity        pgtype.Int8 `json:"popularity"`
 	UserDisplayName   string      `json:"user_display_name"`
 	UserProfileImgUrl pgtype.Text `json:"user_profile_img_url"`
 }

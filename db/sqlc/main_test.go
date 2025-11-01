@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"math/rand/v2"
 	"os"
+	"slices"
 	"sync"
 	"testing"
 
@@ -33,35 +35,73 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// will generate approximately 861 comment
 func TestCreateDummyComments(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
 
-	GenerateDummyComments(t, CommentsGeneratorParams{
-		AvailableUserIDs: []int64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-		PostID:           4,
-		MaxAttempts:      3,
-		Count:            100,
+	nUsers := int32(10)
+
+	users, err := testStore.TestUtilGetActiveUsers(context.Background(), nUsers)
+	require.NoError(t, err)
+
+	nUsersActual := len(users)
+
+	userIds := make([]int64, nUsersActual)
+
+	for i, user := range users {
+		userIds[i] = user.ID
+	}
+
+	post, err := testStore.GetNewestPosts(context.Background(), GetNewestPostsParams{
+		Limit:  1,
+		Offset: 0,
 	})
 
+	postID := post[0].ID
+
+	require.NoError(t, err)
+
+	nRoots := 100
+
+	var wg sync.WaitGroup
+
+	wg.Add(nRoots)
+
+	queue := make([]Comment, nRoots)
+
+	for i := range queue {
+		go func(i int) {
+			defer wg.Done()
+			j := rand.Int64N(int64(len(userIds)))
+			queue[i] = createTestComment(t, postID, nil, userIds[j])
+		}(i)
+	}
+
+	wg.Wait()
+
+	prob := 0.8
+	maxAttempts := 3
+
+	for head := 0; head < len(queue); head++ {
+		cur := queue[head]
+		ids := slices.Clone(userIds)
+		for range maxAttempts {
+			p := rand.Float64()
+			if p < prob*math.Pow(0.5, float64(cur.Depth)) {
+				j := rand.Int64N(int64(len(ids)))
+				newComment := createTestComment(t, postID, &cur.ID, ids[j])
+				ids = slices.Delete(ids, int(j), int(j)+1)
+				queue = append(queue, newComment)
+			}
+		}
+	}
 }
 
-type CommentsGeneratorParams struct {
-	AvailableUserIDs []int64
-	PostID           int64
-	MaxAttempts      int64
-	Count            int64
-}
-
-// recursive function to create comment
-func f(t *testing.T, parent_id *int64, prob float64, params CommentsGeneratorParams, wg *sync.WaitGroup) {
-	n := rand.Int64N(int64(len(params.AvailableUserIDs)))
-
+func createTestComment(t *testing.T, postID int64, parentID *int64, userID int64) Comment {
 	body := "top comment"
-	if parent_id != nil {
-		body = fmt.Sprintf("reply to a comment %d", *parent_id)
+	if parentID != nil {
+		body = fmt.Sprintf("reply to a comment %d", *parentID)
 	}
 
 	upvote_scalar := 1.0
@@ -79,11 +119,11 @@ func f(t *testing.T, parent_id *int64, prob float64, params CommentsGeneratorPar
 		downvote_scalar = 2.0
 	}
 
-	p_id, ok := getParentID(parent_id)
+	p_id, ok := getParentID(parentID)
 
 	comment, err := testStore.CreateComment(context.Background(), CreateCommentParams{
-		PUserID:    params.AvailableUserIDs[n],
-		PPostID:    params.PostID,
+		PUserID:    userID,
+		PPostID:    postID,
 		PBody:      body,
 		PParentID:  pgtype.Int8{Int64: p_id, Valid: ok},
 		PUpvotes:   pgtype.Int8{Int64: int64(upvote_scalar * float64(rand.Int64N(1000))), Valid: true},
@@ -92,33 +132,7 @@ func f(t *testing.T, parent_id *int64, prob float64, params CommentsGeneratorPar
 
 	require.NoError(t, err)
 
-	// attempt to create first level replies
-	for range params.MaxAttempts {
-		p := rand.Float64()
-		if p < prob {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				f(t, &comment.ID, prob*0.5, params, wg)
-			}()
-		}
-	}
-
-}
-
-func GenerateDummyComments(t *testing.T, params CommentsGeneratorParams) {
-
-	var wg sync.WaitGroup
-
-	for range params.Count {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			f(t, nil, 0.8, params, &wg)
-		}()
-	}
-
-	wg.Wait()
+	return comment
 }
 
 func getParentID(parent_id *int64) (int64, bool) {

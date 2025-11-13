@@ -38,6 +38,7 @@ type Querier interface {
 	ListSessionsByUser(ctx context.Context, userID int64) ([]Session, error)
 	ListUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error)
 	SoftDeleteUser(ctx context.Context, id int64) error
+	TestUtilGetActiveUsers(ctx context.Context, limit int32) ([]User, error)
 	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)
 	UpdateCredentialSignCount(ctx context.Context, arg UpdateCredentialSignCountParams) error
 	UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, error)

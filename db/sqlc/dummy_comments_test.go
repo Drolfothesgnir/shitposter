@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
 	"math/rand/v2"
@@ -19,15 +18,17 @@ func TestCreateDummyComments(t *testing.T) {
 		t.Skip()
 	}
 
+	// with this ↓ exact values it's expected to generate about 861 comments
 	const (
-		numUsers            = 10
-		numRoots            = 100
-		numWorkers          = 8
-		prob                = 0.8
-		decay               = 0.5
-		maxRepliesPerParent = 3
+		numUsers            = 10  // number of available user IDs
+		numRoots            = 100 // number of top level (depth-0) comments
+		numWorkers          = 8   // max number of dedicated goroutines
+		prob                = 0.8 // base probability of creation of a reply
+		decay               = 0.5 // by how much probability of creation will be reduced based on depth -> prob*decay^depth
+		maxRepliesPerParent = 3   // number of same depth replies to any comment
 	)
 
+	// getting available user ids
 	users, err := testStore.TestUtilGetActiveUsers(context.Background(), numUsers)
 	require.NoError(t, err)
 	require.NotEmpty(t, users)
@@ -40,6 +41,7 @@ func TestCreateDummyComments(t *testing.T) {
 		userIDs[i] = user.ID
 	}
 
+	// getting active post to add comments to
 	post, err := testStore.GetNewestPosts(context.Background(), GetNewestPostsParams{
 		Limit:  1,
 		Offset: 0,
@@ -52,93 +54,63 @@ func TestCreateDummyComments(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	wg.Add(numRoots)
+	// global RNG for reproducibility
+	R := rand.New(rand.NewPCG(42, 1024))
 
-	a := maxRepliesPerParent * prob
-	q := decay
-	eps := 1e-9
-
-	// Expected number of generated comments.
-	// with these ↑ exact values it is expected to generate about 861 comment
-	e, _, err := PartialTheta(a, q, eps)
-	require.NoError(t, err)
-
-	expComments := int(e) * numRoots
-
-	queue := make([]Comment, numRoots, expComments)
-
-	r := rand.New(rand.NewPCG(42, 1024))
-
-	jobs := make(chan int)
-
-	errQueue := make([]error, 0, expComments)
-
-	errs := make(chan error)
-
-	done := make(chan struct{})
-
-	go func() {
-		for err := range errs {
-			if err != nil {
-				errQueue = append(errQueue, err)
-			}
-
-		}
-		done <- struct{}{}
-	}()
+	// task queue through which all work will happen.
+	// it's critical to have buffered channel to avoid deadlocks.
+	tasks := make(chan Comment, 1024)
 
 	for w := range numWorkers {
-		go func(w int) {
-			r := rand.New(rand.NewPCG(uint64(w), 1024))
-			for i := range jobs {
-				j := r.Int64N(int64(len(userIDs)))
-				c, err := createTestComment(r, postID, nil, userIDs[j])
-				if err == nil {
-					queue[i] = c
+		go func(i int) {
+			// each worker will have its own RNG
+			r := rand.New(rand.NewPCG(uint64(i), 1024))
+			for task := range tasks {
+				// the deeper the comment is the lower is the probability of reply creation
+				threshold := prob * math.Pow(decay, float64(task.Depth))
+				// guarding against out of bounds index for user id
+				attempts := min(maxRepliesPerParent, len(userIDs))
+				// cloning user ids to be able to remove already used id.
+				// db doesn't allow multiple replies from the same user
+				ids := slices.Clone(userIDs)
+				for range attempts {
+					p := r.Float64()
+					if p > threshold {
+						continue
+					}
+
+					j := r.Int64N(int64(len(ids)))
+					userID := ids[j]
+					cmnt, err := createTestComment(r, postID, &task.ID, userID)
+					if err != nil {
+						t.Log(err)
+						continue
+					}
+
+					// removing used user id
+					ids = slices.Delete(ids, int(j), int(j)+1)
+					wg.Add(1)
+					// sending back to job queue
+					tasks <- cmnt
 				}
-				errs <- err
 				wg.Done()
 			}
 		}(w)
 	}
 
-	go func() {
-		for i := range numRoots {
-			jobs <- i
-		}
-		close(jobs)
-	}()
-
-	wg.Wait()
-
-	for head := 0; head < len(queue); head++ {
-		cur := queue[head]
-		if cur.ID == 0 {
+	for range numRoots {
+		i := R.Int64N(int64(len(userIDs)))
+		root, err := createTestComment(R, postID, nil, userIDs[i])
+		if err != nil {
+			t.Log(err)
 			continue
 		}
 
-		ids := slices.Clone(userIDs)
-		attempts := min(maxRepliesPerParent, len(ids))
-		for range attempts {
-			p := r.Float64()
-			if p < prob*math.Pow(decay, float64(cur.Depth)) {
-				j := r.Int64N(int64(len(ids)))
-				newComment, err := createTestComment(r, postID, &cur.ID, ids[j])
-				if err == nil {
-					queue = append(queue, newComment)
-				}
-				errs <- err
-				ids = slices.Delete(ids, int(j), int(j)+1)
-			}
-		}
+		wg.Add(1)
+		tasks <- root
 	}
 
-	close(errs)
-	<-done
-
-	for _, err := range errQueue {
-		require.NoError(t, err)
-	}
+	wg.Wait()
 }
 
 func createTestComment(r *rand.Rand, postID int64, parentID *int64, userID int64) (Comment, error) {
@@ -182,68 +154,4 @@ func getParentID(parent_id *int64) (int64, bool) {
 	}
 
 	return -1, false
-}
-
-// PartialTheta computes S(a,q) = sum_{n>=0} a^n q^{n(n-1)/2}
-// with absolute error <= eps (roughly), for 0<q<1, a>=0.
-// It returns the sum and the number of terms used.
-func PartialTheta(a, q, eps float64) (sum float64, terms int, _ error) {
-	if !(q > 0 && q < 1) {
-		return 0, 0, errors.New("q must be in (0,1)")
-	}
-	if a < 0 || eps <= 0 {
-		return 0, 0, errors.New("a >= 0 and eps > 0 required")
-	}
-
-	// Kahan compensated sum
-	var c float64
-	add := func(x float64) {
-		y := x - c
-		t := sum + y
-		c = (t - sum) - y
-		sum = t
-	}
-
-	// t_n is current term; start at n=0
-	t := 1.0
-	add(t)
-	terms = 1
-
-	// ratio for next step: r_n = a*q^{n}; start with n=0 => r=a
-	r := a
-
-	// Warm-up to reach r*q < 1 so tail bound becomes valid.
-	// Solve a*q^N < 1 => N > log(1/a)/log(q) (note log(q)<0).
-	if a >= 1 {
-		N0 := int(math.Floor(math.Log(1/a)/math.Log(q))) + 1
-		N0 = max(N0, 0)
-		for i := 0; i < N0; i++ {
-			t *= r // t_{n+1} = t_n * r_n
-			add(t)
-			terms++
-			r *= q // r_{n+1} = a*q^{n+1}
-		}
-	}
-
-	for {
-		// advance one term
-		t *= r
-		add(t)
-		terms++
-
-		// Next-step upper bound on subsequent ratios is r*q (since ratios decrease).
-		rBound := r * q
-		if rBound < 1 {
-			// Tail <= t_{next} * rBound / (1 - rBound)
-			// Here t is t_{current}; next term would be t*rBound roughly,
-			// but this bound is conservative and simple:
-			tail := t * rBound / (1 - rBound)
-			if tail <= eps {
-				return sum, terms, nil
-			}
-		}
-
-		// prepare next ratio
-		r *= q
-	}
 }

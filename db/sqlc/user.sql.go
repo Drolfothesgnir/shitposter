@@ -132,6 +132,44 @@ func (q *Queries) SoftDeleteUser(ctx context.Context, id int64) error {
 	return err
 }
 
+const testUtilGetActiveUsers = `-- name: TestUtilGetActiveUsers :many
+SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email FROM users
+WHERE is_deleted = FALSE
+LIMIT $1
+`
+
+func (q *Queries) TestUtilGetActiveUsers(ctx context.Context, limit int32) ([]User, error) {
+	rows, err := q.db.Query(ctx, testUtilGetActiveUsers, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.WebauthnUserHandle,
+			&i.ProfileImgUrl,
+			&i.Email,
+			&i.CreatedAt,
+			&i.IsDeleted,
+			&i.DeletedAt,
+			&i.DisplayName,
+			&i.ArchivedUsername,
+			&i.ArchivedEmail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET

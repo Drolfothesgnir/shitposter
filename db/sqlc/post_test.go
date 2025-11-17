@@ -290,7 +290,7 @@ func TestDeletePostVote(t *testing.T) {
 
 	require.NoError(t, err)
 
-	post2, err := testStore.GetPost(context.Background(), post1.ID)
+	post2, err := testStore.GetPostWithAuthor(context.Background(), post1.ID)
 
 	require.NoError(t, err)
 	require.Equal(t, post1.Upvotes, post2.Upvotes)
@@ -312,17 +312,17 @@ func TestDeletePost(t *testing.T) {
 	post1 := createRandomPost(t)
 
 	comment1, err := testStore.CreateComment(context.Background(), CreateCommentParams{
-		PUserID: user.ID,
-		PPostID: post1.ID,
-		PBody:   util.RandomString(6),
+		UserID: user.ID,
+		PostID: post1.ID,
+		Body:   util.RandomString(6),
 	})
 
 	require.NoError(t, err)
 
 	comment2, err := testStore.CreateComment(context.Background(), CreateCommentParams{
-		PUserID: user.ID,
-		PPostID: post1.ID,
-		PBody:   util.RandomString(6),
+		UserID: user.ID,
+		PostID: post1.ID,
+		Body:   util.RandomString(6),
 	})
 
 	require.NoError(t, err)
@@ -330,7 +330,7 @@ func TestDeletePost(t *testing.T) {
 	err = testStore.DeletePost(context.Background(), post1.ID)
 	require.NoError(t, err)
 
-	_, err = testStore.GetPost(context.Background(), post1.ID)
+	_, err = testStore.GetPostWithAuthor(context.Background(), post1.ID)
 	require.Error(t, err)
 	require.ErrorIs(t, err, pgx.ErrNoRows)
 

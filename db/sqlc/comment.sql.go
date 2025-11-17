@@ -12,33 +12,38 @@ import (
 )
 
 const createComment = `-- name: CreateComment :one
-SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity FROM insert_comment(
-  p_user_id := $1,
-  p_post_id := $2,
-  p_body := $3,
-  p_parent_id := $4,
-  p_upvotes := $5,
-  p_downvotes := $6
-)
+INSERT INTO comments (
+  user_id,
+  post_id,
+  body,
+  parent_id,
+  depth,
+  upvotes,
+  downvotes
+) VALUES (
+  $1, $2, $3, $4, $5, $6, $7
+) RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity
 `
 
 type CreateCommentParams struct {
-	PUserID    int64       `json:"p_user_id"`
-	PPostID    int64       `json:"p_post_id"`
-	PBody      string      `json:"p_body"`
-	PParentID  pgtype.Int8 `json:"p_parent_id"`
-	PUpvotes   pgtype.Int8 `json:"p_upvotes"`
-	PDownvotes pgtype.Int8 `json:"p_downvotes"`
+	UserID    int64       `json:"user_id"`
+	PostID    int64       `json:"post_id"`
+	Body      string      `json:"body"`
+	ParentID  pgtype.Int8 `json:"parent_id"`
+	Depth     int32       `json:"depth"`
+	Upvotes   int64       `json:"upvotes"`
+	Downvotes int64       `json:"downvotes"`
 }
 
 func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error) {
 	row := q.db.QueryRow(ctx, createComment,
-		arg.PUserID,
-		arg.PPostID,
-		arg.PBody,
-		arg.PParentID,
-		arg.PUpvotes,
-		arg.PDownvotes,
+		arg.UserID,
+		arg.PostID,
+		arg.Body,
+		arg.ParentID,
+		arg.Depth,
+		arg.Upvotes,
+		arg.Downvotes,
 	)
 	var i Comment
 	err := row.Scan(
@@ -115,6 +120,34 @@ WHERE id = $1 LIMIT 1
 
 func (q *Queries) GetComment(ctx context.Context, id int64) (Comment, error) {
 	row := q.db.QueryRow(ctx, getComment, id)
+	var i Comment
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PostID,
+		&i.ParentID,
+		&i.Depth,
+		&i.Upvotes,
+		&i.Downvotes,
+		&i.Body,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.Popularity,
+	)
+	return i, err
+}
+
+const getCommentWithLock = `-- name: GetCommentWithLock :one
+SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity FROM comments
+WHERE id = $1 
+FOR KEY SHARE
+LIMIT 1
+`
+
+func (q *Queries) GetCommentWithLock(ctx context.Context, id int64) (Comment, error) {
+	row := q.db.QueryRow(ctx, getCommentWithLock, id)
 	var i Comment
 	err := row.Scan(
 		&i.ID,

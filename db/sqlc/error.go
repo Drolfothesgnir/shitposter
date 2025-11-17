@@ -1,8 +1,11 @@
 package db
 
-import "fmt"
+import "errors"
 
 var (
-	ErrDuplicateVote    = fmt.Errorf("duplicate vote")
-	ErrInvalidVoteValue = fmt.Errorf("vote value must be either 1 of -1")
+	ErrDuplicateVote               = errors.New("duplicate vote")
+	ErrInvalidVoteValue            = errors.New("vote value must be either 1 of -1")
+	ErrParentCommentNotFound       = errors.New("parent comment not found")
+	ErrParentCommentPostIDMismatch = errors.New("parent comment has different post id")
+	ErrInvalidPostID               = errors.New("invalid post id")
 )

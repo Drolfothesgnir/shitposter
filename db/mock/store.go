@@ -262,6 +262,21 @@ func (mr *MockStoreMockRecorder) GetCommentVote(ctx, arg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommentVote", reflect.TypeOf((*MockStore)(nil).GetCommentVote), ctx, arg)
 }
 
+// GetCommentWithLock mocks base method.
+func (m *MockStore) GetCommentWithLock(ctx context.Context, id int64) (db.Comment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCommentWithLock", ctx, id)
+	ret0, _ := ret[0].(db.Comment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCommentWithLock indicates an expected call of GetCommentWithLock.
+func (mr *MockStoreMockRecorder) GetCommentWithLock(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommentWithLock", reflect.TypeOf((*MockStore)(nil).GetCommentWithLock), ctx, id)
+}
+
 // GetCommentsByPopularity mocks base method.
 func (m *MockStore) GetCommentsByPopularity(ctx context.Context, arg db.GetCommentsByPopularityParams) ([]db.CommentsWithAuthor, error) {
 	m.ctrl.T.Helper()
@@ -308,10 +323,10 @@ func (mr *MockStoreMockRecorder) GetOldestPosts(ctx, arg any) *gomock.Call {
 }
 
 // GetPost mocks base method.
-func (m *MockStore) GetPost(ctx context.Context, id int64) (db.PostsWithAuthor, error) {
+func (m *MockStore) GetPost(ctx context.Context, id int64) (db.Post, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetPost", ctx, id)
-	ret0, _ := ret[0].(db.PostsWithAuthor)
+	ret0, _ := ret[0].(db.Post)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -335,6 +350,21 @@ func (m *MockStore) GetPostVote(ctx context.Context, arg db.GetPostVoteParams) (
 func (mr *MockStoreMockRecorder) GetPostVote(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostVote", reflect.TypeOf((*MockStore)(nil).GetPostVote), ctx, arg)
+}
+
+// GetPostWithAuthor mocks base method.
+func (m *MockStore) GetPostWithAuthor(ctx context.Context, id int64) (db.PostsWithAuthor, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPostWithAuthor", ctx, id)
+	ret0, _ := ret[0].(db.PostsWithAuthor)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPostWithAuthor indicates an expected call of GetPostWithAuthor.
+func (mr *MockStoreMockRecorder) GetPostWithAuthor(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostWithAuthor", reflect.TypeOf((*MockStore)(nil).GetPostWithAuthor), ctx, id)
 }
 
 // GetPostsByPopularity mocks base method.
@@ -410,6 +440,21 @@ func (m *MockStore) GetUserCredentials(ctx context.Context, userID int64) ([]db.
 func (mr *MockStoreMockRecorder) GetUserCredentials(ctx, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserCredentials", reflect.TypeOf((*MockStore)(nil).GetUserCredentials), ctx, userID)
+}
+
+// InsertCommentTx mocks base method.
+func (m *MockStore) InsertCommentTx(ctx context.Context, arg db.InsertCommentTxParams) (db.Comment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertCommentTx", ctx, arg)
+	ret0, _ := ret[0].(db.Comment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InsertCommentTx indicates an expected call of InsertCommentTx.
+func (mr *MockStoreMockRecorder) InsertCommentTx(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertCommentTx", reflect.TypeOf((*MockStore)(nil).InsertCommentTx), ctx, arg)
 }
 
 // ListSessionsByUser mocks base method.

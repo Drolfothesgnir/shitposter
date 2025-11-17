@@ -1,12 +1,21 @@
 -- name: CreateComment :one
-SELECT * FROM insert_comment(
-  p_user_id := $1,
-  p_post_id := $2,
-  p_body := $3,
-  p_parent_id := sqlc.narg('p_parent_id'),
-  p_upvotes := sqlc.narg('p_upvotes'),
-  p_downvotes := sqlc.narg('p_downvotes')
-);
+INSERT INTO comments (
+  user_id,
+  post_id,
+  body,
+  parent_id,
+  depth,
+  upvotes,
+  downvotes
+) VALUES (
+  $1, $2, $3, $4, $5, $6, $7
+) RETURNING *;
+
+-- name: GetCommentWithLock :one
+SELECT * FROM comments
+WHERE id = $1 
+FOR KEY SHARE
+LIMIT 1;
 
 -- name: GetComment :one
 SELECT * FROM comments

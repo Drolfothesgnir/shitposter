@@ -168,13 +168,37 @@ func (q *Queries) GetOldestPosts(ctx context.Context, arg GetOldestPostsParams) 
 }
 
 const getPost = `-- name: GetPost :one
+SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity FROM posts
+WHERE id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetPost(ctx context.Context, id int64) (Post, error) {
+	row := q.db.QueryRow(ctx, getPost, id)
+	var i Post
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Topics,
+		&i.Body,
+		&i.Upvotes,
+		&i.Downvotes,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+		&i.Popularity,
+	)
+	return i, err
+}
+
+const getPostWithAuthor = `-- name: GetPostWithAuthor :one
 SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity, user_display_name, user_profile_img_url FROM posts_with_author
 WHERE id = $1
 LIMIT 1
 `
 
-func (q *Queries) GetPost(ctx context.Context, id int64) (PostsWithAuthor, error) {
-	row := q.db.QueryRow(ctx, getPost, id)
+func (q *Queries) GetPostWithAuthor(ctx context.Context, id int64) (PostsWithAuthor, error) {
+	row := q.db.QueryRow(ctx, getPostWithAuthor, id)
 	var i PostsWithAuthor
 	err := row.Scan(
 		&i.ID,

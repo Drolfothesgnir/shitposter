@@ -81,7 +81,7 @@ func TestCreateDummyComments(t *testing.T) {
 
 					j := r.Int64N(int64(len(ids)))
 					userID := ids[j]
-					cmnt, err := createTestComment(r, postID, &task.ID, userID)
+					cmnt, err := createTestComment(R, postID, &task.ID, userID)
 					if err != nil {
 						t.Log(err)
 						continue
@@ -136,13 +136,13 @@ func createTestComment(r *rand.Rand, postID int64, parentID *int64, userID int64
 
 	p_id, ok := getParentID(parentID)
 
-	comment, err := testStore.CreateComment(context.Background(), CreateCommentParams{
-		PUserID:    userID,
-		PPostID:    postID,
-		PBody:      body,
-		PParentID:  pgtype.Int8{Int64: p_id, Valid: ok},
-		PUpvotes:   pgtype.Int8{Int64: int64(upvote_scalar * float64(r.Int64N(1000))), Valid: true},
-		PDownvotes: pgtype.Int8{Int64: int64(downvote_scalar * float64(r.Int64N(1000))), Valid: true},
+	comment, err := testStore.InsertCommentTx(context.Background(), InsertCommentTxParams{
+		UserID:    userID,
+		PostID:    postID,
+		Body:      body,
+		ParentID:  pgtype.Int8{Int64: p_id, Valid: ok},
+		Upvotes:   int64(upvote_scalar * float64(r.Int64N(1000))),
+		Downvotes: int64(downvote_scalar * float64(r.Int64N(1000))),
 	})
 
 	return comment, err

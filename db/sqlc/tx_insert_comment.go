@@ -18,6 +18,8 @@ type InsertCommentTxParams struct {
 	Downvotes int64       `json:"downvotes"`
 }
 
+// TODO: Currently user is allowed to reply to his own comments to the infinite depth.
+// I should limit this behavoiur.
 func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParams) (Comment, error) {
 	var result Comment
 
@@ -43,6 +45,11 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 			// if parent comment's post_id and provided post_id differs abort
 			if parent.PostID != arg.PostID {
 				return ErrParentCommentPostIDMismatch
+			}
+
+			// check if comment is alive
+			if parent.IsDeleted {
+				return ErrParentCommentDeleted
 			}
 
 			// if everything is ok child will have parent's depth + 1

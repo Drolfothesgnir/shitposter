@@ -8,4 +8,5 @@ var (
 	ErrParentCommentNotFound       = errors.New("parent comment not found")
 	ErrParentCommentPostIDMismatch = errors.New("parent comment has different post id")
 	ErrInvalidPostID               = errors.New("invalid post id")
+	ErrParentCommentDeleted        = errors.New("parent comment is deleted")
 )

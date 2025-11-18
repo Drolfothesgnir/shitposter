@@ -28,8 +28,7 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 		var depth int32
 
 		if arg.ParentID.Valid {
-			// getting parent comment and locking it for updating parent comment's ID
-			// though currently other functions do not alter entity ids
+			// getting parent comment and preventing its deletion from other queries
 			parent, err := q.GetCommentWithLock(ctx, arg.ParentID.Int64)
 
 			// if there is no parent comment when parent id is provided abort with error

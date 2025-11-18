@@ -64,19 +64,17 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 	return i, err
 }
 
-const deleteComment = `-- name: DeleteComment :one
-UPDATE comments
-SET 
-  body = '[deleted]',
-  is_deleted = true,
-  deleted_at = NOW(),
-  last_modified_at = NOW()
-WHERE id = $1
-RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity
+const deleteCommentIfLeaf = `-- name: DeleteCommentIfLeaf :one
+DELETE FROM comments c
+WHERE c.id = $1
+AND NOT EXISTS (
+  SELECT 1 FROM comments ch
+  WHERE ch.parent_id = c.id
+) RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity
 `
 
-func (q *Queries) DeleteComment(ctx context.Context, id int64) (Comment, error) {
-	row := q.db.QueryRow(ctx, deleteComment, id)
+func (q *Queries) DeleteCommentIfLeaf(ctx context.Context, id int64) (Comment, error) {
+	row := q.db.QueryRow(ctx, deleteCommentIfLeaf, id)
 	var i Comment
 	err := row.Scan(
 		&i.ID,
@@ -215,6 +213,38 @@ func (q *Queries) GetCommentsByPopularity(ctx context.Context, arg GetCommentsBy
 		return nil, err
 	}
 	return items, nil
+}
+
+const softDeleteComment = `-- name: SoftDeleteComment :one
+UPDATE comments
+SET 
+  body = '[deleted]',
+  is_deleted = true,
+  deleted_at = NOW(),
+  last_modified_at = NOW()
+WHERE id = $1
+RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity
+`
+
+func (q *Queries) SoftDeleteComment(ctx context.Context, id int64) (Comment, error) {
+	row := q.db.QueryRow(ctx, softDeleteComment, id)
+	var i Comment
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PostID,
+		&i.ParentID,
+		&i.Depth,
+		&i.Upvotes,
+		&i.Downvotes,
+		&i.Body,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.Popularity,
+	)
+	return i, err
 }
 
 const updateComment = `-- name: UpdateComment :one

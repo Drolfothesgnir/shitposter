@@ -132,19 +132,19 @@ func (mr *MockStoreMockRecorder) CreateWebauthnCredentials(ctx, arg any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateWebauthnCredentials", reflect.TypeOf((*MockStore)(nil).CreateWebauthnCredentials), ctx, arg)
 }
 
-// DeleteComment mocks base method.
-func (m *MockStore) DeleteComment(ctx context.Context, id int64) (db.Comment, error) {
+// DeleteCommentIfLeaf mocks base method.
+func (m *MockStore) DeleteCommentIfLeaf(ctx context.Context, id int64) (db.Comment, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteComment", ctx, id)
+	ret := m.ctrl.Call(m, "DeleteCommentIfLeaf", ctx, id)
 	ret0, _ := ret[0].(db.Comment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// DeleteComment indicates an expected call of DeleteComment.
-func (mr *MockStoreMockRecorder) DeleteComment(ctx, id any) *gomock.Call {
+// DeleteCommentIfLeaf indicates an expected call of DeleteCommentIfLeaf.
+func (mr *MockStoreMockRecorder) DeleteCommentIfLeaf(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteComment", reflect.TypeOf((*MockStore)(nil).DeleteComment), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCommentIfLeaf", reflect.TypeOf((*MockStore)(nil).DeleteCommentIfLeaf), ctx, id)
 }
 
 // DeleteCommentVote mocks base method.
@@ -497,6 +497,21 @@ func (m *MockStore) Shutdown() {
 func (mr *MockStoreMockRecorder) Shutdown() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shutdown", reflect.TypeOf((*MockStore)(nil).Shutdown))
+}
+
+// SoftDeleteComment mocks base method.
+func (m *MockStore) SoftDeleteComment(ctx context.Context, id int64) (db.Comment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SoftDeleteComment", ctx, id)
+	ret0, _ := ret[0].(db.Comment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SoftDeleteComment indicates an expected call of SoftDeleteComment.
+func (mr *MockStoreMockRecorder) SoftDeleteComment(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SoftDeleteComment", reflect.TypeOf((*MockStore)(nil).SoftDeleteComment), ctx, id)
 }
 
 // SoftDeleteUser mocks base method.

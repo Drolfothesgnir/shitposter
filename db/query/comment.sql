@@ -17,6 +17,14 @@ WHERE id = $1
 FOR KEY SHARE
 LIMIT 1;
 
+-- name: DeleteCommentIfLeaf :one
+DELETE FROM comments c
+WHERE c.id = $1
+AND NOT EXISTS (
+  SELECT 1 FROM comments ch
+  WHERE ch.parent_id = c.id
+) RETURNING *;
+
 -- name: GetComment :one
 SELECT * FROM comments
 WHERE id = $1 LIMIT 1;
@@ -49,7 +57,7 @@ SELECT delete_comment_vote(
   p_user_id := $2
 );
 
--- name: DeleteComment :one
+-- name: SoftDeleteComment :one
 UPDATE comments
 SET 
   body = '[deleted]',

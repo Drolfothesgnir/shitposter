@@ -374,7 +374,7 @@ func TestGetCommentsByPopularityInvalidLimit(t *testing.T) {
 func TestDeleteComment(t *testing.T) {
 	comment1 := createRandomComment(t)
 
-	comment2, err := testStore.DeleteComment(context.Background(), comment1.ID)
+	comment2, err := testStore.SoftDeleteComment(context.Background(), comment1.ID)
 	require.NoError(t, err)
 
 	require.True(t, comment2.IsDeleted)

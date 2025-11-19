@@ -33,7 +33,7 @@ func (service *Service) updateUser(ctx *gin.Context) {
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(
 			http.StatusBadRequest,
-			NewErrorResponse(errors.New("invalid params"), ExtractErrorFields(err)...))
+			NewErrorResponse(ErrInvalidParams, ExtractErrorFields(err)...))
 		return
 	}
 

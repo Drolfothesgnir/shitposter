@@ -16,18 +16,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// TODO: rename consts properly
 const (
-	// api routes
 	WebauthnChallengeHeader = "X-Webauthn-Challenge"
 	WebauthnTransportHeader = "X-Webauthn-Transports"
-	UsersSignupStartURL     = "/users/signup/start"
-	UsersSignupFinishURL    = "/users/signup/finish"
-	UsersSigninStartURL     = "/users/signin/start"
-	UsersSigninFinishURL    = "/users/signin/finish"
-	UsersRenewAccessURL     = "/users/renew_access"
-	UsersDeleteUser         = "/users"
-	UsersGetUser            = "/users"
-	UsersUpdateUser         = "/users"
+	// api routes
+	UsersSignupStartURL  = "/users/signup/start"
+	UsersSignupFinishURL = "/users/signup/finish"
+	UsersSigninStartURL  = "/users/signin/start"
+	UsersSigninFinishURL = "/users/signin/finish"
+	UsersRenewAccessURL  = "/users/renew_access"
+	UsersDeleteUser      = "/users"
+	UsersGetUser         = "/users"
+	UsersUpdateUser      = "/users"
+	CommentsCreateRoot   = "/posts/:post_id/comments"
+	CommentsCreateReply  = "/posts/:post_id/comments/:comment_id"
 )
 
 var (
@@ -36,6 +39,10 @@ var (
 	ErrSessionUserMismatch         = errors.New("incorrect session user")
 	ErrSessionRefreshTokenMismatch = errors.New("refresh token mismatch")
 	ErrSessionExpired              = errors.New("session is expired")
+	ErrInvalidPostID               = errors.New("invalid post id")
+	ErrInvalidParams               = errors.New("invalid params")
+	ErrInvalidCommentID            = errors.New("invalid comment id")
+	ErrInvalidParentCommentId      = errors.New("invalid parent comment id")
 )
 
 type Service struct {
@@ -110,7 +117,8 @@ func (service *Service) SetupRouter(server *http.Server) {
 	authGroup := router.Group("/").Use(authMiddleware(service.tokenMaker))
 	authGroup.DELETE(UsersDeleteUser, service.deleteUser)
 	authGroup.PATCH(UsersUpdateUser, service.updateUser)
-
+	authGroup.POST(CommentsCreateRoot, service.createComment)
+	authGroup.POST(CommentsCreateReply, service.createComment)
 	server.Handler = router
 	service.router = router
 }

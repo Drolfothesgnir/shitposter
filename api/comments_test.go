@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -11,27 +12,29 @@ import (
 )
 
 // helper functions for creating roots and replies
-func root(id int64, postID int64) db.Comment {
-	return db.Comment{
-		ID:        id,
-		UserID:    100 + id,
-		PostID:    postID,
-		ParentID:  pgtype.Int8{Int64: 0, Valid: false},
-		Depth:     0,
-		Body:      "root",
-		CreatedAt: time.Time{},
+func root(id int64, postID int64) db.CommentsWithAuthor {
+	return db.CommentsWithAuthor{
+		ID:              id,
+		UserID:          100 + id,
+		PostID:          postID,
+		ParentID:        pgtype.Int8{Int64: 0, Valid: false},
+		Depth:           0,
+		Body:            "root",
+		CreatedAt:       time.Time{},
+		UserDisplayName: fmt.Sprintf("user_%d", id),
 	}
 }
 
-func child(id, parentID int64, depth int32, postID int64) db.Comment {
-	return db.Comment{
-		ID:        id,
-		UserID:    100 + id,
-		PostID:    postID,
-		ParentID:  pgtype.Int8{Int64: parentID, Valid: true},
-		Depth:     depth,
-		Body:      "child",
-		CreatedAt: time.Time{},
+func child(id, parentID int64, depth int32, postID int64) db.CommentsWithAuthor {
+	return db.CommentsWithAuthor{
+		ID:              id,
+		UserID:          100 + id,
+		PostID:          postID,
+		ParentID:        pgtype.Int8{Int64: parentID, Valid: true},
+		Depth:           depth,
+		Body:            "child",
+		CreatedAt:       time.Time{},
+		UserDisplayName: fmt.Sprintf("user_%d", id),
 	}
 }
 
@@ -42,7 +45,7 @@ func TestPrepareCommentTree_SimpleTree(t *testing.T) {
 	// │   ├── 3
 	// │   └── 4
 	// └── 5
-	ordered := []db.Comment{
+	ordered := []db.CommentsWithAuthor{
 		root(1, 10),
 		child(2, 1, 1, 10),
 		child(3, 2, 2, 10),
@@ -78,7 +81,7 @@ func TestPrepareCommentTree_MultipleRoots(t *testing.T) {
 	// 20
 	// ├── 21
 	// └── 22
-	ordered := []db.Comment{
+	ordered := []db.CommentsWithAuthor{
 		root(10, 77),
 		child(11, 10, 1, 77),
 
@@ -108,7 +111,7 @@ func TestPrepareCommentTree_MultipleRoots(t *testing.T) {
 
 func TestPrepareCommentTree_DepthJumpError(t *testing.T) {
 	// Error: depth jump from 0 to 2 (parent depth=1 is not seen yet)
-	ordered := []db.Comment{
+	ordered := []db.CommentsWithAuthor{
 		root(1, 42),
 		// wrong: depth=2, but stack has only root (len(stack)=1)
 		{
@@ -135,7 +138,7 @@ func TestPrepareCommentTree_SiblingBranchCut(t *testing.T) {
 	// ├── 2
 	// │   └── 3
 	// └── 4
-	ordered := []db.Comment{
+	ordered := []db.CommentsWithAuthor{
 		root(1, 100),
 		child(2, 1, 1, 100),
 		child(3, 2, 2, 100),

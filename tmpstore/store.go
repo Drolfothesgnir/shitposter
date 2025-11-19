@@ -48,6 +48,7 @@ type RedisStore struct {
 	client *redis.Client
 }
 
+// TODO: return proper errors
 func NewStore(config *util.Config) Store {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     config.RedisAddress, //  default "localhost:6379"

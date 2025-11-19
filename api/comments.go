@@ -7,7 +7,7 @@ import (
 )
 
 type CommentNode struct {
-	db.Comment
+	db.CommentsWithAuthor
 	Replies []*CommentNode `json:"replies,omitempty"`
 }
 
@@ -19,14 +19,14 @@ func (comment *CommentNode) GetParentID() (int64, bool) {
 // Comments from the database must be in depth-first order so the tree can be built from them.
 //
 // The tree will have n_roots number of roots
-func PrepareCommentTree(orderedPlainComments []db.Comment, n_roots int) ([]*CommentNode, error) {
+func PrepareCommentTree(orderedPlainComments []db.CommentsWithAuthor, n_roots int) ([]*CommentNode, error) {
 	result := make([]*CommentNode, 0, n_roots)
 	stack := make([]*CommentNode, 0, 5) // 5 is the guess of typical comment thread depth
 
 	for i := range orderedPlainComments {
 		// taking &CommentNode instead of &comment is crucial to avoit address-of-loop-variable bug
 		comment := &CommentNode{
-			Comment: orderedPlainComments[i],
+			CommentsWithAuthor: orderedPlainComments[i],
 		}
 
 		d := int(comment.Depth)

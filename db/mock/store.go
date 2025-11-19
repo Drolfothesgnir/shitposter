@@ -147,6 +147,20 @@ func (mr *MockStoreMockRecorder) DeleteCommentIfLeaf(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCommentIfLeaf", reflect.TypeOf((*MockStore)(nil).DeleteCommentIfLeaf), ctx, id)
 }
 
+// DeleteCommentTx mocks base method.
+func (m *MockStore) DeleteCommentTx(ctx context.Context, commentID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteCommentTx", ctx, commentID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteCommentTx indicates an expected call of DeleteCommentTx.
+func (mr *MockStoreMockRecorder) DeleteCommentTx(ctx, commentID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCommentTx", reflect.TypeOf((*MockStore)(nil).DeleteCommentTx), ctx, commentID)
+}
+
 // DeleteCommentVote mocks base method.
 func (m *MockStore) DeleteCommentVote(ctx context.Context, arg db.DeleteCommentVoteParams) error {
 	m.ctrl.T.Helper()

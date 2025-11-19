@@ -8,8 +8,13 @@ INSERT INTO posts (
   $1, $2, $3, $4
 ) RETURNING *;
 
--- name: GetPost :one
+-- name: GetPostWithAuthor :one
 SELECT * FROM posts_with_author
+WHERE id = $1
+LIMIT 1;
+
+-- name: GetPost :one
+SELECT * FROM posts
 WHERE id = $1
 LIMIT 1;
 

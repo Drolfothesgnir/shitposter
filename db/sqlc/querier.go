@@ -16,7 +16,7 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateWebauthnCredentials(ctx context.Context, arg CreateWebauthnCredentialsParams) (WebauthnCredential, error)
-	DeleteComment(ctx context.Context, id int64) (Comment, error)
+	DeleteCommentIfLeaf(ctx context.Context, id int64) (Comment, error)
 	DeleteCommentVote(ctx context.Context, arg DeleteCommentVoteParams) error
 	DeletePost(ctx context.Context, id int64) error
 	DeletePostVote(ctx context.Context, arg DeletePostVoteParams) error
@@ -25,11 +25,13 @@ type Querier interface {
 	EmailExists(ctx context.Context, email string) (bool, error)
 	GetComment(ctx context.Context, id int64) (Comment, error)
 	GetCommentVote(ctx context.Context, arg GetCommentVoteParams) (CommentVote, error)
-	GetCommentsByPopularity(ctx context.Context, arg GetCommentsByPopularityParams) ([]Comment, error)
+	GetCommentWithLock(ctx context.Context, id int64) (Comment, error)
+	GetCommentsByPopularity(ctx context.Context, arg GetCommentsByPopularityParams) ([]CommentsWithAuthor, error)
 	GetNewestPosts(ctx context.Context, arg GetNewestPostsParams) ([]PostsWithAuthor, error)
 	GetOldestPosts(ctx context.Context, arg GetOldestPostsParams) ([]PostsWithAuthor, error)
-	GetPost(ctx context.Context, id int64) (PostsWithAuthor, error)
+	GetPost(ctx context.Context, id int64) (Post, error)
 	GetPostVote(ctx context.Context, arg GetPostVoteParams) (PostVote, error)
+	GetPostWithAuthor(ctx context.Context, id int64) (PostsWithAuthor, error)
 	GetPostsByPopularity(ctx context.Context, arg GetPostsByPopularityParams) ([]PostsWithAuthor, error)
 	GetSession(ctx context.Context, id uuid.UUID) (Session, error)
 	GetUser(ctx context.Context, id int64) (User, error)
@@ -37,6 +39,7 @@ type Querier interface {
 	GetUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error)
 	ListSessionsByUser(ctx context.Context, userID int64) ([]Session, error)
 	ListUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error)
+	SoftDeleteComment(ctx context.Context, id int64) (Comment, error)
 	SoftDeleteUser(ctx context.Context, id int64) error
 	TestUtilGetActiveUsers(ctx context.Context, limit int32) ([]User, error)
 	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)

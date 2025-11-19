@@ -1,3 +1,4 @@
+-- WARNING: this function is redefined is comments_with_author migration. Do not refer to it as to the latest version.
 -- utility for extracting comments ordered by popularity
 CREATE OR REPLACE FUNCTION get_comments_by_popularity(
   p_post_id BIGINT,

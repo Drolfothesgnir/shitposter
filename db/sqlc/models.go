@@ -81,6 +81,24 @@ type CommentVote struct {
 	LastModifiedAt time.Time `json:"last_modified_at"`
 }
 
+type CommentsWithAuthor struct {
+	ID                int64       `json:"id"`
+	UserID            int64       `json:"user_id"`
+	PostID            int64       `json:"post_id"`
+	ParentID          pgtype.Int8 `json:"parent_id"`
+	Depth             int32       `json:"depth"`
+	Upvotes           int64       `json:"upvotes"`
+	Downvotes         int64       `json:"downvotes"`
+	Body              string      `json:"body"`
+	CreatedAt         time.Time   `json:"created_at"`
+	LastModifiedAt    time.Time   `json:"last_modified_at"`
+	IsDeleted         bool        `json:"is_deleted"`
+	DeletedAt         time.Time   `json:"deleted_at"`
+	Popularity        pgtype.Int8 `json:"popularity"`
+	UserDisplayName   string      `json:"user_display_name"`
+	UserProfileImgUrl pgtype.Text `json:"user_profile_img_url"`
+}
+
 type Post struct {
 	ID             int64       `json:"id"`
 	UserID         int64       `json:"user_id"`

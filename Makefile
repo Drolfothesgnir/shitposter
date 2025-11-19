@@ -30,6 +30,9 @@ mock:
 	mockgen -package mockwa -destination wauthn/mock/config.go github.com/Drolfothesgnir/shitposter/wauthn WebAuthnConfig
 	mockgen -package mocktk -destination token/mock/config.go github.com/Drolfothesgnir/shitposter/token Maker
 
+mockdb:
+	mockgen -package mockdb -destination db/mock/store.go github.com/Drolfothesgnir/shitposter/db/sqlc Store
+
 test:
 	go test -v -cover -short ./...
 
@@ -43,4 +46,4 @@ db_schema:
 server:
 	go run main.go
 
-.PHONY: new_migration db_schema migratedown migratedown1 migrateup migrateup1 sqlc test server
+.PHONY: new_migration db_schema migratedown migratedown1 migrateup migrateup1 sqlc test server mockdb dummy_comments

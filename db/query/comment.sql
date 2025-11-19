@@ -1,12 +1,29 @@
 -- name: CreateComment :one
-SELECT * FROM insert_comment(
-  p_user_id := $1,
-  p_post_id := $2,
-  p_body := $3,
-  p_parent_id := sqlc.narg('p_parent_id'),
-  p_upvotes := sqlc.narg('p_upvotes'),
-  p_downvotes := sqlc.narg('p_downvotes')
-);
+INSERT INTO comments (
+  user_id,
+  post_id,
+  body,
+  parent_id,
+  depth,
+  upvotes,
+  downvotes
+) VALUES (
+  $1, $2, $3, $4, $5, $6, $7
+) RETURNING *;
+
+-- name: GetCommentWithLock :one
+SELECT * FROM comments
+WHERE id = $1 
+FOR KEY SHARE
+LIMIT 1;
+
+-- name: DeleteCommentIfLeaf :one
+DELETE FROM comments c
+WHERE c.id = $1
+AND NOT EXISTS (
+  SELECT 1 FROM comments ch
+  WHERE ch.parent_id = c.id
+) RETURNING *;
 
 -- name: GetComment :one
 SELECT * FROM comments
@@ -40,7 +57,7 @@ SELECT delete_comment_vote(
   p_user_id := $2
 );
 
--- name: DeleteComment :one
+-- name: SoftDeleteComment :one
 UPDATE comments
 SET 
   body = '[deleted]',

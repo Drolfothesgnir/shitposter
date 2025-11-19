@@ -132,19 +132,33 @@ func (mr *MockStoreMockRecorder) CreateWebauthnCredentials(ctx, arg any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateWebauthnCredentials", reflect.TypeOf((*MockStore)(nil).CreateWebauthnCredentials), ctx, arg)
 }
 
-// DeleteComment mocks base method.
-func (m *MockStore) DeleteComment(ctx context.Context, id int64) (db.Comment, error) {
+// DeleteCommentIfLeaf mocks base method.
+func (m *MockStore) DeleteCommentIfLeaf(ctx context.Context, id int64) (db.Comment, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteComment", ctx, id)
+	ret := m.ctrl.Call(m, "DeleteCommentIfLeaf", ctx, id)
 	ret0, _ := ret[0].(db.Comment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// DeleteComment indicates an expected call of DeleteComment.
-func (mr *MockStoreMockRecorder) DeleteComment(ctx, id any) *gomock.Call {
+// DeleteCommentIfLeaf indicates an expected call of DeleteCommentIfLeaf.
+func (mr *MockStoreMockRecorder) DeleteCommentIfLeaf(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteComment", reflect.TypeOf((*MockStore)(nil).DeleteComment), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCommentIfLeaf", reflect.TypeOf((*MockStore)(nil).DeleteCommentIfLeaf), ctx, id)
+}
+
+// DeleteCommentTx mocks base method.
+func (m *MockStore) DeleteCommentTx(ctx context.Context, commentID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteCommentTx", ctx, commentID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteCommentTx indicates an expected call of DeleteCommentTx.
+func (mr *MockStoreMockRecorder) DeleteCommentTx(ctx, commentID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCommentTx", reflect.TypeOf((*MockStore)(nil).DeleteCommentTx), ctx, commentID)
 }
 
 // DeleteCommentVote mocks base method.
@@ -262,11 +276,26 @@ func (mr *MockStoreMockRecorder) GetCommentVote(ctx, arg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommentVote", reflect.TypeOf((*MockStore)(nil).GetCommentVote), ctx, arg)
 }
 
+// GetCommentWithLock mocks base method.
+func (m *MockStore) GetCommentWithLock(ctx context.Context, id int64) (db.Comment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCommentWithLock", ctx, id)
+	ret0, _ := ret[0].(db.Comment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCommentWithLock indicates an expected call of GetCommentWithLock.
+func (mr *MockStoreMockRecorder) GetCommentWithLock(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommentWithLock", reflect.TypeOf((*MockStore)(nil).GetCommentWithLock), ctx, id)
+}
+
 // GetCommentsByPopularity mocks base method.
-func (m *MockStore) GetCommentsByPopularity(ctx context.Context, arg db.GetCommentsByPopularityParams) ([]db.Comment, error) {
+func (m *MockStore) GetCommentsByPopularity(ctx context.Context, arg db.GetCommentsByPopularityParams) ([]db.CommentsWithAuthor, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetCommentsByPopularity", ctx, arg)
-	ret0, _ := ret[0].([]db.Comment)
+	ret0, _ := ret[0].([]db.CommentsWithAuthor)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -308,10 +337,10 @@ func (mr *MockStoreMockRecorder) GetOldestPosts(ctx, arg any) *gomock.Call {
 }
 
 // GetPost mocks base method.
-func (m *MockStore) GetPost(ctx context.Context, id int64) (db.PostsWithAuthor, error) {
+func (m *MockStore) GetPost(ctx context.Context, id int64) (db.Post, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetPost", ctx, id)
-	ret0, _ := ret[0].(db.PostsWithAuthor)
+	ret0, _ := ret[0].(db.Post)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -335,6 +364,21 @@ func (m *MockStore) GetPostVote(ctx context.Context, arg db.GetPostVoteParams) (
 func (mr *MockStoreMockRecorder) GetPostVote(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostVote", reflect.TypeOf((*MockStore)(nil).GetPostVote), ctx, arg)
+}
+
+// GetPostWithAuthor mocks base method.
+func (m *MockStore) GetPostWithAuthor(ctx context.Context, id int64) (db.PostsWithAuthor, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPostWithAuthor", ctx, id)
+	ret0, _ := ret[0].(db.PostsWithAuthor)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPostWithAuthor indicates an expected call of GetPostWithAuthor.
+func (mr *MockStoreMockRecorder) GetPostWithAuthor(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostWithAuthor", reflect.TypeOf((*MockStore)(nil).GetPostWithAuthor), ctx, id)
 }
 
 // GetPostsByPopularity mocks base method.
@@ -412,6 +456,21 @@ func (mr *MockStoreMockRecorder) GetUserCredentials(ctx, userID any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserCredentials", reflect.TypeOf((*MockStore)(nil).GetUserCredentials), ctx, userID)
 }
 
+// InsertCommentTx mocks base method.
+func (m *MockStore) InsertCommentTx(ctx context.Context, arg db.InsertCommentTxParams) (db.Comment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertCommentTx", ctx, arg)
+	ret0, _ := ret[0].(db.Comment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InsertCommentTx indicates an expected call of InsertCommentTx.
+func (mr *MockStoreMockRecorder) InsertCommentTx(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertCommentTx", reflect.TypeOf((*MockStore)(nil).InsertCommentTx), ctx, arg)
+}
+
 // ListSessionsByUser mocks base method.
 func (m *MockStore) ListSessionsByUser(ctx context.Context, userID int64) ([]db.Session, error) {
 	m.ctrl.T.Helper()
@@ -452,6 +511,21 @@ func (m *MockStore) Shutdown() {
 func (mr *MockStoreMockRecorder) Shutdown() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shutdown", reflect.TypeOf((*MockStore)(nil).Shutdown))
+}
+
+// SoftDeleteComment mocks base method.
+func (m *MockStore) SoftDeleteComment(ctx context.Context, id int64) (db.Comment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SoftDeleteComment", ctx, id)
+	ret0, _ := ret[0].(db.Comment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SoftDeleteComment indicates an expected call of SoftDeleteComment.
+func (mr *MockStoreMockRecorder) SoftDeleteComment(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SoftDeleteComment", reflect.TypeOf((*MockStore)(nil).SoftDeleteComment), ctx, id)
 }
 
 // SoftDeleteUser mocks base method.

@@ -12,33 +12,38 @@ import (
 )
 
 const createComment = `-- name: CreateComment :one
-SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity FROM insert_comment(
-  p_user_id := $1,
-  p_post_id := $2,
-  p_body := $3,
-  p_parent_id := $4,
-  p_upvotes := $5,
-  p_downvotes := $6
-)
+INSERT INTO comments (
+  user_id,
+  post_id,
+  body,
+  parent_id,
+  depth,
+  upvotes,
+  downvotes
+) VALUES (
+  $1, $2, $3, $4, $5, $6, $7
+) RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity
 `
 
 type CreateCommentParams struct {
-	PUserID    int64       `json:"p_user_id"`
-	PPostID    int64       `json:"p_post_id"`
-	PBody      string      `json:"p_body"`
-	PParentID  pgtype.Int8 `json:"p_parent_id"`
-	PUpvotes   pgtype.Int8 `json:"p_upvotes"`
-	PDownvotes pgtype.Int8 `json:"p_downvotes"`
+	UserID    int64       `json:"user_id"`
+	PostID    int64       `json:"post_id"`
+	Body      string      `json:"body"`
+	ParentID  pgtype.Int8 `json:"parent_id"`
+	Depth     int32       `json:"depth"`
+	Upvotes   int64       `json:"upvotes"`
+	Downvotes int64       `json:"downvotes"`
 }
 
 func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error) {
 	row := q.db.QueryRow(ctx, createComment,
-		arg.PUserID,
-		arg.PPostID,
-		arg.PBody,
-		arg.PParentID,
-		arg.PUpvotes,
-		arg.PDownvotes,
+		arg.UserID,
+		arg.PostID,
+		arg.Body,
+		arg.ParentID,
+		arg.Depth,
+		arg.Upvotes,
+		arg.Downvotes,
 	)
 	var i Comment
 	err := row.Scan(
@@ -59,19 +64,17 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 	return i, err
 }
 
-const deleteComment = `-- name: DeleteComment :one
-UPDATE comments
-SET 
-  body = '[deleted]',
-  is_deleted = true,
-  deleted_at = NOW(),
-  last_modified_at = NOW()
-WHERE id = $1
-RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity
+const deleteCommentIfLeaf = `-- name: DeleteCommentIfLeaf :one
+DELETE FROM comments c
+WHERE c.id = $1
+AND NOT EXISTS (
+  SELECT 1 FROM comments ch
+  WHERE ch.parent_id = c.id
+) RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity
 `
 
-func (q *Queries) DeleteComment(ctx context.Context, id int64) (Comment, error) {
-	row := q.db.QueryRow(ctx, deleteComment, id)
+func (q *Queries) DeleteCommentIfLeaf(ctx context.Context, id int64) (Comment, error) {
+	row := q.db.QueryRow(ctx, deleteCommentIfLeaf, id)
 	var i Comment
 	err := row.Scan(
 		&i.ID,
@@ -134,8 +137,36 @@ func (q *Queries) GetComment(ctx context.Context, id int64) (Comment, error) {
 	return i, err
 }
 
+const getCommentWithLock = `-- name: GetCommentWithLock :one
+SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity FROM comments
+WHERE id = $1 
+FOR KEY SHARE
+LIMIT 1
+`
+
+func (q *Queries) GetCommentWithLock(ctx context.Context, id int64) (Comment, error) {
+	row := q.db.QueryRow(ctx, getCommentWithLock, id)
+	var i Comment
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PostID,
+		&i.ParentID,
+		&i.Depth,
+		&i.Upvotes,
+		&i.Downvotes,
+		&i.Body,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.Popularity,
+	)
+	return i, err
+}
+
 const getCommentsByPopularity = `-- name: GetCommentsByPopularity :many
-SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity FROM get_comments_by_popularity(
+SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity, user_display_name, user_profile_img_url FROM get_comments_by_popularity(
   p_post_id := $1,
   p_root_limit := $2,
   p_root_offset := $3
@@ -148,15 +179,15 @@ type GetCommentsByPopularityParams struct {
 	PRootOffset int32 `json:"p_root_offset"`
 }
 
-func (q *Queries) GetCommentsByPopularity(ctx context.Context, arg GetCommentsByPopularityParams) ([]Comment, error) {
+func (q *Queries) GetCommentsByPopularity(ctx context.Context, arg GetCommentsByPopularityParams) ([]CommentsWithAuthor, error) {
 	rows, err := q.db.Query(ctx, getCommentsByPopularity, arg.PPostID, arg.PRootLimit, arg.PRootOffset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Comment{}
+	items := []CommentsWithAuthor{}
 	for rows.Next() {
-		var i Comment
+		var i CommentsWithAuthor
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -171,6 +202,8 @@ func (q *Queries) GetCommentsByPopularity(ctx context.Context, arg GetCommentsBy
 			&i.IsDeleted,
 			&i.DeletedAt,
 			&i.Popularity,
+			&i.UserDisplayName,
+			&i.UserProfileImgUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -180,6 +213,38 @@ func (q *Queries) GetCommentsByPopularity(ctx context.Context, arg GetCommentsBy
 		return nil, err
 	}
 	return items, nil
+}
+
+const softDeleteComment = `-- name: SoftDeleteComment :one
+UPDATE comments
+SET 
+  body = '[deleted]',
+  is_deleted = true,
+  deleted_at = NOW(),
+  last_modified_at = NOW()
+WHERE id = $1
+RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity
+`
+
+func (q *Queries) SoftDeleteComment(ctx context.Context, id int64) (Comment, error) {
+	row := q.db.QueryRow(ctx, softDeleteComment, id)
+	var i Comment
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PostID,
+		&i.ParentID,
+		&i.Depth,
+		&i.Upvotes,
+		&i.Downvotes,
+		&i.Body,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.Popularity,
+	)
+	return i, err
 }
 
 const updateComment = `-- name: UpdateComment :one

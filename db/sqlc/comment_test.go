@@ -16,17 +16,17 @@ func createRandomComment(t *testing.T) Comment {
 	post := createRandomPost(t)
 
 	arg := CreateCommentParams{
-		PUserID: post.UserID,
-		PPostID: post.ID,
-		PBody:   util.RandomString(10),
+		UserID: post.UserID,
+		PostID: post.ID,
+		Body:   util.RandomString(10),
 	}
 
 	comment, err := testStore.CreateComment(context.Background(), arg)
 	require.NoError(t, err)
 
-	require.Equal(t, arg.PUserID, comment.UserID)
-	require.Equal(t, arg.PPostID, comment.PostID)
-	require.Equal(t, arg.PBody, comment.Body)
+	require.Equal(t, arg.UserID, comment.UserID)
+	require.Equal(t, arg.PostID, comment.PostID)
+	require.Equal(t, arg.Body, comment.Body)
 	require.Equal(t, int32(0), comment.Depth)
 	require.False(t, comment.ParentID.Valid)
 	require.Zero(t, comment.Downvotes)
@@ -44,30 +44,30 @@ func TestCreateReplyComment(t *testing.T) {
 
 	user := createRandomUser(t)
 
-	arg1 := CreateCommentParams{
-		PUserID: post.UserID,
-		PPostID: post.ID,
-		PBody:   util.RandomString(10),
+	arg1 := InsertCommentTxParams{
+		UserID: post.UserID,
+		PostID: post.ID,
+		Body:   util.RandomString(10),
 	}
 
-	comment1, err := testStore.CreateComment(context.Background(), arg1)
+	comment1, err := testStore.InsertCommentTx(context.Background(), arg1)
 	require.NoError(t, err)
 
-	arg2 := CreateCommentParams{
-		PUserID:   user.ID,
-		PPostID:   post.ID,
-		PBody:     util.RandomString(10),
-		PParentID: pgtype.Int8{Int64: comment1.ID, Valid: true},
+	arg2 := InsertCommentTxParams{
+		UserID:   user.ID,
+		PostID:   post.ID,
+		Body:     util.RandomString(10),
+		ParentID: pgtype.Int8{Int64: comment1.ID, Valid: true},
 	}
 
-	comment2, err := testStore.CreateComment(context.Background(), arg2)
+	comment2, err := testStore.InsertCommentTx(context.Background(), arg2)
 	require.NoError(t, err)
 
-	require.Equal(t, arg2.PUserID, comment2.UserID)
-	require.Equal(t, arg2.PPostID, comment2.PostID)
-	require.Equal(t, arg2.PBody, comment2.Body)
+	require.Equal(t, arg2.UserID, comment2.UserID)
+	require.Equal(t, arg2.PostID, comment2.PostID)
+	require.Equal(t, arg2.Body, comment2.Body)
 	require.Equal(t, int32(1), comment2.Depth)
-	require.Equal(t, arg2.PParentID, comment2.ParentID)
+	require.Equal(t, arg2.ParentID, comment2.ParentID)
 	require.Zero(t, comment2.Downvotes)
 	require.Zero(t, comment2.Upvotes)
 }
@@ -76,9 +76,9 @@ func TestGetComment(t *testing.T) {
 	post := createRandomPost(t)
 
 	arg := CreateCommentParams{
-		PUserID: post.UserID,
-		PPostID: post.ID,
-		PBody:   util.RandomString(10),
+		UserID: post.UserID,
+		PostID: post.ID,
+		Body:   util.RandomString(10),
 	}
 
 	comment1, err := testStore.CreateComment(context.Background(), arg)
@@ -101,32 +101,50 @@ func TestGetCommentsByPopularity(t *testing.T) {
 	// ↓ a- = Depth                     |      |      |           |     |     |           |     |     |
 	//                                 1-#1   1-#2   1-#3        1-#2  1-#3  1-#1        1-#3  1-#2  1-#1
 
-	userIds := make([]int64, 12)
+	users := make([]User, 12)
 	for i := range 12 {
-		userIds[i] = createRandomUser(t).ID
+		users[i] = createRandomUser(t)
 	}
 
 	post := createRandomPost(t)
 
-	roots := make([]Comment, 3)
+	roots := make([]CommentsWithAuthor, 3)
 
 	root_upvotes := []int64{50, 50, 100}
 	root_downvotes := []int64{50, 100, 50}
 
 	for i := range 3 {
-		var err error
-		roots[i], err = testStore.CreateComment(context.Background(), CreateCommentParams{
-			PUserID:    userIds[i],
-			PPostID:    post.ID,
-			PBody:      fmt.Sprintf("Root comment #%d", i),
-			PUpvotes:   pgtype.Int8{Int64: root_upvotes[i], Valid: true},
-			PDownvotes: pgtype.Int8{Int64: root_downvotes[i], Valid: true},
+		c, err := testStore.CreateComment(context.Background(), CreateCommentParams{
+			UserID:    users[i].ID,
+			PostID:    post.ID,
+			Body:      fmt.Sprintf("Root comment #%d", i),
+			Upvotes:   root_upvotes[i],
+			Downvotes: root_downvotes[i],
 		})
 
 		require.NoError(t, err)
+		root := CommentsWithAuthor{
+			ID:                c.ID,
+			UserID:            c.UserID,
+			PostID:            c.PostID,
+			ParentID:          c.ParentID,
+			Depth:             c.Depth,
+			Upvotes:           c.Upvotes,
+			Downvotes:         c.Downvotes,
+			Body:              c.Body,
+			CreatedAt:         c.CreatedAt,
+			LastModifiedAt:    c.LastModifiedAt,
+			IsDeleted:         c.IsDeleted,
+			DeletedAt:         c.DeletedAt,
+			Popularity:        c.Popularity,
+			UserDisplayName:   users[i].DisplayName,
+			UserProfileImgUrl: users[i].ProfileImgUrl,
+		}
+
+		roots[i] = root
 	}
 
-	replies := make([][]Comment, 3)
+	replies := make([][]CommentsWithAuthor, 3)
 
 	reply_upvotes := [][]int64{
 		{200, 100, 100},
@@ -141,24 +159,43 @@ func TestGetCommentsByPopularity(t *testing.T) {
 	}
 
 	for i := range 3 {
-		replies[i] = make([]Comment, 3)
+		replies[i] = make([]CommentsWithAuthor, 3)
 		for j := range 3 {
 			userIdx := int64(3 + i*3 + j)
-			var err error
-			replies[i][j], err = testStore.CreateComment(context.Background(), CreateCommentParams{
-				PUserID:    userIds[userIdx],
-				PPostID:    post.ID,
-				PBody:      fmt.Sprintf("%d reply to the root comment #%d", j, i),
-				PUpvotes:   pgtype.Int8{Int64: reply_upvotes[i][j], Valid: true},
-				PDownvotes: pgtype.Int8{Int64: reply_downvotes[i][j], Valid: true},
-				PParentID:  pgtype.Int8{Int64: roots[i].ID, Valid: true},
+			c, err := testStore.CreateComment(context.Background(), CreateCommentParams{
+				UserID:    users[userIdx].ID,
+				PostID:    post.ID,
+				Body:      fmt.Sprintf("%d reply to the root comment #%d", j, i),
+				Upvotes:   reply_upvotes[i][j],
+				Downvotes: reply_downvotes[i][j],
+				ParentID:  pgtype.Int8{Int64: roots[i].ID, Valid: true},
 			})
 
 			require.NoError(t, err)
+
+			reply := CommentsWithAuthor{
+				ID:                c.ID,
+				UserID:            c.UserID,
+				PostID:            c.PostID,
+				ParentID:          c.ParentID,
+				Depth:             c.Depth,
+				Upvotes:           c.Upvotes,
+				Downvotes:         c.Downvotes,
+				Body:              c.Body,
+				CreatedAt:         c.CreatedAt,
+				LastModifiedAt:    c.LastModifiedAt,
+				IsDeleted:         c.IsDeleted,
+				DeletedAt:         c.DeletedAt,
+				Popularity:        c.Popularity,
+				UserDisplayName:   users[userIdx].DisplayName,
+				UserProfileImgUrl: users[userIdx].ProfileImgUrl,
+			}
+
+			replies[i][j] = reply
 		}
 	}
 
-	ordered_comments := []Comment{
+	ordered_comments := []CommentsWithAuthor{
 		roots[2],
 		replies[2][0],
 		replies[2][1],
@@ -337,7 +374,7 @@ func TestGetCommentsByPopularityInvalidLimit(t *testing.T) {
 func TestDeleteComment(t *testing.T) {
 	comment1 := createRandomComment(t)
 
-	comment2, err := testStore.DeleteComment(context.Background(), comment1.ID)
+	comment2, err := testStore.SoftDeleteComment(context.Background(), comment1.ID)
 	require.NoError(t, err)
 
 	require.True(t, comment2.IsDeleted)

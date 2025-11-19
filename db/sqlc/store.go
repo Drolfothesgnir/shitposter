@@ -11,6 +11,8 @@ type Store interface {
 	Shutdown() // Graceful DB shutdown.
 	CreateUserWithCredentialsTx(ctx context.Context, arg CreateUserWithCredentialsTxParams) (CreateUserWithCredentialsTxResult, error)
 	SoftDeleteUserTx(ctx context.Context, userID int64) error
+	InsertCommentTx(ctx context.Context, arg InsertCommentTxParams) (Comment, error)
+	DeleteCommentTx(ctx context.Context, commentID int64) error
 }
 
 type SQLStore struct {

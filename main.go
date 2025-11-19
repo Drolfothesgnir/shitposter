@@ -34,6 +34,7 @@ var interruptSignals = []os.Signal{
 	syscall.SIGINT,
 }
 
+// TODO: refactor SQL scripts organisation
 // TODO: how to remove stale sessions and other garbage data from the db?
 func main() {
 	// reading .env config file

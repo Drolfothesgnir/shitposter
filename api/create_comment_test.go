@@ -48,8 +48,8 @@ func TestCreateComment(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, ErrInvalidParams.Error(), res.Error)
 				require.Len(t, res.Fields, 1)
-				require.Equal(t, res.Fields[0].FieldName, "body")
-				require.Equal(t, res.Fields[0].ErrorMessage, getBindingErrorMessage("required", "", ""))
+				require.Equal(t, "body", res.Fields[0].FieldName)
+				require.Equal(t, getBindingErrorMessage("required", "", ""), res.Fields[0].ErrorMessage)
 			},
 		},
 		{
@@ -70,8 +70,8 @@ func TestCreateComment(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, ErrInvalidParams.Error(), res.Error)
 				require.Len(t, res.Fields, 1)
-				require.Equal(t, res.Fields[0].FieldName, "body")
-				require.Equal(t, res.Fields[0].ErrorMessage, getBindingErrorMessage("max", strings.Repeat("too long", 100), "500"))
+				require.Equal(t, "body", res.Fields[0].FieldName)
+				require.Equal(t, getBindingErrorMessage("max", strings.Repeat("too long", 100), "500"), res.Fields[0].ErrorMessage)
 			},
 		},
 		{
@@ -92,8 +92,8 @@ func TestCreateComment(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, ErrInvalidParentCommentId.Error(), res.Error)
 				require.Len(t, res.Fields, 1)
-				require.Equal(t, res.Fields[0].FieldName, "comment_id")
-				require.Equal(t, res.Fields[0].ErrorMessage, "Cannot reply to the comment with id: inv_par_id")
+				require.Equal(t, "comment_id", res.Fields[0].FieldName)
+				require.Equal(t, "Cannot reply to the comment with id: inv_par_id", res.Fields[0].ErrorMessage)
 			},
 		},
 		{
@@ -119,8 +119,8 @@ func TestCreateComment(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, ErrInvalidPostID.Error(), res.Error)
 				require.Len(t, res.Fields, 1)
-				require.Equal(t, res.Fields[0].FieldName, "post_id")
-				require.Equal(t, res.Fields[0].ErrorMessage, "Invalid post id: 1")
+				require.Equal(t, "post_id", res.Fields[0].FieldName)
+				require.Equal(t, "Invalid post id: 1", res.Fields[0].ErrorMessage)
 			},
 		},
 		{
@@ -147,8 +147,8 @@ func TestCreateComment(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, ErrInvalidParentCommentId.Error(), res.Error)
 				require.Len(t, res.Fields, 1)
-				require.Equal(t, res.Fields[0].FieldName, "comment_id")
-				require.Equal(t, res.Fields[0].ErrorMessage, "Cannot reply to the comment with id: 1")
+				require.Equal(t, "comment_id", res.Fields[0].FieldName)
+				require.Equal(t, "Cannot reply to the comment with id: 1", res.Fields[0].ErrorMessage)
 			},
 		},
 		{
@@ -175,8 +175,8 @@ func TestCreateComment(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, ErrInvalidParentCommentId.Error(), res.Error)
 				require.Len(t, res.Fields, 1)
-				require.Equal(t, res.Fields[0].FieldName, "comment_id")
-				require.Equal(t, res.Fields[0].ErrorMessage, "Cannot reply to the comment with id: 1")
+				require.Equal(t, "comment_id", res.Fields[0].FieldName)
+				require.Equal(t, "Cannot reply to the comment with id: 1", res.Fields[0].ErrorMessage)
 			},
 		},
 		{
@@ -203,8 +203,8 @@ func TestCreateComment(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, ErrInvalidParentCommentId.Error(), res.Error)
 				require.Len(t, res.Fields, 1)
-				require.Equal(t, res.Fields[0].FieldName, "comment_id")
-				require.Equal(t, res.Fields[0].ErrorMessage, "Comment with id [1] is deleted. Can't reply to a deleted comment")
+				require.Equal(t, "comment_id", res.Fields[0].FieldName)
+				require.Equal(t, "Comment with id [1] is deleted. Can't reply to a deleted comment", res.Fields[0].ErrorMessage)
 			},
 		},
 		{

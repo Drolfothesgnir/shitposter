@@ -34,23 +34,41 @@ func ExtractErrorFields(err error) []ErrorField {
 	for i, fe := range ve {
 		fields[i] = ErrorField{
 			FieldName:    fe.Field(),
-			ErrorMessage: getBindingErrorMessage(fe.Tag()),
+			ErrorMessage: getBindingErrorMessage(fe.Tag(), fe.Value(), fe.Param()),
 		}
 	}
 
 	return fields
 }
 
-func getBindingErrorMessage(tag string) string {
+func getBindingErrorMessage(tag string, value any, param string) string {
 	switch tag {
 	case "required":
 		return "this field is required"
 
 	case "min":
-		return "value is too short"
+		switch v := value.(type) {
+		case int, int8, int16, int32, int64:
+			return fmt.Sprintf("value %d is too small, minimum is %s", v, param)
+
+		case string:
+			return fmt.Sprintf("value %q is too short (min %s characters)", v, param)
+
+		default:
+			return fmt.Sprintf("value is below the allowed minimum: %v", value)
+		}
 
 	case "max":
-		return "value is too long"
+		switch v := value.(type) {
+		case int, int8, int16, int32, int64:
+			return fmt.Sprintf("value %d is too big, maximum is %s", v, param)
+
+		case string:
+			return fmt.Sprintf("value %q is too long (max %s characters)", v, param)
+
+		default:
+			return fmt.Sprintf("value exceeds the allowed maximum: %v", value)
+		}
 
 	case "len":
 		return "invalid length"

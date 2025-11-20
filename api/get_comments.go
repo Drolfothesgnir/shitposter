@@ -9,9 +9,9 @@ import (
 )
 
 type GetCommentsQuery struct {
-	RootOffset int32  `form:"root_offset" binding:"min=0"`
-	NRoots     int32  `form:"n_roots" binding:"min=1,max=100"`
-	Order      string `form:"order" binding:"comment_order"`
+	RootOffset int32  `form:"root_offset" json:"root_offset" binding:"min=0"`
+	NRoots     int32  `form:"n_roots" json:"n_roots" binding:"min=1,max=100"`
+	Order      string `form:"order" json:"order" binding:"comment_order"`
 }
 
 type GetCommentsResponse struct {

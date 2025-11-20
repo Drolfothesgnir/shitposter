@@ -63,7 +63,7 @@ func TestUpdateUser(t *testing.T) {
 				require.Equal(t, "invalid params", res.Error)
 				require.Len(t, res.Fields, 1)
 				require.Equal(t, res.Fields[0].FieldName, "username")
-				require.Equal(t, res.Fields[0].ErrorMessage, getBindingErrorMessage("alphanum"))
+				require.Equal(t, res.Fields[0].ErrorMessage, getBindingErrorMessage("alphanum", "./1", ""))
 			},
 		},
 		{

@@ -49,7 +49,7 @@ func TestCreateComment(t *testing.T) {
 				require.Equal(t, ErrInvalidParams.Error(), res.Error)
 				require.Len(t, res.Fields, 1)
 				require.Equal(t, res.Fields[0].FieldName, "body")
-				require.Equal(t, res.Fields[0].ErrorMessage, getBindingErrorMessage("required"))
+				require.Equal(t, res.Fields[0].ErrorMessage, getBindingErrorMessage("required", "", ""))
 			},
 		},
 		{
@@ -71,7 +71,7 @@ func TestCreateComment(t *testing.T) {
 				require.Equal(t, ErrInvalidParams.Error(), res.Error)
 				require.Len(t, res.Fields, 1)
 				require.Equal(t, res.Fields[0].FieldName, "body")
-				require.Equal(t, res.Fields[0].ErrorMessage, getBindingErrorMessage("max"))
+				require.Equal(t, res.Fields[0].ErrorMessage, getBindingErrorMessage("max", strings.Repeat("too long", 100), "500"))
 			},
 		},
 		{

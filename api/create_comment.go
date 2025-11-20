@@ -19,24 +19,14 @@ func (s *Service) createComment(ctx *gin.Context) {
 	// get token after auth middleware use
 	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 
+	// get post id after post id check middleware
+	postID := ctx.MustGet(postIDKey).(int64)
+
 	var req CreateCommentRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(
 			http.StatusBadRequest,
 			NewErrorResponse(ErrInvalidParams, ExtractErrorFields(err)...))
-		return
-	}
-
-	// getting mandatory post id form the request, abort with 400 on error
-	postIDRaw := ctx.Param("post_id")
-
-	postID, err := strconv.ParseInt(postIDRaw, 10, 64)
-	if err != nil {
-		errField := ErrorField{"post_id", fmt.Sprintf("Invalid post id: %s", postIDRaw)}
-		ctx.JSON(
-			http.StatusBadRequest,
-			NewErrorResponse(ErrInvalidPostID, errField),
-		)
 		return
 	}
 
@@ -70,7 +60,7 @@ func (s *Service) createComment(ctx *gin.Context) {
 	if err != nil {
 		switch err {
 		case db.ErrInvalidPostID:
-			errField := ErrorField{"post_id", fmt.Sprintf("Invalid post id: %s", postIDRaw)}
+			errField := ErrorField{"post_id", fmt.Sprintf("Invalid post id: %d", postID)}
 			ctx.JSON(
 				http.StatusBadRequest,
 				NewErrorResponse(ErrInvalidPostID, errField),

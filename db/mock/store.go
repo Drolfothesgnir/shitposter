@@ -306,6 +306,21 @@ func (mr *MockStoreMockRecorder) GetCommentsByPopularity(ctx, arg any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommentsByPopularity", reflect.TypeOf((*MockStore)(nil).GetCommentsByPopularity), ctx, arg)
 }
 
+// GetNewestComments mocks base method.
+func (m *MockStore) GetNewestComments(ctx context.Context, arg db.GetNewestCommentsParams) ([]db.CommentsWithAuthor, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetNewestComments", ctx, arg)
+	ret0, _ := ret[0].([]db.CommentsWithAuthor)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetNewestComments indicates an expected call of GetNewestComments.
+func (mr *MockStoreMockRecorder) GetNewestComments(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNewestComments", reflect.TypeOf((*MockStore)(nil).GetNewestComments), ctx, arg)
+}
+
 // GetNewestPosts mocks base method.
 func (m *MockStore) GetNewestPosts(ctx context.Context, arg db.GetNewestPostsParams) ([]db.PostsWithAuthor, error) {
 	m.ctrl.T.Helper()
@@ -319,6 +334,21 @@ func (m *MockStore) GetNewestPosts(ctx context.Context, arg db.GetNewestPostsPar
 func (mr *MockStoreMockRecorder) GetNewestPosts(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNewestPosts", reflect.TypeOf((*MockStore)(nil).GetNewestPosts), ctx, arg)
+}
+
+// GetOldestComments mocks base method.
+func (m *MockStore) GetOldestComments(ctx context.Context, arg db.GetOldestCommentsParams) ([]db.CommentsWithAuthor, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOldestComments", ctx, arg)
+	ret0, _ := ret[0].([]db.CommentsWithAuthor)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOldestComments indicates an expected call of GetOldestComments.
+func (mr *MockStoreMockRecorder) GetOldestComments(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOldestComments", reflect.TypeOf((*MockStore)(nil).GetOldestComments), ctx, arg)
 }
 
 // GetOldestPosts mocks base method.
@@ -499,6 +529,21 @@ func (m *MockStore) ListUserCredentials(ctx context.Context, userID int64) ([]db
 func (mr *MockStoreMockRecorder) ListUserCredentials(ctx, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUserCredentials", reflect.TypeOf((*MockStore)(nil).ListUserCredentials), ctx, userID)
+}
+
+// QueryComments mocks base method.
+func (m *MockStore) QueryComments(ctx context.Context, query db.CommentQuery) ([]db.CommentsWithAuthor, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryComments", ctx, query)
+	ret0, _ := ret[0].([]db.CommentsWithAuthor)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryComments indicates an expected call of QueryComments.
+func (mr *MockStoreMockRecorder) QueryComments(ctx, query any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryComments", reflect.TypeOf((*MockStore)(nil).QueryComments), ctx, query)
 }
 
 // Shutdown mocks base method.

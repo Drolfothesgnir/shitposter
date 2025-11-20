@@ -215,6 +215,106 @@ func (q *Queries) GetCommentsByPopularity(ctx context.Context, arg GetCommentsBy
 	return items, nil
 }
 
+const getNewestComments = `-- name: GetNewestComments :many
+SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity, user_display_name, user_profile_img_url FROM get_newest_comments(
+  p_post_id := $1,
+  p_root_limit := $2,
+  p_root_offset := $3
+)
+`
+
+type GetNewestCommentsParams struct {
+	PPostID     int64 `json:"p_post_id"`
+	PRootLimit  int32 `json:"p_root_limit"`
+	PRootOffset int32 `json:"p_root_offset"`
+}
+
+func (q *Queries) GetNewestComments(ctx context.Context, arg GetNewestCommentsParams) ([]CommentsWithAuthor, error) {
+	rows, err := q.db.Query(ctx, getNewestComments, arg.PPostID, arg.PRootLimit, arg.PRootOffset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CommentsWithAuthor{}
+	for rows.Next() {
+		var i CommentsWithAuthor
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.PostID,
+			&i.ParentID,
+			&i.Depth,
+			&i.Upvotes,
+			&i.Downvotes,
+			&i.Body,
+			&i.CreatedAt,
+			&i.LastModifiedAt,
+			&i.IsDeleted,
+			&i.DeletedAt,
+			&i.Popularity,
+			&i.UserDisplayName,
+			&i.UserProfileImgUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getOldestComments = `-- name: GetOldestComments :many
+SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity, user_display_name, user_profile_img_url FROM get_oldest_comments(
+  p_post_id := $1,
+  p_root_limit := $2,
+  p_root_offset := $3
+)
+`
+
+type GetOldestCommentsParams struct {
+	PPostID     int64 `json:"p_post_id"`
+	PRootLimit  int32 `json:"p_root_limit"`
+	PRootOffset int32 `json:"p_root_offset"`
+}
+
+func (q *Queries) GetOldestComments(ctx context.Context, arg GetOldestCommentsParams) ([]CommentsWithAuthor, error) {
+	rows, err := q.db.Query(ctx, getOldestComments, arg.PPostID, arg.PRootLimit, arg.PRootOffset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CommentsWithAuthor{}
+	for rows.Next() {
+		var i CommentsWithAuthor
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.PostID,
+			&i.ParentID,
+			&i.Depth,
+			&i.Upvotes,
+			&i.Downvotes,
+			&i.Body,
+			&i.CreatedAt,
+			&i.LastModifiedAt,
+			&i.IsDeleted,
+			&i.DeletedAt,
+			&i.Popularity,
+			&i.UserDisplayName,
+			&i.UserProfileImgUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const softDeleteComment = `-- name: SoftDeleteComment :one
 UPDATE comments
 SET 

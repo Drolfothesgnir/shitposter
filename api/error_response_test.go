@@ -56,14 +56,14 @@ func TestExtractErrorFields_TagMessages(t *testing.T) {
 		type S struct {
 			Username string `json:"username" validate:"min=3"`
 		}
-		checkSingleFieldError(t, v, S{Username: "ab"}, "username", "value is too short")
+		checkSingleFieldError(t, v, S{Username: "ab"}, "username", "value \"ab\" is too short (min 3 characters)")
 	})
 
 	t.Run("max", func(t *testing.T) {
 		type S struct {
 			Username string `json:"username" validate:"max=2"`
 		}
-		checkSingleFieldError(t, v, S{Username: "abc"}, "username", "value is too long")
+		checkSingleFieldError(t, v, S{Username: "abc"}, "username", "value \"abc\" is too long (max 2 characters)")
 	})
 
 	t.Run("len", func(t *testing.T) {

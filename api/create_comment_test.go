@@ -49,7 +49,7 @@ func TestCreateComment(t *testing.T) {
 				require.Equal(t, ErrInvalidParams.Error(), res.Error)
 				require.Len(t, res.Fields, 1)
 				require.Equal(t, res.Fields[0].FieldName, "body")
-				require.Equal(t, res.Fields[0].ErrorMessage, getBindingErrorMessage("required"))
+				require.Equal(t, res.Fields[0].ErrorMessage, getBindingErrorMessage("required", "", ""))
 			},
 		},
 		{
@@ -71,29 +71,7 @@ func TestCreateComment(t *testing.T) {
 				require.Equal(t, ErrInvalidParams.Error(), res.Error)
 				require.Len(t, res.Fields, 1)
 				require.Equal(t, res.Fields[0].FieldName, "body")
-				require.Equal(t, res.Fields[0].ErrorMessage, getBindingErrorMessage("max"))
-			},
-		},
-		{
-			name: "InvalidPostId",
-			url:  "/posts/invalid_id/comments",
-			body: gin.H{
-				"body": "test",
-			},
-			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().InsertCommentTx(gomock.Any(), gomock.Any()).Times(0)
-			},
-			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
-				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, user.ID, time.Minute, request)
-			},
-			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
-				require.NoError(t, err)
-				require.Equal(t, ErrInvalidPostID.Error(), res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, res.Fields[0].FieldName, "post_id")
-				require.Equal(t, res.Fields[0].ErrorMessage, "Invalid post id: invalid_id")
+				require.Equal(t, res.Fields[0].ErrorMessage, getBindingErrorMessage("max", strings.Repeat("too long", 100), "500"))
 			},
 		},
 		{
@@ -268,6 +246,37 @@ func TestCreateComment(t *testing.T) {
 					ID:     2,
 					UserID: arg.UserID,
 					PostID: 1,
+				}
+
+				store.EXPECT().InsertCommentTx(gomock.Any(), arg).Times(1).Return(comment, nil)
+			},
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, user.ID, time.Minute, request)
+			},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusOK, recorder.Code)
+			},
+		},
+		{
+			name: "OKReply",
+			url:  "/posts/1/comments/1",
+			body: gin.H{
+				"body": "test",
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				arg := db.InsertCommentTxParams{
+					UserID:   user.ID,
+					PostID:   1,
+					Body:     "test",
+					ParentID: pgtype.Int8{Int64: 1, Valid: true},
+				}
+
+				comment := db.Comment{
+					ID:       2,
+					UserID:   arg.UserID,
+					PostID:   1,
+					ParentID: pgtype.Int8{Int64: 1, Valid: true},
+					Depth:    1,
 				}
 
 				store.EXPECT().InsertCommentTx(gomock.Any(), arg).Times(1).Return(comment, nil)

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -100,6 +102,12 @@ func getBindingErrorMessage(tag string) string {
 
 	case "endswith":
 		return "must end with the required suffix"
+
+	case "comment_order":
+		return fmt.Sprintf(
+			"comment order must be one of [%s]",
+			strings.Join(commentOrderMethods, ", "),
+		)
 
 	default:
 		return "invalid input"

@@ -14,6 +14,8 @@ import (
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/Drolfothesgnir/shitposter/wauthn"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 )
 
 // TODO: rename consts properly
@@ -87,6 +89,12 @@ func NewService(
 
 	service.SetupRouter(server)
 
+	// custom validator to check if comment order in requests is valid.
+	// used in 'binding' tag in request.
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		v.RegisterValidation("comment_order", isValidCommentOrder)
+	}
+
 	service.server = server
 
 	return service, nil
@@ -115,7 +123,7 @@ func (service *Service) SetupRouter(server *http.Server) {
 
 	// public routes where post id is checked
 	publicPostGroup := router.Group("/posts").Use(service.postIDMiddleware())
-	publicPostGroup.GET("/:post_id/comments")
+	publicPostGroup.GET("/:post_id/comments", service.getComments)
 
 	// protected routes
 	authGroup := router.Group("/").Use(authMiddleware(service.tokenMaker))

@@ -13,6 +13,7 @@ type Store interface {
 	SoftDeleteUserTx(ctx context.Context, userID int64) error
 	InsertCommentTx(ctx context.Context, arg InsertCommentTxParams) (Comment, error)
 	DeleteCommentTx(ctx context.Context, commentID int64) error
+	QueryComments(ctx context.Context, query CommentQuery) ([]CommentsWithAuthor, error)
 }
 
 type SQLStore struct {

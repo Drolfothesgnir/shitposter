@@ -2,8 +2,10 @@ package api
 
 import (
 	"fmt"
+	"slices"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
+	"github.com/go-playground/validator/v10"
 )
 
 type CommentNode struct {
@@ -64,4 +66,17 @@ func PrepareCommentTree(orderedPlainComments []db.CommentsWithAuthor, n_roots in
 	}
 
 	return result, nil
+}
+
+var commentOrderMethods = []string{
+	db.CommentOrderPopular,
+	db.CommentOrderNewest,
+	db.CommentOrderOldest,
+}
+
+var isValidCommentOrder validator.Func = func(fl validator.FieldLevel) bool {
+	if order, ok := fl.Field().Interface().(string); ok && slices.Contains(commentOrderMethods, order) {
+		return true
+	}
+	return false
 }

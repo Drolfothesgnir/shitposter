@@ -44,6 +44,20 @@ SELECT * FROM get_comments_by_popularity(
   p_root_offset := $3
 );
 
+-- name: GetOldestComments :many
+SELECT * FROM get_oldest_comments(
+  p_post_id := $1,
+  p_root_limit := $2,
+  p_root_offset := $3
+);
+
+-- name: GetNewestComments :many
+SELECT * FROM get_newest_comments(
+  p_post_id := $1,
+  p_root_limit := $2,
+  p_root_offset := $3
+);
+
 -- name: VoteComment :one
 SELECT * FROM vote_comment(
   p_user_id := $1,

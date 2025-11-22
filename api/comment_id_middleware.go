@@ -7,8 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const providedCommentID = "provided_comment_id"
-
 // This middleware checks the mandatory comment ID parameter in the URL.
 //
 // I chose to use middleware instead of Gin's URI binding because it is
@@ -27,7 +25,7 @@ func (s *Service) commentIDMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		ctx.Set(providedCommentID, desc.parsedValue)
+		ctx.Set(ctxCommentIDKey, desc.parsedValue)
 		ctx.Next()
 	}
 }

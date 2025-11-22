@@ -259,7 +259,7 @@ func TestSignupStart(t *testing.T) {
 			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
 
-			request, err := http.NewRequest(http.MethodPost, UsersSignupStartURL, bytes.NewReader(data))
+			request, err := http.NewRequest(http.MethodPost, "/users/signup/start", bytes.NewReader(data))
 			require.NoError(t, err)
 
 			service.router.ServeHTTP(recorder, request)

@@ -96,7 +96,7 @@ func TestGetUser(t *testing.T) {
 
 			tc.buildStubs(store)
 
-			url := UsersGetUser + "/" + tc.id
+			url := "/users/" + tc.id
 
 			service := newTestService(t, store, nil, nil, nil)
 			recorder := httptest.NewRecorder()

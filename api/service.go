@@ -134,9 +134,20 @@ func (service *Service) SetupRouter(server *http.Server) {
 	privatePostGroup := authGroup.Use(service.postIDMiddleware())
 	privatePostGroup.POST(CommentsCreateRoot, service.createComment)
 	privatePostGroup.POST(CommentsCreateReply, service.createComment)
+	privatePostGroup.DELETE("/posts/:post_id")
+	privatePostGroup.POST("/posts/:post_id/vote", notImplemented)
+
+	privatePostCommentGroup := privatePostGroup.Use(service.commentIDMiddleware())
+	privatePostCommentGroup.PATCH("/posts/:post_id/comments/:comment_id", notImplemented)
+	privatePostCommentGroup.DELETE("/posts/:post_id/comments/:comment_id", notImplemented)
+	privatePostCommentGroup.POST("/posts/:post_id/comments/:comment_id/vote", notImplemented)
 
 	server.Handler = router
 	service.router = router
+}
+
+func notImplemented(ctx *gin.Context) {
+	ctx.Status(http.StatusNotImplemented)
 }
 
 // handling CORS

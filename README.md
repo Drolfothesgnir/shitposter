@@ -157,7 +157,7 @@ The goal is to learn and demonstrate web dev skills.
       - **POST** /posts/{post-id}/vote → Vote/Downvote a Post
       - **POST** /posts/{post-id}/comments/{comment-id}/vote → Vote/Downvote a Comment
       - **DELETE** /posts/{post-id}/vote → Delete post vote
-      - **DELETE** /posts/{post-id}/comments/{comment-id}vote → Delete comment vote
+      - **DELETE** /posts/{post-id}/comments/{comment-id}/vote → Delete comment vote
    - Images
       - **POST** /media/images → Save an image
       - **GET** /media/images/{image-id} → Get an image

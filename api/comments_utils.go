@@ -3,8 +3,10 @@ package api
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
+	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -79,4 +81,38 @@ var isValidCommentOrder validator.Func = func(fl validator.FieldLevel) bool {
 		return true
 	}
 	return false
+}
+
+type commentIDDescriptor struct {
+	provided    bool   // true when comment_id param is present in the URL
+	valid       bool   // true if extracted comment_id param was parsed as int successfully
+	rawValue    string // param value extracted from the URL
+	parsedValue int64  // value parsed with strconv.ParseInt
+	err         error  // parse error
+}
+
+// Return true if the comment ID is both provided and valid.
+func (d *commentIDDescriptor) available() bool {
+	return d.provided && d.valid
+}
+
+func getCommentIDDescriptor(ctx *gin.Context) commentIDDescriptor {
+
+	var descriptor commentIDDescriptor
+
+	raw := ctx.Param("comment_id")
+	descriptor.rawValue = raw
+
+	provided := raw != ""
+	descriptor.provided = provided
+
+	parsed, err := strconv.ParseInt(descriptor.rawValue, 10, 64)
+	descriptor.parsedValue = parsed
+
+	valid := err == nil
+	descriptor.valid = valid
+
+	descriptor.err = err
+
+	return descriptor
 }

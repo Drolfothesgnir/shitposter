@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/Drolfothesgnir/shitposter/token"
@@ -30,15 +29,13 @@ func (s *Service) createComment(ctx *gin.Context) {
 		return
 	}
 
-	// getting optional comment id param to check if
-	// request is for creating a reply
-	commentIDRaw := ctx.Param("comment_id")
+	// extracting comment id to check if comment is a reply
+	// i.e. comment_id from /posts/:post_id/comments/:comment_id is available
+	desc := getCommentIDDescriptor(ctx)
 
-	commentID, err := strconv.ParseInt(commentIDRaw, 10, 64)
-	// if provided comment id is not a valid id but also not empty
-	// abort with 400
-	if err != nil && commentIDRaw != "" {
-		errField := ErrorField{"comment_id", fmt.Sprintf("Cannot reply to the comment with id: %s", commentIDRaw)}
+	// if the comment_id provided but not valid abort with 400
+	if !desc.valid && desc.provided {
+		errField := ErrorField{"comment_id", fmt.Sprintf("Cannot reply to the comment with id: %s", desc.rawValue)}
 		ctx.JSON(
 			http.StatusBadRequest,
 			NewErrorResponse(ErrInvalidParentCommentId, errField),
@@ -46,14 +43,12 @@ func (s *Service) createComment(ctx *gin.Context) {
 		return
 	}
 
-	// otherwise it's assumed the request is to create a root comment
-	isReply := err == nil
-
+	// otherwise assume the comment is a reply
 	arg := db.InsertCommentTxParams{
 		UserID:   authPayload.UserID,
 		PostID:   postID,
 		Body:     req.Body,
-		ParentID: pgtype.Int8{Int64: commentID, Valid: isReply},
+		ParentID: pgtype.Int8{Int64: desc.parsedValue, Valid: desc.valid},
 	}
 
 	comment, err := s.store.InsertCommentTx(ctx, arg)
@@ -67,7 +62,7 @@ func (s *Service) createComment(ctx *gin.Context) {
 			)
 			return
 		case db.ErrParentCommentNotFound, db.ErrParentCommentPostIDMismatch:
-			errField := ErrorField{"comment_id", fmt.Sprintf("Cannot reply to the comment with id: %s", commentIDRaw)}
+			errField := ErrorField{"comment_id", fmt.Sprintf("Cannot reply to the comment with id: %s", desc.rawValue)}
 			ctx.JSON(
 				http.StatusBadRequest,
 				NewErrorResponse(ErrInvalidParentCommentId, errField),
@@ -78,7 +73,7 @@ func (s *Service) createComment(ctx *gin.Context) {
 				"comment_id",
 				fmt.Sprintf(
 					"Comment with id [%s] is deleted. Can't reply to a deleted comment",
-					commentIDRaw,
+					desc.rawValue,
 				)}
 			ctx.JSON(
 				http.StatusBadRequest,

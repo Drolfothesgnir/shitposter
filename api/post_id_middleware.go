@@ -10,6 +10,11 @@ import (
 
 const postIDKey = "provided_post_id"
 
+// This middleware checks the mandatory post ID parameter in the URL.
+//
+// I chose to use middleware instead of Gin's URI binding because it is
+// harder to produce a human-readable error message with the binder than
+// with manual validation. It also makes handlers cleaner.
 func (s *Service) postIDMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// getting mandatory post id form the request, abort with 400 on error

@@ -16,21 +16,9 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// TODO: rename consts properly
 const (
 	WebauthnChallengeHeader = "X-Webauthn-Challenge"
 	WebauthnTransportHeader = "X-Webauthn-Transports"
-	// api routes
-	UsersSignupStartURL  = "/users/signup/start"
-	UsersSignupFinishURL = "/users/signup/finish"
-	UsersSigninStartURL  = "/users/signin/start"
-	UsersSigninFinishURL = "/users/signin/finish"
-	UsersRenewAccessURL  = "/users/renew_access"
-	UsersDeleteUser      = "/users"
-	UsersGetUser         = "/users"
-	UsersUpdateUser      = "/users"
-	CommentsCreateRoot   = "/posts/:post_id/comments"
-	CommentsCreateReply  = "/posts/:post_id/comments/:comment_id"
 )
 
 // keys for values parsed from the uri and set into the request context
@@ -102,10 +90,6 @@ func NewService(
 	service.server = server
 
 	return service, nil
-}
-
-func notImplemented(ctx *gin.Context) {
-	ctx.Status(http.StatusNotImplemented)
 }
 
 // Start runs the HTTP server

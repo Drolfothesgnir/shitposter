@@ -266,7 +266,7 @@ func TestRenewAccess(t *testing.T) {
 			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
 
-			request, err := http.NewRequest(http.MethodPost, UsersRenewAccessURL, bytes.NewReader(data))
+			request, err := http.NewRequest(http.MethodPost, "/users/renew_access", bytes.NewReader(data))
 			require.NoError(t, err)
 
 			service.router.ServeHTTP(recorder, request)

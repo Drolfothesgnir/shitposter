@@ -17,15 +17,15 @@ func (service *Service) setupRouter(server *http.Server) {
 	})
 
 	// passkey auth
-	router.POST(UsersSignupStartURL, service.signupStart)
-	router.POST(UsersSignupFinishURL, service.signupFinish)
-	router.POST(UsersSigninStartURL, service.signinStart)
-	router.POST(UsersSigninFinishURL, service.signinFinish)
+	router.POST("/users/signup/start", service.signupStart)
+	router.POST("/users/signup/finish", service.signupFinish)
+	router.POST("/users/signin/start", service.signinStart)
+	router.POST("/users/signin/finish", service.signinFinish)
 
 	// renew access token
-	router.POST(UsersRenewAccessURL, service.renewAccessToken)
+	router.POST("/users/renew_access", service.renewAccessToken)
 
-	router.GET(UsersGetUser+"/:id", service.getUser)
+	router.GET("/users/:id", service.getUser)
 
 	// public routes where post id is checked
 	publicPostGroup := router.Group("/posts").Use(service.postIDMiddleware())
@@ -33,13 +33,13 @@ func (service *Service) setupRouter(server *http.Server) {
 
 	// protected routes
 	authGroup := router.Group("/").Use(authMiddleware(service.tokenMaker))
-	authGroup.DELETE(UsersDeleteUser, service.deleteUser)
-	authGroup.PATCH(UsersUpdateUser, service.updateUser)
+	authGroup.DELETE("/users", service.deleteUser)
+	authGroup.PATCH("/users", service.updateUser)
 
 	// private routes where post id is checked
 	privatePostGroup := authGroup.Use(service.postIDMiddleware())
-	privatePostGroup.POST(CommentsCreateRoot, service.createComment)
-	privatePostGroup.POST(CommentsCreateReply, service.createComment)
+	privatePostGroup.POST("/posts/:post_id/comments", service.createComment)
+	privatePostGroup.POST("/posts/:post_id/comments/:comment_id", service.createComment)
 	privatePostGroup.DELETE("/posts/:post_id")
 	privatePostGroup.POST("/posts/:post_id/vote", notImplemented)
 
@@ -50,4 +50,8 @@ func (service *Service) setupRouter(server *http.Server) {
 
 	server.Handler = router
 	service.router = router
+}
+
+func notImplemented(ctx *gin.Context) {
+	ctx.Status(http.StatusNotImplemented)
 }

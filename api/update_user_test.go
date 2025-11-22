@@ -208,7 +208,7 @@ func TestUpdateUser(t *testing.T) {
 			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
 
-			request, err := http.NewRequest(http.MethodPatch, UsersUpdateUser, bytes.NewReader(data))
+			request, err := http.NewRequest(http.MethodPatch, "/users", bytes.NewReader(data))
 			require.NoError(t, err)
 
 			tc.setupAuth(t, request, tokenMaker)

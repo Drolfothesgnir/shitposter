@@ -80,7 +80,7 @@ func TestSoftDeleteUser(t *testing.T) {
 			service := newTestService(t, store, tokenMaker, nil, nil)
 			recorder := httptest.NewRecorder()
 
-			request, err := http.NewRequest(http.MethodDelete, UsersDeleteUser, nil)
+			request, err := http.NewRequest(http.MethodDelete, "/users", nil)
 			require.NoError(t, err)
 
 			tc.setupAuth(t, request, tokenMaker)

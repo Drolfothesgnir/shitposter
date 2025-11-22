@@ -8,8 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const postIDKey = "provided_post_id"
-
 // This middleware checks the mandatory post ID parameter in the URL.
 //
 // I chose to use middleware instead of Gin's URI binding because it is
@@ -30,7 +28,7 @@ func (s *Service) postIDMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		ctx.Set(postIDKey, postID)
+		ctx.Set(ctxPostIDKey, postID)
 		ctx.Next()
 	}
 }

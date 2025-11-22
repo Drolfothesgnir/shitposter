@@ -19,7 +19,7 @@ func (s *Service) createComment(ctx *gin.Context) {
 	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 
 	// get post id after post id check middleware
-	postID := ctx.MustGet(postIDKey).(int64)
+	postID := ctx.MustGet(ctxPostIDKey).(int64)
 
 	var req CreateCommentRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {

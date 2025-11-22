@@ -32,7 +32,7 @@ func TestCommentIDMiddleware_ValidCommentID(t *testing.T) {
 	router := setupCommentIDTestRouter(s, func(ctx *gin.Context) {
 		called = true
 
-		v, exists := ctx.Get(providedCommentID)
+		v, exists := ctx.Get(ctxCommentIDKey)
 		require.True(t, exists, "comment_id should be set in context by middleware")
 
 		commentID, ok := v.(int64)

@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"slices"
-	"strings"
 	"time"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
@@ -33,6 +31,12 @@ const (
 	UsersUpdateUser      = "/users"
 	CommentsCreateRoot   = "/posts/:post_id/comments"
 	CommentsCreateReply  = "/posts/:post_id/comments/:comment_id"
+)
+
+// keys for values parsed from the uri and set into the request context
+const (
+	ctxPostIDKey    = "post_id"
+	ctxCommentIDKey = "comment_id"
 )
 
 var (
@@ -87,7 +91,7 @@ func NewService(
 	// how long to keep idle keep-alive connections open.
 	server.IdleTimeout = 60 * time.Second
 
-	service.SetupRouter(server)
+	service.setupRouter(server)
 
 	// custom validator to check if comment order in requests is valid.
 	// used in 'binding' tag in request.
@@ -100,87 +104,8 @@ func NewService(
 	return service, nil
 }
 
-// Establishes HTTP router.
-func (service *Service) SetupRouter(server *http.Server) {
-	router := gin.Default()
-
-	router.Use(service.corsMiddleware())
-
-	router.GET("/ping", func(ctx *gin.Context) {
-		ctx.String(http.StatusOK, "pong")
-	})
-
-	// passkey auth
-	router.POST(UsersSignupStartURL, service.signupStart)
-	router.POST(UsersSignupFinishURL, service.signupFinish)
-	router.POST(UsersSigninStartURL, service.signinStart)
-	router.POST(UsersSigninFinishURL, service.signinFinish)
-
-	// renew access token
-	router.POST(UsersRenewAccessURL, service.renewAccessToken)
-
-	router.GET(UsersGetUser+"/:id", service.getUser)
-
-	// public routes where post id is checked
-	publicPostGroup := router.Group("/posts").Use(service.postIDMiddleware())
-	publicPostGroup.GET("/:post_id/comments", service.getComments)
-
-	// protected routes
-	authGroup := router.Group("/").Use(authMiddleware(service.tokenMaker))
-	authGroup.DELETE(UsersDeleteUser, service.deleteUser)
-	authGroup.PATCH(UsersUpdateUser, service.updateUser)
-
-	// private routes where post id is checked
-	privatePostGroup := authGroup.Use(service.postIDMiddleware())
-	privatePostGroup.POST(CommentsCreateRoot, service.createComment)
-	privatePostGroup.POST(CommentsCreateReply, service.createComment)
-	privatePostGroup.DELETE("/posts/:post_id")
-	privatePostGroup.POST("/posts/:post_id/vote", notImplemented)
-
-	privatePostCommentGroup := privatePostGroup.Use(service.commentIDMiddleware())
-	privatePostCommentGroup.PATCH("/posts/:post_id/comments/:comment_id", notImplemented)
-	privatePostCommentGroup.DELETE("/posts/:post_id/comments/:comment_id", notImplemented)
-	privatePostCommentGroup.POST("/posts/:post_id/comments/:comment_id/vote", notImplemented)
-
-	server.Handler = router
-	service.router = router
-}
-
 func notImplemented(ctx *gin.Context) {
 	ctx.Status(http.StatusNotImplemented)
-}
-
-// handling CORS
-//
-// TODO: if I want my server as a REST API platform
-// then I need to be able to handle requests from different clients
-// and not only from predefined domains.
-func (service *Service) corsMiddleware() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		origin := ctx.Request.Header.Get("Origin")
-
-		if slices.Contains(service.config.AllowedOrigins, origin) {
-			ctx.Header("Access-Control-Allow-Origin", origin)
-		}
-
-		ctx.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-
-		// X-Webauthn-Challenge and X-Webauthn-Transports are critical for passkey auth
-		allowedHeaders := []string{
-			"Content-Type",
-			WebauthnChallengeHeader,
-			WebauthnTransportHeader,
-		}
-
-		ctx.Header("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ","))
-
-		if ctx.Request.Method == http.MethodOptions {
-			ctx.AbortWithStatus(http.StatusNoContent)
-			return
-		}
-
-		ctx.Next()
-	}
 }
 
 // Start runs the HTTP server

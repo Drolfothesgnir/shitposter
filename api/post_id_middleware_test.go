@@ -31,7 +31,7 @@ func TestPostIDMiddleware_ValidPostID(t *testing.T) {
 	router := setupPostIDTestRouter(s, func(ctx *gin.Context) {
 		called = true
 
-		v, exists := ctx.Get(postIDKey)
+		v, exists := ctx.Get(ctxPostIDKey)
 		require.True(t, exists, "post_id should be set in context by middleware")
 
 		postID, ok := v.(int64)

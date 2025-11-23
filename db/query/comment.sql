@@ -30,12 +30,20 @@ SELECT * FROM comments
 WHERE id = $1 LIMIT 1;
 
 -- name: UpdateComment :one
-UPDATE comments
-SET
-  body = $2,
-  last_modified_at = NOW()
-WHERE id = $1
-RETURNING *;
+SELECT
+    id::bigint AS id,
+    user_id::bigint AS user_id,
+    post_id::bigint AS post_id,
+    is_deleted::boolean AS is_deleted,
+    body::text AS body,
+    last_modified_at::timestamptz AS last_modified_at,
+    updated::boolean AS updated
+FROM update_comment(
+  p_comment_id := $1,
+  p_user_id := $2,
+  p_post_id := $3,
+  p_body := $4
+);
 
 -- name: GetCommentsByPopularity :many
 SELECT * FROM get_comments_by_popularity(

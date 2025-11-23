@@ -29,3 +29,8 @@ func (s *Service) commentIDMiddleware() gin.HandlerFunc {
 		ctx.Next()
 	}
 }
+
+// Helper function to get the comment ID after middleware check.
+func extractCommentIDFromCtx(ctx *gin.Context) int64 {
+	return ctx.MustGet(ctxCommentIDKey).(int64)
+}

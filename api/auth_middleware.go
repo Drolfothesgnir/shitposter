@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	authorizationheaderKey  = "authorization"
-	authorizationTypeBearer = "bearer"
-	authorizationPayloadKey = "authorization_payload"
+	authorizationheaderKey     = "authorization"
+	authorizationTypeBearer    = "bearer"
+	ctxAuthorizationPayloadKey = "authorization_payload"
 )
 
 func authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
@@ -47,7 +47,12 @@ func authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 			return
 		}
 
-		ctx.Set(authorizationPayloadKey, payload)
+		ctx.Set(ctxAuthorizationPayloadKey, payload)
 		ctx.Next()
 	}
+}
+
+// Helper to get auth data after the middleware check.
+func extractAuthPayloadFromCtx(ctx *gin.Context) *token.Payload {
+	return ctx.MustGet(ctxAuthorizationPayloadKey).(*token.Payload)
 }

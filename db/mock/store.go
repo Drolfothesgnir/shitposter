@@ -617,10 +617,10 @@ func (mr *MockStoreMockRecorder) TestUtilGetActiveUsers(ctx, limit any) *gomock.
 }
 
 // UpdateComment mocks base method.
-func (m *MockStore) UpdateComment(ctx context.Context, arg db.UpdateCommentParams) (db.Comment, error) {
+func (m *MockStore) UpdateComment(ctx context.Context, arg db.UpdateCommentParams) (db.UpdateCommentRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateComment", ctx, arg)
-	ret0, _ := ret[0].(db.Comment)
+	ret0, _ := ret[0].(db.UpdateCommentRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

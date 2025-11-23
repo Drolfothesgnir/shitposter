@@ -335,19 +335,134 @@ func TestDeleteCommentVote(t *testing.T) {
 
 }
 
-func TestUpdateComment(t *testing.T) {
+func TestUpdateComment_Success(t *testing.T) {
 	comment1 := createRandomComment(t)
+	newBody := util.RandomString(10)
+
+	result, err := testStore.UpdateComment(context.Background(), UpdateCommentParams{
+		PCommentID: comment1.ID,
+		PUserID:    comment1.UserID,
+		PPostID:    comment1.PostID,
+		PBody:      newBody,
+	})
+
+	require.NoError(t, err)
+	require.True(t, result.Updated)
+	require.False(t, result.IsDeleted)
+	require.Equal(t, newBody, result.Body)
+	require.Equal(t, comment1.ID, result.ID)
+	require.Equal(t, comment1.UserID, result.UserID)
+	require.Equal(t, comment1.PostID, result.PostID)
+
+	// double-check in DB
+	comment2, err := testStore.GetComment(context.Background(), comment1.ID)
+	require.NoError(t, err)
+	require.Equal(t, newBody, comment2.Body)
+}
+
+func TestUpdateComment_NonExistingComment(t *testing.T) {
+	// use obviously invalid ID
+	invalidID := int64(-1)
+
+	_, err := testStore.UpdateComment(context.Background(), UpdateCommentParams{
+		PCommentID: invalidID,
+		PUserID:    1,          // arbitrary
+		PPostID:    1,          // arbitrary
+		PBody:      "whatever", // won't be used
+	})
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, pgx.ErrNoRows)
+}
+
+func TestUpdateComment_DeletedComment(t *testing.T) {
+	comment1 := createRandomComment(t)
+
+	// soft-delete the comment first
+	deleted, err := testStore.SoftDeleteComment(context.Background(), comment1.ID)
+	require.NoError(t, err)
+	require.True(t, deleted.IsDeleted)
 
 	newBody := util.RandomString(10)
 
-	comment2, err := testStore.UpdateComment(context.Background(), UpdateCommentParams{
-		ID:   comment1.ID,
-		Body: newBody,
+	result, err := testStore.UpdateComment(context.Background(), UpdateCommentParams{
+		PCommentID: comment1.ID,
+		PUserID:    comment1.UserID,
+		PPostID:    comment1.PostID,
+		PBody:      newBody,
 	})
 
 	require.NoError(t, err)
 
-	require.Equal(t, newBody, comment2.Body)
+	// update must NOT happen
+	require.False(t, result.Updated)
+	require.True(t, result.IsDeleted)
+	require.Equal(t, "[deleted]", result.Body)
+	require.Equal(t, comment1.ID, result.ID)
+	require.Equal(t, comment1.UserID, result.UserID)
+	require.Equal(t, comment1.PostID, result.PostID)
+
+	// DB state must stay "[deleted]"
+	comment2, err := testStore.GetComment(context.Background(), comment1.ID)
+	require.NoError(t, err)
+	require.True(t, comment2.IsDeleted)
+	require.Equal(t, "[deleted]", comment2.Body)
+}
+
+func TestUpdateComment_WrongUser(t *testing.T) {
+	comment1 := createRandomComment(t)
+	otherUser := createRandomUser(t)
+	newBody := util.RandomString(10)
+
+	result, err := testStore.UpdateComment(context.Background(), UpdateCommentParams{
+		PCommentID: comment1.ID,
+		PUserID:    otherUser.ID, // NOT the author
+		PPostID:    comment1.PostID,
+		PBody:      newBody,
+	})
+
+	require.NoError(t, err)
+
+	// update must NOT happen
+	require.False(t, result.Updated)
+	require.False(t, result.IsDeleted)
+	require.Equal(t, comment1.ID, result.ID)
+	require.Equal(t, comment1.UserID, result.UserID) // still original author
+	require.Equal(t, comment1.PostID, result.PostID)
+	require.Equal(t, comment1.Body, result.Body) // body unchanged
+
+	// DB must still have original body
+	comment2, err := testStore.GetComment(context.Background(), comment1.ID)
+	require.NoError(t, err)
+	require.Equal(t, comment1.Body, comment2.Body)
+}
+
+func TestUpdateComment_WrongPost(t *testing.T) {
+	comment1 := createRandomComment(t)
+	otherPost := createRandomPost(t) // different post
+	newBody := util.RandomString(10)
+
+	result, err := testStore.UpdateComment(context.Background(), UpdateCommentParams{
+		PCommentID: comment1.ID,
+		PUserID:    comment1.UserID,
+		PPostID:    otherPost.ID, // wrong post
+		PBody:      newBody,
+	})
+
+	require.NoError(t, err)
+
+	// update must NOT happen
+	require.False(t, result.Updated)
+	require.False(t, result.IsDeleted)
+	require.Equal(t, comment1.ID, result.ID)
+	require.Equal(t, comment1.UserID, result.UserID)
+	require.Equal(t, comment1.PostID, result.PostID) // still original post
+	require.Equal(t, comment1.Body, result.Body)     // body unchanged
+
+	// DB must still have original body
+	comment2, err := testStore.GetComment(context.Background(), comment1.ID)
+	require.NoError(t, err)
+	require.Equal(t, comment1.Body, comment2.Body)
 }
 
 func TestGetCommentsByPopularityInvalidPostID(t *testing.T) {

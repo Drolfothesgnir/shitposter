@@ -3,12 +3,11 @@ package api
 import (
 	"net/http"
 
-	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/gin-gonic/gin"
 )
 
 func (service *Service) deleteUser(ctx *gin.Context) {
-	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	authPayload := extractAuthPayloadFromCtx(ctx)
 
 	err := service.store.SoftDeleteUserTx(ctx, authPayload.UserID)
 	if err != nil {

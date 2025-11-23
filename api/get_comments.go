@@ -19,8 +19,7 @@ type GetCommentsResponse struct {
 }
 
 func (s *Service) getComments(ctx *gin.Context) {
-	// get post id after post id check middleware
-	postID := ctx.MustGet(ctxPostIDKey).(int64)
+	postID := extractPostIDFromCtx(ctx)
 
 	// pre-filled with default values
 	req := GetCommentsQuery{

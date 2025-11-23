@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
-	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -15,11 +14,9 @@ type CreateCommentRequest struct {
 }
 
 func (s *Service) createComment(ctx *gin.Context) {
-	// get token after auth middleware use
-	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	authPayload := extractAuthPayloadFromCtx(ctx)
 
-	// get post id after post id check middleware
-	postID := ctx.MustGet(ctxPostIDKey).(int64)
+	postID := extractPostIDFromCtx(ctx)
 
 	var req CreateCommentRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {

@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
-	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -27,7 +26,7 @@ func (req *UpdateUserRequest) isValid() bool {
 
 // TODO: handle profile image update as file
 func (service *Service) updateUser(ctx *gin.Context) {
-	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	authPayload := extractAuthPayloadFromCtx(ctx)
 
 	var req UpdateUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {

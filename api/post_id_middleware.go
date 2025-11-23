@@ -32,3 +32,8 @@ func (s *Service) postIDMiddleware() gin.HandlerFunc {
 		ctx.Next()
 	}
 }
+
+// Helper function to get the post ID after middleware check.
+func extractPostIDFromCtx(ctx *gin.Context) int64 {
+	return ctx.MustGet(ctxPostIDKey).(int64)
+}

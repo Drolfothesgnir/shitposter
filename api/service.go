@@ -37,6 +37,8 @@ var (
 	ErrInvalidParams               = errors.New("invalid params")
 	ErrInvalidCommentID            = errors.New("invalid comment id")
 	ErrInvalidParentCommentId      = errors.New("invalid parent comment id")
+	ErrCommentDeleted              = errors.New("comment is deleted")
+	ErrCannotUpdate                = errors.New("could not update the entity")
 )
 
 type Service struct {

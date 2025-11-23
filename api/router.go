@@ -25,6 +25,7 @@ func (service *Service) setupRouter(server *http.Server) {
 	// renew access token
 	router.POST("/users/renew_access", service.renewAccessToken)
 
+	// get user's public info
 	router.GET("/users/:id", service.getUser)
 
 	// public routes where post id is checked
@@ -44,7 +45,7 @@ func (service *Service) setupRouter(server *http.Server) {
 	privatePostGroup.POST("/posts/:post_id/vote", notImplemented)
 
 	privatePostCommentGroup := privatePostGroup.Use(service.commentIDMiddleware())
-	privatePostCommentGroup.PATCH("/posts/:post_id/comments/:comment_id", notImplemented)
+	privatePostCommentGroup.PATCH("/posts/:post_id/comments/:comment_id", service.updateComment)
 	privatePostCommentGroup.DELETE("/posts/:post_id/comments/:comment_id", notImplemented)
 	privatePostCommentGroup.POST("/posts/:post_id/comments/:comment_id/vote", notImplemented)
 

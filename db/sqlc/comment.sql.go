@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -348,36 +349,55 @@ func (q *Queries) SoftDeleteComment(ctx context.Context, id int64) (Comment, err
 }
 
 const updateComment = `-- name: UpdateComment :one
-UPDATE comments
-SET
-  body = $2,
-  last_modified_at = NOW()
-WHERE id = $1
-RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity
+SELECT
+    id::bigint AS id,
+    user_id::bigint AS user_id,
+    post_id::bigint AS post_id,
+    is_deleted::boolean AS is_deleted,
+    body::text AS body,
+    last_modified_at::timestamptz AS last_modified_at,
+    updated::boolean AS updated
+FROM update_comment(
+  p_comment_id := $1,
+  p_user_id := $2,
+  p_post_id := $3,
+  p_body := $4
+)
 `
 
 type UpdateCommentParams struct {
-	ID   int64  `json:"id"`
-	Body string `json:"body"`
+	PCommentID int64  `json:"p_comment_id"`
+	PUserID    int64  `json:"p_user_id"`
+	PPostID    int64  `json:"p_post_id"`
+	PBody      string `json:"p_body"`
 }
 
-func (q *Queries) UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error) {
-	row := q.db.QueryRow(ctx, updateComment, arg.ID, arg.Body)
-	var i Comment
+type UpdateCommentRow struct {
+	ID             int64     `json:"id"`
+	UserID         int64     `json:"user_id"`
+	PostID         int64     `json:"post_id"`
+	IsDeleted      bool      `json:"is_deleted"`
+	Body           string    `json:"body"`
+	LastModifiedAt time.Time `json:"last_modified_at"`
+	Updated        bool      `json:"updated"`
+}
+
+func (q *Queries) UpdateComment(ctx context.Context, arg UpdateCommentParams) (UpdateCommentRow, error) {
+	row := q.db.QueryRow(ctx, updateComment,
+		arg.PCommentID,
+		arg.PUserID,
+		arg.PPostID,
+		arg.PBody,
+	)
+	var i UpdateCommentRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.PostID,
-		&i.ParentID,
-		&i.Depth,
-		&i.Upvotes,
-		&i.Downvotes,
-		&i.Body,
-		&i.CreatedAt,
-		&i.LastModifiedAt,
 		&i.IsDeleted,
-		&i.DeletedAt,
-		&i.Popularity,
+		&i.Body,
+		&i.LastModifiedAt,
+		&i.Updated,
 	)
 	return i, err
 }

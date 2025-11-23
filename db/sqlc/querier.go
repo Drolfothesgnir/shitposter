@@ -44,7 +44,7 @@ type Querier interface {
 	SoftDeleteComment(ctx context.Context, id int64) (Comment, error)
 	SoftDeleteUser(ctx context.Context, id int64) error
 	TestUtilGetActiveUsers(ctx context.Context, limit int32) ([]User, error)
-	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)
+	UpdateComment(ctx context.Context, arg UpdateCommentParams) (UpdateCommentRow, error)
 	UpdateCredentialSignCount(ctx context.Context, arg UpdateCredentialSignCountParams) error
 	UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)

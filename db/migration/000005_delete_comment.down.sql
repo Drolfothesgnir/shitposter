@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS delete_comment_leaf(BIGINT, BIGINT, BIGINT);

@@ -66,31 +66,48 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 }
 
 const deleteCommentIfLeaf = `-- name: DeleteCommentIfLeaf :one
-DELETE FROM comments c
-WHERE c.id = $1
-AND NOT EXISTS (
-  SELECT 1 FROM comments ch
-  WHERE ch.parent_id = c.id
-) RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity
+SELECT
+  id::BIGINT AS id,
+	user_id::BIGINT AS user_id,
+	post_id::BIGINT AS post_id,
+	is_deleted::BOOLEAN AS is_deleted,
+	deleted_at::TIMESTAMPTZ AS deleted_at,
+	has_children::BOOLEAN AS has_children,
+	deleted_ok::BOOLEAN AS deleted_ok -- True if either soft or hard delete was successful
+FROM delete_comment_leaf(
+  p_comment_id := $1,
+  p_user_id := $2,
+  p_post_id := $3
+)
 `
 
-func (q *Queries) DeleteCommentIfLeaf(ctx context.Context, id int64) (Comment, error) {
-	row := q.db.QueryRow(ctx, deleteCommentIfLeaf, id)
-	var i Comment
+type DeleteCommentIfLeafParams struct {
+	PCommentID int64 `json:"p_comment_id"`
+	PUserID    int64 `json:"p_user_id"`
+	PPostID    int64 `json:"p_post_id"`
+}
+
+type DeleteCommentIfLeafRow struct {
+	ID          int64     `json:"id"`
+	UserID      int64     `json:"user_id"`
+	PostID      int64     `json:"post_id"`
+	IsDeleted   bool      `json:"is_deleted"`
+	DeletedAt   time.Time `json:"deleted_at"`
+	HasChildren bool      `json:"has_children"`
+	DeletedOk   bool      `json:"deleted_ok"`
+}
+
+func (q *Queries) DeleteCommentIfLeaf(ctx context.Context, arg DeleteCommentIfLeafParams) (DeleteCommentIfLeafRow, error) {
+	row := q.db.QueryRow(ctx, deleteCommentIfLeaf, arg.PCommentID, arg.PUserID, arg.PPostID)
+	var i DeleteCommentIfLeafRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.PostID,
-		&i.ParentID,
-		&i.Depth,
-		&i.Upvotes,
-		&i.Downvotes,
-		&i.Body,
-		&i.CreatedAt,
-		&i.LastModifiedAt,
 		&i.IsDeleted,
 		&i.DeletedAt,
-		&i.Popularity,
+		&i.HasChildren,
+		&i.DeletedOk,
 	)
 	return i, err
 }
@@ -350,13 +367,13 @@ func (q *Queries) SoftDeleteComment(ctx context.Context, id int64) (Comment, err
 
 const updateComment = `-- name: UpdateComment :one
 SELECT
-    id::bigint AS id,
-    user_id::bigint AS user_id,
-    post_id::bigint AS post_id,
-    is_deleted::boolean AS is_deleted,
-    body::text AS body,
-    last_modified_at::timestamptz AS last_modified_at,
-    updated::boolean AS updated
+    id::BIGINT AS id,
+    user_id::BIGINT AS user_id,
+    post_id::BIGINT AS post_id,
+    is_deleted::BOOLEAN AS is_deleted,
+    body::TEXT AS body,
+    last_modified_at::TIMESTAMPTZ AS last_modified_at,
+    updated::BOOLEAN AS updated
 FROM update_comment(
   p_comment_id := $1,
   p_user_id := $2,

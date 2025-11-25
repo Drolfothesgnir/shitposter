@@ -29,7 +29,7 @@ func createChildComment(t *testing.T, parent Comment) Comment {
 	return comment
 }
 
-// 1) If comment is leaf it should be deleted completely
+// 1) If comment is a leaf and owned by the user, it should be hard-deleted.
 func TestDeleteCommentTx_LeafHardDelete(t *testing.T) {
 	ctx := context.Background()
 
@@ -41,18 +41,32 @@ func TestDeleteCommentTx_LeafHardDelete(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, comment.ID, gotBefore.ID)
 
-	// act
-	err = testStore.DeleteCommentTx(ctx, comment.ID)
+	// act: delete as owner, correct post id
+	result, err := testStore.DeleteCommentTx(ctx, DeleteCommentTxParams{
+		CommentID: comment.ID,
+		UserID:    comment.UserID,
+		PostID:    comment.PostID,
+	})
 	require.NoError(t, err)
 
-	// after: the comment should not be present in the db
+	// transaction-level success flag
+	require.True(t, result.Success)
+	// hard delete: row is gone from DB
 	_, err = testStore.GetComment(ctx, comment.ID)
 	require.Error(t, err)
 	require.ErrorIs(t, err, pgx.ErrNoRows)
+
+	// semantic properties from result:
+	require.Equal(t, comment.ID, result.ID)
+	require.Equal(t, comment.UserID, result.UserID)
+	require.Equal(t, comment.PostID, result.PostID)
+	require.False(t, result.IsDeleted)   // hard delete, not soft
+	require.False(t, result.HasChildren) // leaf
+	require.True(t, result.DeletedOk)    // hard delete succeeded inside SQL
 }
 
-// 2. If the comment has children it should be soft-deleted,
-// so children remain untouched
+//  2. If the comment has children, it should be soft-deleted,
+//     children remain untouched, and operation is still considered success.
 func TestDeleteCommentTx_NonLeafSoftDelete(t *testing.T) {
 	ctx := context.Background()
 
@@ -60,7 +74,7 @@ func TestDeleteCommentTx_NonLeafSoftDelete(t *testing.T) {
 	parent := createRandomComment(t)
 	child := createChildComment(t, parent)
 
-	// sanity: both exist
+	// sanity: both exist and not deleted
 	gotParentBefore, err := testStore.GetComment(ctx, parent.ID)
 	require.NoError(t, err)
 	require.False(t, gotParentBefore.IsDeleted)
@@ -69,17 +83,24 @@ func TestDeleteCommentTx_NonLeafSoftDelete(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, gotChildBefore.IsDeleted)
 
-	// act: delete the parent
-	err = testStore.DeleteCommentTx(ctx, parent.ID)
+	// act: delete the parent as rightful owner
+	result, err := testStore.DeleteCommentTx(ctx, DeleteCommentTxParams{
+		CommentID: parent.ID,
+		UserID:    parent.UserID,
+		PostID:    parent.PostID,
+	})
 	require.NoError(t, err)
+
+	// overall operation marked as successful
+	require.True(t, result.Success)
+	require.True(t, result.HasChildren)
 
 	// parent should be soft-deleted
 	gotParentAfter, err := testStore.GetComment(ctx, parent.ID)
 	require.NoError(t, err)
 	require.True(t, gotParentAfter.IsDeleted)
 	require.Equal(t, "[deleted]", gotParentAfter.Body)
-	// deleted_at is changed from the default value
-	// require.False(t, gotParentAfter.DeletedAt.IsZero())
+	require.True(t, gotParentAfter.DeletedAt.After(gotParentBefore.CreatedAt))
 
 	// child should stay and NOT be deleted
 	gotChildAfter, err := testStore.GetComment(ctx, child.ID)
@@ -89,38 +110,103 @@ func TestDeleteCommentTx_NonLeafSoftDelete(t *testing.T) {
 	require.Equal(t, gotChildBefore.Body, gotChildAfter.Body)
 }
 
-// 3) Operation must be idempotent / no-op for a non-existing comment
-func TestDeleteCommentTx_NonExistingComment_NoError(t *testing.T) {
+// 3) Non-existing comment: should return ErrEntityNotFound and !Success.
+func TestDeleteCommentTx_NonExistingComment_NotFound(t *testing.T) {
 	ctx := context.Background()
 
-	// choosing deliberately non-existent id
 	const nonexistentID int64 = 9_999_999_999
 
-	// act: first call
-	err := testStore.DeleteCommentTx(ctx, nonexistentID)
-	require.NoError(t, err)
+	// user and post ids here don't matter, record doesn't exist anyway
+	result, err := testStore.DeleteCommentTx(ctx, DeleteCommentTxParams{
+		CommentID: nonexistentID,
+		UserID:    1,
+		PostID:    1,
+	})
 
-	// act: second call - must not fall as well
-	err = testStore.DeleteCommentTx(ctx, nonexistentID)
-	require.NoError(t, err)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrEntityNotFound)
+	require.False(t, result.Success)
 }
 
-// 4) Optional: idempotency for alreade deleted leaf
-func TestDeleteCommentTx_LeafIdempotent(t *testing.T) {
+// 4) Repeated delete of the same comment: first succeeds, second returns ErrEntityNotFound.
+func TestDeleteCommentTx_LeafDeleteThenNotFound(t *testing.T) {
 	ctx := context.Background()
 
 	comment := createRandomComment(t)
 
-	// first call - remove as leaf
-	err := testStore.DeleteCommentTx(ctx, comment.ID)
+	// first call - hard delete as leaf
+	result1, err := testStore.DeleteCommentTx(ctx, DeleteCommentTxParams{
+		CommentID: comment.ID,
+		UserID:    comment.UserID,
+		PostID:    comment.PostID,
+	})
 	require.NoError(t, err)
+	require.True(t, result1.Success)
 
-	// sanity: deleted for real
+	// sanity: really gone
 	_, err = testStore.GetComment(ctx, comment.ID)
 	require.Error(t, err)
 	require.ErrorIs(t, err, pgx.ErrNoRows)
 
-	// second call - should be without error (no-op)
-	err = testStore.DeleteCommentTx(ctx, comment.ID)
+	// second call - now it should be "not found", not silent success
+	result2, err := testStore.DeleteCommentTx(ctx, DeleteCommentTxParams{
+		CommentID: comment.ID,
+		UserID:    comment.UserID,
+		PostID:    comment.PostID,
+	})
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrEntityNotFound)
+	require.False(t, result2.Success)
+}
+
+// 5) Trying to delete someone else's comment should return ErrEntityDoesNotBelongToUser.
+func TestDeleteCommentTx_ForeignUserForbidden(t *testing.T) {
+	ctx := context.Background()
+
+	ownerComment := createRandomComment(t)
+	foreignUser := createRandomUser(t)
+
+	// sanity
+	require.NotEqual(t, ownerComment.UserID, foreignUser.ID)
+
+	result, err := testStore.DeleteCommentTx(ctx, DeleteCommentTxParams{
+		CommentID: ownerComment.ID,
+		UserID:    foreignUser.ID,      // not the owner
+		PostID:    ownerComment.PostID, // correct post
+	})
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrEntityDoesNotBelongToUser)
+	require.False(t, result.Success)
+
+	// ensure original comment still exists and not deleted
+	got, err := testStore.GetComment(ctx, ownerComment.ID)
 	require.NoError(t, err)
+	require.False(t, got.IsDeleted)
+}
+
+// 6) Trying to delete comment with wrong post ID should return ErrInvalidPostID.
+func TestDeleteCommentTx_WrongPostID(t *testing.T) {
+	ctx := context.Background()
+
+	comment := createRandomComment(t)
+	anotherPost := createRandomPost(t)
+
+	// sanity
+	require.NotEqual(t, comment.PostID, anotherPost.ID)
+
+	result, err := testStore.DeleteCommentTx(ctx, DeleteCommentTxParams{
+		CommentID: comment.ID,
+		UserID:    comment.UserID,
+		PostID:    anotherPost.ID, // wrong post
+	})
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidPostID)
+	require.False(t, result.Success)
+
+	// ensure comment still exists and not deleted
+	got, err := testStore.GetComment(ctx, comment.ID)
+	require.NoError(t, err)
+	require.False(t, got.IsDeleted)
 }

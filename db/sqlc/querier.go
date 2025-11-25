@@ -16,7 +16,7 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateWebauthnCredentials(ctx context.Context, arg CreateWebauthnCredentialsParams) (WebauthnCredential, error)
-	DeleteCommentIfLeaf(ctx context.Context, id int64) (Comment, error)
+	DeleteCommentIfLeaf(ctx context.Context, arg DeleteCommentIfLeafParams) (DeleteCommentIfLeafRow, error)
 	DeleteCommentVote(ctx context.Context, arg DeleteCommentVoteParams) error
 	DeletePost(ctx context.Context, id int64) error
 	DeletePostVote(ctx context.Context, arg DeletePostVoteParams) error

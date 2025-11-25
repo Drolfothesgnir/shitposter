@@ -9,4 +9,7 @@ var (
 	ErrParentCommentPostIDMismatch = errors.New("parent comment has different post id")
 	ErrInvalidPostID               = errors.New("invalid post id")
 	ErrParentCommentDeleted        = errors.New("parent comment is deleted")
+	ErrEntityDoesNotBelongToUser   = errors.New("entity does not belong to the user")
+	ErrEntityNotFound              = errors.New("entity not found")
+	ErrDataCorrupted               = errors.New("data is corrupted")
 )

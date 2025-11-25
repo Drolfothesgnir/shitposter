@@ -18,12 +18,19 @@ FOR KEY SHARE
 LIMIT 1;
 
 -- name: DeleteCommentIfLeaf :one
-DELETE FROM comments c
-WHERE c.id = $1
-AND NOT EXISTS (
-  SELECT 1 FROM comments ch
-  WHERE ch.parent_id = c.id
-) RETURNING *;
+SELECT
+  id::BIGINT AS id,
+	user_id::BIGINT AS user_id,
+	post_id::BIGINT AS post_id,
+	is_deleted::BOOLEAN AS is_deleted,
+	deleted_at::TIMESTAMPTZ AS deleted_at,
+	has_children::BOOLEAN AS has_children,
+	deleted_ok::BOOLEAN AS deleted_ok -- True if either soft or hard delete was successful
+FROM delete_comment_leaf(
+  p_comment_id := $1,
+  p_user_id := $2,
+  p_post_id := $3
+);
 
 -- name: GetComment :one
 SELECT * FROM comments
@@ -31,13 +38,13 @@ WHERE id = $1 LIMIT 1;
 
 -- name: UpdateComment :one
 SELECT
-    id::bigint AS id,
-    user_id::bigint AS user_id,
-    post_id::bigint AS post_id,
-    is_deleted::boolean AS is_deleted,
-    body::text AS body,
-    last_modified_at::timestamptz AS last_modified_at,
-    updated::boolean AS updated
+    id::BIGINT AS id,
+    user_id::BIGINT AS user_id,
+    post_id::BIGINT AS post_id,
+    is_deleted::BOOLEAN AS is_deleted,
+    body::TEXT AS body,
+    last_modified_at::TIMESTAMPTZ AS last_modified_at,
+    updated::BOOLEAN AS updated
 FROM update_comment(
   p_comment_id := $1,
   p_user_id := $2,

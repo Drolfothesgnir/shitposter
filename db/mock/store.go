@@ -133,32 +133,33 @@ func (mr *MockStoreMockRecorder) CreateWebauthnCredentials(ctx, arg any) *gomock
 }
 
 // DeleteCommentIfLeaf mocks base method.
-func (m *MockStore) DeleteCommentIfLeaf(ctx context.Context, id int64) (db.Comment, error) {
+func (m *MockStore) DeleteCommentIfLeaf(ctx context.Context, arg db.DeleteCommentIfLeafParams) (db.DeleteCommentIfLeafRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteCommentIfLeaf", ctx, id)
-	ret0, _ := ret[0].(db.Comment)
+	ret := m.ctrl.Call(m, "DeleteCommentIfLeaf", ctx, arg)
+	ret0, _ := ret[0].(db.DeleteCommentIfLeafRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DeleteCommentIfLeaf indicates an expected call of DeleteCommentIfLeaf.
-func (mr *MockStoreMockRecorder) DeleteCommentIfLeaf(ctx, id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) DeleteCommentIfLeaf(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCommentIfLeaf", reflect.TypeOf((*MockStore)(nil).DeleteCommentIfLeaf), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCommentIfLeaf", reflect.TypeOf((*MockStore)(nil).DeleteCommentIfLeaf), ctx, arg)
 }
 
 // DeleteCommentTx mocks base method.
-func (m *MockStore) DeleteCommentTx(ctx context.Context, commentID int64) error {
+func (m *MockStore) DeleteCommentTx(ctx context.Context, arg db.DeleteCommentTxParams) (db.DeleteCommentTxResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteCommentTx", ctx, commentID)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "DeleteCommentTx", ctx, arg)
+	ret0, _ := ret[0].(db.DeleteCommentTxResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // DeleteCommentTx indicates an expected call of DeleteCommentTx.
-func (mr *MockStoreMockRecorder) DeleteCommentTx(ctx, commentID any) *gomock.Call {
+func (mr *MockStoreMockRecorder) DeleteCommentTx(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCommentTx", reflect.TypeOf((*MockStore)(nil).DeleteCommentTx), ctx, commentID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCommentTx", reflect.TypeOf((*MockStore)(nil).DeleteCommentTx), ctx, arg)
 }
 
 // DeleteCommentVote mocks base method.

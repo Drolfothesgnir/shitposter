@@ -18,6 +18,15 @@ type DeleteCommentTxResult struct {
 	Success bool // True if the delete operation is considered successful: hard delete, soft delete, or already deleted.
 }
 
+// DeleteCommentTx deletes a comment or soft-deletes it if it has children.
+//
+// Errors returned:
+//   - ErrEntityNotFound            – if the target comment does not exist
+//   - ErrEntityDoesNotBelongToUser – if the comment belongs to another user
+//   - ErrInvalidPostID             – if post_id mismatch happens
+//   - ErrDataCorrupted             – unexpected inconsistent DB state
+//
+// May also return database or transaction errors.
 func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParams) (DeleteCommentTxResult, error) {
 	var row DeleteCommentIfLeafRow
 	var result DeleteCommentTxResult

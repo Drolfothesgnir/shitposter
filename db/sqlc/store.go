@@ -6,12 +6,23 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// TODO: Write correct return types and error in doc comments.
 type Store interface {
 	Querier
 	Shutdown() // Graceful DB shutdown.
 	CreateUserWithCredentialsTx(ctx context.Context, arg CreateUserWithCredentialsTxParams) (CreateUserWithCredentialsTxResult, error)
 	SoftDeleteUserTx(ctx context.Context, userID int64) error
 	InsertCommentTx(ctx context.Context, arg InsertCommentTxParams) (Comment, error)
+
+	// DeleteCommentTx deletes a comment or soft-deletes it if it has children.
+	//
+	// Errors returned:
+	//   - ErrEntityNotFound            – if the target comment does not exist
+	//   - ErrEntityDoesNotBelongToUser – if the comment belongs to another user
+	//   - ErrInvalidPostID             – if post_id mismatch happens
+	//   - ErrDataCorrupted             – unexpected inconsistent DB state
+	//
+	// May also return database or transaction errors.
 	DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParams) (DeleteCommentTxResult, error)
 	QueryComments(ctx context.Context, query CommentQuery) ([]CommentsWithAuthor, error)
 }

@@ -132,6 +132,7 @@ func getBindingErrorMessage(tag string, value any, param string) string {
 	}
 }
 
+// TODO: replace this helper with json.NewDecoder(rec.Body).Decode(&ErrorResponse) in all tests
 func extractErrorFromBuffer(buf *bytes.Buffer) (*ErrorResponse, error) {
 	var resp ErrorResponse
 	if err := json.NewDecoder(buf).Decode(&resp); err != nil {

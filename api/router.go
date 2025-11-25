@@ -46,7 +46,7 @@ func (service *Service) setupRouter(server *http.Server) {
 
 	privatePostCommentGroup := privatePostGroup.Use(service.commentIDMiddleware())
 	privatePostCommentGroup.PATCH("/posts/:post_id/comments/:comment_id", service.updateComment)
-	privatePostCommentGroup.DELETE("/posts/:post_id/comments/:comment_id", notImplemented)
+	privatePostCommentGroup.DELETE("/posts/:post_id/comments/:comment_id", service.deleteComment)
 	privatePostCommentGroup.POST("/posts/:post_id/comments/:comment_id/vote", notImplemented)
 
 	server.Handler = router

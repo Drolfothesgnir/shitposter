@@ -39,6 +39,7 @@ var (
 	ErrInvalidParentCommentId      = errors.New("invalid parent comment id")
 	ErrCommentDeleted              = errors.New("comment is deleted")
 	ErrCannotUpdate                = errors.New("could not update the entity")
+	ErrCannotDelete                = errors.New("could not delete the entity")
 )
 
 type Service struct {

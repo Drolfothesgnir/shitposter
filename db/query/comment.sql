@@ -95,3 +95,12 @@ SET
   last_modified_at = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: UpdateCommentPopularity :one
+UPDATE comments
+SET
+  upvotes = upvotes + sqlc.arg('upvotes_delta')::SMALLINT,
+  downvotes = downvotes + sqlc.arg('downvotes_delta')::SMALLINT,
+  last_modified_at = NOW()
+WHERE id = $1 AND is_deleted = false
+RETURNING *;

@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS upsert_comment_vote(BIGINT, BIGINT, BIGINT);

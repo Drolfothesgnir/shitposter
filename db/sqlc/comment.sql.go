@@ -419,6 +419,43 @@ func (q *Queries) UpdateComment(ctx context.Context, arg UpdateCommentParams) (U
 	return i, err
 }
 
+const updateCommentPopularity = `-- name: UpdateCommentPopularity :one
+UPDATE comments
+SET
+  upvotes = upvotes + $2::SMALLINT,
+  downvotes = downvotes + $3::SMALLINT,
+  last_modified_at = NOW()
+WHERE id = $1 AND is_deleted = false
+RETURNING id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity
+`
+
+type UpdateCommentPopularityParams struct {
+	ID             int64 `json:"id"`
+	UpvotesDelta   int16 `json:"upvotes_delta"`
+	DownvotesDelta int16 `json:"downvotes_delta"`
+}
+
+func (q *Queries) UpdateCommentPopularity(ctx context.Context, arg UpdateCommentPopularityParams) (Comment, error) {
+	row := q.db.QueryRow(ctx, updateCommentPopularity, arg.ID, arg.UpvotesDelta, arg.DownvotesDelta)
+	var i Comment
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PostID,
+		&i.ParentID,
+		&i.Depth,
+		&i.Upvotes,
+		&i.Downvotes,
+		&i.Body,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.Popularity,
+	)
+	return i, err
+}
+
 const voteComment = `-- name: VoteComment :one
 SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity FROM vote_comment(
   p_user_id := $1,

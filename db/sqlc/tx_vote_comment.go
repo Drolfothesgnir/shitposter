@@ -11,12 +11,17 @@ import (
 type VoteCommentTxParams struct {
 	UserID    int64
 	CommentID int64
-	Vote      int16
+	Vote      int16 // Can be 1 or -1
 }
 
 func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (Comment, error) {
 	var result Comment
 	err := s.execTx(ctx, func(q *Queries) error {
+		// sanity check for the vote value
+		if arg.Vote != -1 && arg.Vote != 1 {
+			return ErrInvalidVoteValue
+		}
+
 		row, err := q.UpsertCommentVote(ctx, UpsertCommentVoteParams{
 			PUserID:    arg.UserID,
 			PCommentID: arg.CommentID,
@@ -40,34 +45,30 @@ func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (
 			return err
 		}
 
-		var upDelta, downDelta int16
+		oldVote := row.OriginalVote // -1, 0, 1 (0 = no previous voting)
+		newVote := arg.Vote
 
-		// if the vote is repeated, the same as the old one
-		// abort
-		if !row.Delta {
+		// repeated vote: don't change anything
+		if oldVote == newVote {
 			return ErrDuplicateVote
 		}
 
-		switch arg.Vote {
-		case -1:
-			// negative vote -> always add 1 to the downvotes
-			downDelta = 1
-			// if the user changed his vote from positive to negative
-			// also remove 1 from the upvotes
-			if !row.InsertedOk {
-				upDelta = -1
-			}
+		var upDelta, downDelta int16
+
+		// applying new vote effect
+		switch newVote {
 		case 1:
-			// positive vote -> always add 1 to the upvotes
-			upDelta = 1
-			// if the user changed his vote from negative to positive
-			// also remove 1 from the downvotes
-			if !row.InsertedOk {
-				downDelta = -1
-			}
-			// if the provided vote is not 1 or -1 abort
-		default:
-			return ErrInvalidVoteValue
+			upDelta++
+		case -1:
+			downDelta++
+		}
+
+		// removing old voting effect
+		switch oldVote {
+		case 1:
+			upDelta--
+		case -1:
+			downDelta--
 		}
 
 		comment, err := q.UpdateCommentPopularity(ctx, UpdateCommentPopularityParams{

@@ -632,6 +632,21 @@ func (mr *MockStoreMockRecorder) UpdateComment(ctx, arg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateComment", reflect.TypeOf((*MockStore)(nil).UpdateComment), ctx, arg)
 }
 
+// UpdateCommentPopularity mocks base method.
+func (m *MockStore) UpdateCommentPopularity(ctx context.Context, arg db.UpdateCommentPopularityParams) (db.Comment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateCommentPopularity", ctx, arg)
+	ret0, _ := ret[0].(db.Comment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateCommentPopularity indicates an expected call of UpdateCommentPopularity.
+func (mr *MockStoreMockRecorder) UpdateCommentPopularity(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateCommentPopularity", reflect.TypeOf((*MockStore)(nil).UpdateCommentPopularity), ctx, arg)
+}
+
 // UpdateCredentialSignCount mocks base method.
 func (m *MockStore) UpdateCredentialSignCount(ctx context.Context, arg db.UpdateCredentialSignCountParams) error {
 	m.ctrl.T.Helper()
@@ -674,6 +689,21 @@ func (m *MockStore) UpdateUser(ctx context.Context, arg db.UpdateUserParams) (db
 func (mr *MockStoreMockRecorder) UpdateUser(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUser", reflect.TypeOf((*MockStore)(nil).UpdateUser), ctx, arg)
+}
+
+// UpsertCommentVote mocks base method.
+func (m *MockStore) UpsertCommentVote(ctx context.Context, arg db.UpsertCommentVoteParams) (db.UpsertCommentVoteRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpsertCommentVote", ctx, arg)
+	ret0, _ := ret[0].(db.UpsertCommentVoteRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpsertCommentVote indicates an expected call of UpsertCommentVote.
+func (mr *MockStoreMockRecorder) UpsertCommentVote(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertCommentVote", reflect.TypeOf((*MockStore)(nil).UpsertCommentVote), ctx, arg)
 }
 
 // UsernameExists mocks base method.

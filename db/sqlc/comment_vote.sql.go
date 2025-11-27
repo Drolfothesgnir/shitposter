@@ -37,14 +37,13 @@ func (q *Queries) GetCommentVote(ctx context.Context, arg GetCommentVoteParams) 
 
 const upsertCommentVote = `-- name: UpsertCommentVote :one
 SELECT
-  id::BIGINT AS id ,
-	user_id::BIGINT AS user_id ,
-	comment_id::BIGINT AS comment_id ,
-	vote::SMALLINT AS vote ,
-	created_at::TIMESTAMPTZ AS created_at ,
-	last_modified_at::TIMESTAMPTZ AS last_modified_at ,
-	delta::BOOLEAN AS delta ,
-	inserted_ok::BOOLEAN AS inserted_ok 
+  id::BIGINT AS id,
+	user_id::BIGINT AS user_id,
+	comment_id::BIGINT AS comment_id,
+	vote::SMALLINT AS vote,
+	created_at::TIMESTAMPTZ AS created_at,
+	last_modified_at::TIMESTAMPTZ AS last_modified_at,
+	original_vote::SMALLINT AS original_vote
 FROM upsert_comment_vote(
   p_user_id := $1,
   p_comment_id := $2,
@@ -65,8 +64,7 @@ type UpsertCommentVoteRow struct {
 	Vote           int16     `json:"vote"`
 	CreatedAt      time.Time `json:"created_at"`
 	LastModifiedAt time.Time `json:"last_modified_at"`
-	Delta          bool      `json:"delta"`
-	InsertedOk     bool      `json:"inserted_ok"`
+	OriginalVote   int16     `json:"original_vote"`
 }
 
 func (q *Queries) UpsertCommentVote(ctx context.Context, arg UpsertCommentVoteParams) (UpsertCommentVoteRow, error) {
@@ -79,8 +77,7 @@ func (q *Queries) UpsertCommentVote(ctx context.Context, arg UpsertCommentVotePa
 		&i.Vote,
 		&i.CreatedAt,
 		&i.LastModifiedAt,
-		&i.Delta,
-		&i.InsertedOk,
+		&i.OriginalVote,
 	)
 	return i, err
 }

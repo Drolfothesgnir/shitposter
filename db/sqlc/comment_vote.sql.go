@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 )
 
 const getCommentVote = `-- name: GetCommentVote :one
@@ -30,6 +31,53 @@ func (q *Queries) GetCommentVote(ctx context.Context, arg GetCommentVoteParams) 
 		&i.Vote,
 		&i.CreatedAt,
 		&i.LastModifiedAt,
+	)
+	return i, err
+}
+
+const upsertCommentVote = `-- name: UpsertCommentVote :one
+SELECT
+  id::BIGINT AS id,
+	user_id::BIGINT AS user_id,
+	comment_id::BIGINT AS comment_id,
+	vote::SMALLINT AS vote,
+	created_at::TIMESTAMPTZ AS created_at,
+	last_modified_at::TIMESTAMPTZ AS last_modified_at,
+	original_vote::SMALLINT AS original_vote
+FROM upsert_comment_vote(
+  p_user_id := $1,
+  p_comment_id := $2,
+  p_vote := $3
+)
+`
+
+type UpsertCommentVoteParams struct {
+	PUserID    int64 `json:"p_user_id"`
+	PCommentID int64 `json:"p_comment_id"`
+	PVote      int16 `json:"p_vote"`
+}
+
+type UpsertCommentVoteRow struct {
+	ID             int64     `json:"id"`
+	UserID         int64     `json:"user_id"`
+	CommentID      int64     `json:"comment_id"`
+	Vote           int16     `json:"vote"`
+	CreatedAt      time.Time `json:"created_at"`
+	LastModifiedAt time.Time `json:"last_modified_at"`
+	OriginalVote   int16     `json:"original_vote"`
+}
+
+func (q *Queries) UpsertCommentVote(ctx context.Context, arg UpsertCommentVoteParams) (UpsertCommentVoteRow, error) {
+	row := q.db.QueryRow(ctx, upsertCommentVote, arg.PUserID, arg.PCommentID, arg.PVote)
+	var i UpsertCommentVoteRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.CommentID,
+		&i.Vote,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+		&i.OriginalVote,
 	)
 	return i, err
 }

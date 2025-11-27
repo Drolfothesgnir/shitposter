@@ -2,6 +2,7 @@ package db
 
 import "errors"
 
+// TODO: replace with real, nice, single, generic, detailed and awesome error type
 var (
 	ErrDuplicateVote               = errors.New("duplicate vote")
 	ErrInvalidVoteValue            = errors.New("vote value must be either 1 of -1")
@@ -12,4 +13,7 @@ var (
 	ErrEntityDoesNotBelongToUser   = errors.New("entity does not belong to the user")
 	ErrEntityNotFound              = errors.New("entity not found")
 	ErrDataCorrupted               = errors.New("data is corrupted")
+	ErrInvalidCommentID            = errors.New("invalid comment id")
+	ErrInvalidUserID               = errors.New("invalid user id")
+	ErrEntityDeleted               = errors.New("entity deleted")
 )

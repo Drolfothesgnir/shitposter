@@ -736,6 +736,21 @@ func (mr *MockStoreMockRecorder) VoteComment(ctx, arg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VoteComment", reflect.TypeOf((*MockStore)(nil).VoteComment), ctx, arg)
 }
 
+// VoteCommentTx mocks base method.
+func (m *MockStore) VoteCommentTx(ctx context.Context, arg db.VoteCommentTxParams) (db.Comment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VoteCommentTx", ctx, arg)
+	ret0, _ := ret[0].(db.Comment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// VoteCommentTx indicates an expected call of VoteCommentTx.
+func (mr *MockStoreMockRecorder) VoteCommentTx(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VoteCommentTx", reflect.TypeOf((*MockStore)(nil).VoteCommentTx), ctx, arg)
+}
+
 // VotePost mocks base method.
 func (m *MockStore) VotePost(ctx context.Context, arg db.VotePostParams) (db.Post, error) {
 	m.ctrl.T.Helper()

@@ -3,9 +3,10 @@ package db
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type VoteCommentTxParams struct {
@@ -19,7 +20,12 @@ func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (
 	err := s.execTx(ctx, func(q *Queries) error {
 		// sanity check for the vote value
 		if arg.Vote != -1 && arg.Vote != 1 {
-			return ErrInvalidVoteValue
+			return baseError(
+				"vote-comment",
+				"comment_vote",
+				KindInvalid,
+				fmt.Errorf("voting value is invalid: %d. must be either 1 or -1", arg.Vote),
+			)
 		}
 
 		row, err := q.UpsertCommentVote(ctx, UpsertCommentVoteParams{
@@ -28,21 +34,18 @@ func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (
 			PVote:      arg.Vote,
 		})
 
-		// check if there are db violations to determine if either user id or post id is invalid
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			switch pgErr.ConstraintName {
-			case "comment_votes_comment_id_fkey":
-				return ErrInvalidCommentID // keep shitty errors for now. i'll replace them with the Proper One
-			case "comment_votes_user_id_fkey":
-				return ErrInvalidUserID // and it's gonna be awesome!
-			default:
-				return err
-			}
-		}
-
+		// check if there are db violations to determine if either user id or comment id is invalid
 		if err != nil {
-			return err
+			return sqlError(
+				"vote-comment",
+				opDetails{
+					userID:    arg.UserID,
+					commentID: arg.CommentID,
+					entity:    "comment_vote",
+					input:     strconv.Itoa(int(arg.Vote)),
+				},
+				err,
+			)
 		}
 
 		oldVote := row.OriginalVote // -1, 0, 1 (0 = no previous voting)
@@ -50,7 +53,12 @@ func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (
 
 		// repeated vote: don't change anything
 		if oldVote == newVote {
-			return ErrDuplicateVote
+			return baseError(
+				"vote-comment",
+				"comment_vote",
+				KindConflict,
+				fmt.Errorf("repeated voting value: %d", arg.Vote),
+			)
 		}
 
 		var upDelta, downDelta int16
@@ -80,11 +88,27 @@ func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (
 		// if 'not found' returned it means
 		// the comment is deleted and cannot be voted
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrEntityDeleted // another bad one
+			return withEntityID(
+				baseError(
+					"vote-comment",
+					"comment",
+					KindDeleted,
+					fmt.Errorf("comment with id %d is deleted and cannot be voted", arg.CommentID),
+				),
+				arg.CommentID,
+			)
 		}
 
 		if err != nil {
-			return err
+			return sqlError(
+				"vote-comment",
+				opDetails{
+					userID:    arg.UserID,
+					commentID: arg.CommentID,
+					entity:    "comment",
+				},
+				err,
+			)
 		}
 
 		result = comment

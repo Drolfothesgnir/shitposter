@@ -2,10 +2,9 @@ package db
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -29,26 +28,68 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 
 		if arg.ParentID.Valid {
 			// getting parent comment and preventing its deletion from other queries
-			parent, err := q.GetCommentWithLock(ctx, arg.ParentID.Int64)
+			parentID := arg.ParentID.Int64
+			parent, err := q.GetCommentWithLock(ctx, parentID)
 
 			// if there is no parent comment when parent id is provided abort with error
 			if err == pgx.ErrNoRows {
-				return ErrParentCommentNotFound
+				return withEntityID(
+					baseError(
+						"insert-comment",
+						"comment",
+						KindNotFound,
+						fmt.Errorf("cannot reply to the comment with id: %d, the comment doesn't exist", parentID),
+					),
+					parentID,
+				)
 			}
 
 			// return generic error
 			if err != nil {
-				return err
+				return sqlError(
+					"insert-comment",
+					opDetails{
+						userID:    arg.UserID,
+						postID:    arg.PostID,
+						commentID: parentID,
+						entity:    "comment",
+					},
+					err,
+				)
 			}
 
 			// if parent comment's post_id and provided post_id differs abort
 			if parent.PostID != arg.PostID {
-				return ErrParentCommentPostIDMismatch
+
+				return withEntityID(
+					baseError(
+						"insert-comment",
+						"comment",
+						KindRelation,
+						fmt.Errorf(
+							"cannot reply to comment %d for post %d: parent comment belongs to post %d",
+							parentID,
+							arg.PostID,
+							parent.PostID,
+						),
+					),
+					parentID,
+				)
 			}
 
 			// check if comment is alive
 			if parent.IsDeleted {
-				return ErrParentCommentDeleted
+				parentID := parent.ID
+
+				return withEntityID(
+					baseError(
+						"insert-comment",
+						"comment",
+						KindDeleted,
+						fmt.Errorf("cannot reply to a deleted comment with id: %d", parentID),
+					),
+					parentID,
+				)
 			}
 
 			// if everything is ok child will have parent's depth + 1
@@ -65,18 +106,17 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 			Downvotes: arg.Downvotes,
 		})
 
-		// instead of making another trip to the db to check if parent post exists
-		// i'm trying to insert the new comment and check if there is foreign key violation,
-		// that is if the parent post is missing
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == "23503" && pgErr.ConstraintName == "comments_post_id_fkey" {
-				return ErrInvalidPostID
-			}
-		}
-
 		if err != nil {
-			return err
+			return sqlError(
+				"insert-comment",
+				opDetails{
+					userID:    arg.UserID,
+					postID:    arg.PostID,
+					commentID: arg.ParentID.Int64,
+					entity:    "comment",
+				},
+				err,
+			)
 		}
 
 		result = comment

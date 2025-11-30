@@ -73,19 +73,6 @@ SELECT * FROM get_newest_comments(
   p_root_offset := $3
 );
 
--- name: VoteComment :one
-SELECT * FROM vote_comment(
-  p_user_id := $1,
-  p_comment_id := $2,
-  p_vote := $3   
-);
-
--- name: DeleteCommentVote :exec
-SELECT delete_comment_vote(
-  p_comment_id := $1,
-  p_user_id := $2
-);
-
 -- name: SoftDeleteComment :one
 UPDATE comments
 SET 

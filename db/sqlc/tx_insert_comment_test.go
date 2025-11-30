@@ -73,7 +73,7 @@ func TestInsertCommentTx_ChildComment(t *testing.T) {
 	require.EqualValues(t, arg.Downvotes, comment.Downvotes)
 }
 
-// Non-existent parent -> ErrParentCommentNotFound
+// Non-existent parent -> OpError with KindRelation (or KindNotFound if you switch later)
 func TestInsertCommentTx_ParentNotFound(t *testing.T) {
 	ctx := context.Background()
 
@@ -89,10 +89,17 @@ func TestInsertCommentTx_ParentNotFound(t *testing.T) {
 
 	_, err := testStore.InsertCommentTx(ctx, arg)
 	require.Error(t, err)
-	require.ErrorIs(t, err, ErrParentCommentNotFound)
+
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+
+	require.Equal(t, "insert-comment", opErr.Op)
+	require.Equal(t, KindNotFound, opErr.Kind)
+	require.Equal(t, "comment", opErr.Entity)
+	require.Equal(t, nonExistingParentID, opErr.EntityID)
 }
 
-// Parent belongs to different post -> ErrParentCommentPostIDMismatch
+// Parent belongs to different post -> OpError with KindRelation
 func TestInsertCommentTx_ParentPostIDMismatch(t *testing.T) {
 	ctx := context.Background()
 
@@ -113,10 +120,17 @@ func TestInsertCommentTx_ParentPostIDMismatch(t *testing.T) {
 
 	_, err := testStore.InsertCommentTx(ctx, arg)
 	require.Error(t, err)
-	require.ErrorIs(t, err, ErrParentCommentPostIDMismatch)
+
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+
+	require.Equal(t, "insert-comment", opErr.Op)
+	require.Equal(t, KindRelation, opErr.Kind)
+	require.Equal(t, "comment", opErr.Entity)
+	require.Equal(t, parentID, opErr.EntityID)
 }
 
-// Invalid post_id (FK violation) -> ErrInvalidPostID
+// Invalid post_id (FK violation) -> OpError with KindRelation, entity=post
 func TestInsertCommentTx_InvalidPostID(t *testing.T) {
 	ctx := context.Background()
 
@@ -131,7 +145,14 @@ func TestInsertCommentTx_InvalidPostID(t *testing.T) {
 
 	_, err := testStore.InsertCommentTx(ctx, arg)
 	require.Error(t, err)
-	require.ErrorIs(t, err, ErrInvalidPostID)
+
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+
+	require.Equal(t, "insert-comment", opErr.Op)
+	require.Equal(t, KindRelation, opErr.Kind)
+	require.Equal(t, "post", opErr.Entity)
+	require.Equal(t, invalidPostID, opErr.EntityID)
 }
 
 func TestInsertCommentTx_DeletedParent(t *testing.T) {
@@ -151,5 +172,12 @@ func TestInsertCommentTx_DeletedParent(t *testing.T) {
 
 	_, err = testStore.InsertCommentTx(ctx, arg)
 	require.Error(t, err)
-	require.ErrorIs(t, err, ErrParentCommentDeleted)
+
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+
+	require.Equal(t, "insert-comment", opErr.Op)
+	require.Equal(t, KindDeleted, opErr.Kind)
+	require.Equal(t, "comment", opErr.Entity)
+	require.Equal(t, comment.ID, opErr.EntityID)
 }

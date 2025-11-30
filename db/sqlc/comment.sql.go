@@ -112,23 +112,6 @@ func (q *Queries) DeleteCommentIfLeaf(ctx context.Context, arg DeleteCommentIfLe
 	return i, err
 }
 
-const deleteCommentVote = `-- name: DeleteCommentVote :exec
-SELECT delete_comment_vote(
-  p_comment_id := $1,
-  p_user_id := $2
-)
-`
-
-type DeleteCommentVoteParams struct {
-	PCommentID int64 `json:"p_comment_id"`
-	PUserID    int64 `json:"p_user_id"`
-}
-
-func (q *Queries) DeleteCommentVote(ctx context.Context, arg DeleteCommentVoteParams) error {
-	_, err := q.db.Exec(ctx, deleteCommentVote, arg.PCommentID, arg.PUserID)
-	return err
-}
-
 const getComment = `-- name: GetComment :one
 SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity FROM comments
 WHERE id = $1 LIMIT 1
@@ -437,41 +420,6 @@ type UpdateCommentPopularityParams struct {
 
 func (q *Queries) UpdateCommentPopularity(ctx context.Context, arg UpdateCommentPopularityParams) (Comment, error) {
 	row := q.db.QueryRow(ctx, updateCommentPopularity, arg.ID, arg.UpvotesDelta, arg.DownvotesDelta)
-	var i Comment
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.PostID,
-		&i.ParentID,
-		&i.Depth,
-		&i.Upvotes,
-		&i.Downvotes,
-		&i.Body,
-		&i.CreatedAt,
-		&i.LastModifiedAt,
-		&i.IsDeleted,
-		&i.DeletedAt,
-		&i.Popularity,
-	)
-	return i, err
-}
-
-const voteComment = `-- name: VoteComment :one
-SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity FROM vote_comment(
-  p_user_id := $1,
-  p_comment_id := $2,
-  p_vote := $3   
-)
-`
-
-type VoteCommentParams struct {
-	PUserID    int64 `json:"p_user_id"`
-	PCommentID int64 `json:"p_comment_id"`
-	PVote      int32 `json:"p_vote"`
-}
-
-func (q *Queries) VoteComment(ctx context.Context, arg VoteCommentParams) (Comment, error) {
-	row := q.db.QueryRow(ctx, voteComment, arg.PUserID, arg.PCommentID, arg.PVote)
 	var i Comment
 	err := row.Scan(
 		&i.ID,

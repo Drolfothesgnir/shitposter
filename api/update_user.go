@@ -59,7 +59,7 @@ func (service *Service) updateUser(ctx *gin.Context) {
 		// 409 on unique conflicts
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			field := "[field_name]"
+			var field string
 			switch pgErr.ConstraintName {
 			case "uniq_users_username_active":
 				field = "username"

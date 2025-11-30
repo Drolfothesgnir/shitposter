@@ -17,7 +17,6 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateWebauthnCredentials(ctx context.Context, arg CreateWebauthnCredentialsParams) (WebauthnCredential, error)
 	DeleteCommentIfLeaf(ctx context.Context, arg DeleteCommentIfLeafParams) (DeleteCommentIfLeafRow, error)
-	DeleteCommentVote(ctx context.Context, arg DeleteCommentVoteParams) error
 	DeletePost(ctx context.Context, id int64) error
 	DeletePostVote(ctx context.Context, arg DeletePostVoteParams) error
 	DeleteUserCredentials(ctx context.Context, userID int64) error
@@ -51,7 +50,6 @@ type Querier interface {
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpsertCommentVote(ctx context.Context, arg UpsertCommentVoteParams) (UpsertCommentVoteRow, error)
 	UsernameExists(ctx context.Context, username string) (bool, error)
-	VoteComment(ctx context.Context, arg VoteCommentParams) (Comment, error)
 	VotePost(ctx context.Context, arg VotePostParams) (Post, error)
 }
 

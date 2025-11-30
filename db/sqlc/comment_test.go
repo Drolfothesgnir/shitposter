@@ -13,6 +13,9 @@ import (
 )
 
 func createRandomComment(t *testing.T) Comment {
+	t.Helper()
+
+	ctx := context.Background()
 	post := createRandomPost(t)
 
 	arg := CreateCommentParams{
@@ -21,7 +24,7 @@ func createRandomComment(t *testing.T) Comment {
 		Body:   util.RandomString(10),
 	}
 
-	comment, err := testStore.CreateComment(context.Background(), arg)
+	comment, err := testStore.CreateComment(ctx, arg)
 	require.NoError(t, err)
 
 	require.Equal(t, arg.UserID, comment.UserID)
@@ -40,8 +43,9 @@ func TestCreateComment(t *testing.T) {
 }
 
 func TestCreateReplyComment(t *testing.T) {
-	post := createRandomPost(t)
+	ctx := context.Background()
 
+	post := createRandomPost(t)
 	user := createRandomUser(t)
 
 	arg1 := InsertCommentTxParams{
@@ -50,7 +54,7 @@ func TestCreateReplyComment(t *testing.T) {
 		Body:   util.RandomString(10),
 	}
 
-	comment1, err := testStore.InsertCommentTx(context.Background(), arg1)
+	comment1, err := testStore.InsertCommentTx(ctx, arg1)
 	require.NoError(t, err)
 
 	arg2 := InsertCommentTxParams{
@@ -60,7 +64,7 @@ func TestCreateReplyComment(t *testing.T) {
 		ParentID: pgtype.Int8{Int64: comment1.ID, Valid: true},
 	}
 
-	comment2, err := testStore.InsertCommentTx(context.Background(), arg2)
+	comment2, err := testStore.InsertCommentTx(ctx, arg2)
 	require.NoError(t, err)
 
 	require.Equal(t, arg2.UserID, comment2.UserID)
@@ -73,6 +77,8 @@ func TestCreateReplyComment(t *testing.T) {
 }
 
 func TestGetComment(t *testing.T) {
+	ctx := context.Background()
+
 	post := createRandomPost(t)
 
 	arg := CreateCommentParams{
@@ -81,10 +87,10 @@ func TestGetComment(t *testing.T) {
 		Body:   util.RandomString(10),
 	}
 
-	comment1, err := testStore.CreateComment(context.Background(), arg)
+	comment1, err := testStore.CreateComment(ctx, arg)
 	require.NoError(t, err)
 
-	comment2, err := testStore.GetComment(context.Background(), comment1.ID)
+	comment2, err := testStore.GetComment(ctx, comment1.ID)
 	require.NoError(t, err)
 
 	require.Equal(t, comment1.UserID, comment2.UserID)
@@ -97,12 +103,14 @@ func TestGetComment(t *testing.T) {
 }
 
 func TestGetCommentsByPopularity(t *testing.T) {
+	ctx := context.Background()
+
 	// → #b = order by Popularity             0-#2                     0-#1                    0-#3
 	// ↓ a- = Depth                     |      |      |           |     |     |           |     |     |
 	//                                 1-#1   1-#2   1-#3        1-#2  1-#3  1-#1        1-#3  1-#2  1-#1
 
 	users := make([]User, 12)
-	for i := range 12 {
+	for i := 0; i < 12; i++ {
 		users[i] = createRandomUser(t)
 	}
 
@@ -110,19 +118,19 @@ func TestGetCommentsByPopularity(t *testing.T) {
 
 	roots := make([]CommentsWithAuthor, 3)
 
-	root_upvotes := []int64{50, 50, 100}
-	root_downvotes := []int64{50, 100, 50}
+	rootUpvotes := []int64{50, 50, 100}
+	rootDownvotes := []int64{50, 100, 50}
 
-	for i := range 3 {
-		c, err := testStore.CreateComment(context.Background(), CreateCommentParams{
+	for i := 0; i < 3; i++ {
+		c, err := testStore.CreateComment(ctx, CreateCommentParams{
 			UserID:    users[i].ID,
 			PostID:    post.ID,
 			Body:      fmt.Sprintf("Root comment #%d", i),
-			Upvotes:   root_upvotes[i],
-			Downvotes: root_downvotes[i],
+			Upvotes:   rootUpvotes[i],
+			Downvotes: rootDownvotes[i],
 		})
-
 		require.NoError(t, err)
+
 		root := CommentsWithAuthor{
 			ID:                c.ID,
 			UserID:            c.UserID,
@@ -140,37 +148,35 @@ func TestGetCommentsByPopularity(t *testing.T) {
 			UserDisplayName:   users[i].DisplayName,
 			UserProfileImgUrl: users[i].ProfileImgUrl,
 		}
-
 		roots[i] = root
 	}
 
 	replies := make([][]CommentsWithAuthor, 3)
 
-	reply_upvotes := [][]int64{
+	replyUpvotes := [][]int64{
 		{200, 100, 100},
 		{100, 100, 200},
 		{200, 100, 100},
 	}
 
-	reply_downvotes := [][]int64{
+	replyDownvotes := [][]int64{
 		{100, 200, 100},
 		{200, 100, 100},
 		{100, 100, 200},
 	}
 
-	for i := range 3 {
+	for i := 0; i < 3; i++ {
 		replies[i] = make([]CommentsWithAuthor, 3)
-		for j := range 3 {
-			userIdx := int64(3 + i*3 + j)
-			c, err := testStore.CreateComment(context.Background(), CreateCommentParams{
+		for j := 0; j < 3; j++ {
+			userIdx := 3 + i*3 + j
+			c, err := testStore.CreateComment(ctx, CreateCommentParams{
 				UserID:    users[userIdx].ID,
 				PostID:    post.ID,
 				Body:      fmt.Sprintf("%d reply to the root comment #%d", j, i),
-				Upvotes:   reply_upvotes[i][j],
-				Downvotes: reply_downvotes[i][j],
+				Upvotes:   replyUpvotes[i][j],
+				Downvotes: replyDownvotes[i][j],
 				ParentID:  pgtype.Int8{Int64: roots[i].ID, Valid: true},
 			})
-
 			require.NoError(t, err)
 
 			reply := CommentsWithAuthor{
@@ -195,7 +201,7 @@ func TestGetCommentsByPopularity(t *testing.T) {
 		}
 	}
 
-	ordered_comments := []CommentsWithAuthor{
+	orderedComments := []CommentsWithAuthor{
 		roots[2],
 		replies[2][0],
 		replies[2][1],
@@ -210,142 +216,29 @@ func TestGetCommentsByPopularity(t *testing.T) {
 		replies[1][0],
 	}
 
-	query_result, err := testStore.GetCommentsByPopularity(context.Background(), GetCommentsByPopularityParams{
+	queryResult, err := testStore.GetCommentsByPopularity(ctx, GetCommentsByPopularityParams{
 		PPostID:    post.ID,
 		PRootLimit: 3,
 	})
-
 	require.NoError(t, err)
-
-	require.Equal(t, ordered_comments, query_result)
+	require.Equal(t, orderedComments, queryResult)
 }
 
-func TestVoteComment(t *testing.T) {
-	comment1 := createRandomComment(t)
-
-	user := createRandomUser(t)
-
-	// there should be no vote initially
-	vote1, err := testStore.GetCommentVote(context.Background(), GetCommentVoteParams{
-		UserID:    user.ID,
-		CommentID: comment1.ID,
-	})
-
-	require.Empty(t, vote1)
-	require.Error(t, err)
-	require.ErrorIs(t, err, pgx.ErrNoRows)
-
-	// happy upvote case
-	comment2, err := testStore.VoteComment(context.Background(), VoteCommentParams{
-		PUserID:    user.ID,
-		PCommentID: comment1.ID,
-		PVote:      1,
-	})
-
-	require.NoError(t, err)
-	require.Equal(t, comment1.Upvotes+1, comment2.Upvotes)
-
-	vote2, err := testStore.GetCommentVote(context.Background(), GetCommentVoteParams{
-		UserID:    user.ID,
-		CommentID: comment1.ID,
-	})
-
-	require.NoError(t, err)
-	require.Equal(t, int16(1), vote2.Vote)
-
-	// vote change to -1
-	comment3, err := testStore.VoteComment(context.Background(), VoteCommentParams{
-		PUserID:    user.ID,
-		PCommentID: comment1.ID,
-		PVote:      -1,
-	})
-
-	require.NoError(t, err)
-	require.Equal(t, comment1.Downvotes+1, comment3.Downvotes)
-	require.Equal(t, comment1.Upvotes, comment3.Upvotes)
-
-	vote3, err := testStore.GetCommentVote(context.Background(), GetCommentVoteParams{
-		UserID:    user.ID,
-		CommentID: comment1.ID,
-	})
-	require.NoError(t, err)
-	require.Equal(t, int16(-1), vote3.Vote)
-
-	// check voting idempotency
-	comment4, err := testStore.VoteComment(context.Background(), VoteCommentParams{
-		PUserID:    user.ID,
-		PCommentID: comment1.ID,
-		PVote:      -1,
-	})
-
-	require.NoError(t, err)
-	require.Equal(t, comment3.Downvotes, comment4.Downvotes)
-
-	vote4, err := testStore.GetCommentVote(context.Background(), GetCommentVoteParams{
-		UserID:    user.ID,
-		CommentID: comment1.ID,
-	})
-	require.NoError(t, err)
-	require.Equal(t, vote3.Vote, vote4.Vote)
-}
-
-func TestDeleteCommentVote(t *testing.T) {
-	comment1 := createRandomComment(t)
-
-	user := createRandomUser(t)
-
-	_, err := testStore.VoteComment(context.Background(), VoteCommentParams{
-		PUserID:    user.ID,
-		PCommentID: comment1.ID,
-		PVote:      1,
-	})
-
-	require.NoError(t, err)
-
-	vote1, err := testStore.GetCommentVote(context.Background(), GetCommentVoteParams{
-		UserID:    user.ID,
-		CommentID: comment1.ID,
-	})
-
-	require.NotEmpty(t, vote1)
-	require.NoError(t, err)
-	require.Equal(t, int16(1), vote1.Vote)
-
-	err = testStore.DeleteCommentVote(context.Background(), DeleteCommentVoteParams{
-		PCommentID: comment1.ID,
-		PUserID:    user.ID,
-	})
-
-	require.NoError(t, err)
-
-	comment2, err := testStore.GetComment(context.Background(), comment1.ID)
-
-	require.NoError(t, err)
-	require.Equal(t, comment1.Upvotes, comment2.Upvotes)
-	require.Equal(t, comment1.Downvotes, comment2.Downvotes)
-
-	vote2, err := testStore.GetCommentVote(context.Background(), GetCommentVoteParams{
-		UserID:    user.ID,
-		CommentID: comment1.ID,
-	})
-
-	require.Empty(t, vote2)
-	require.Error(t, err)
-	require.ErrorIs(t, err, pgx.ErrNoRows)
-
-}
+// Note: VoteCommentTx now has its own dedicated tests that assert on OpError,
+// so the old all-in-one TestVoteCommentTx has been removed here.
 
 func TestUpdateComment_Success(t *testing.T) {
+	ctx := context.Background()
+
 	comment1 := createRandomComment(t)
 	newBody := util.RandomString(10)
 
-	result, err := testStore.UpdateComment(context.Background(), UpdateCommentParams{
+	result, err := testStore.UpdateComment(ctx, UpdateCommentParams{
 		PCommentID: comment1.ID,
 		PUserID:    comment1.UserID,
 		PPostID:    comment1.PostID,
 		PBody:      newBody,
 	})
-
 	require.NoError(t, err)
 	require.True(t, result.Updated)
 	require.False(t, result.IsDeleted)
@@ -355,43 +248,44 @@ func TestUpdateComment_Success(t *testing.T) {
 	require.Equal(t, comment1.PostID, result.PostID)
 
 	// double-check in DB
-	comment2, err := testStore.GetComment(context.Background(), comment1.ID)
+	comment2, err := testStore.GetComment(ctx, comment1.ID)
 	require.NoError(t, err)
 	require.Equal(t, newBody, comment2.Body)
 }
 
 func TestUpdateComment_NonExistingComment(t *testing.T) {
-	// use obviously invalid ID
+	ctx := context.Background()
+
 	invalidID := int64(-1)
 
-	_, err := testStore.UpdateComment(context.Background(), UpdateCommentParams{
+	_, err := testStore.UpdateComment(ctx, UpdateCommentParams{
 		PCommentID: invalidID,
-		PUserID:    1,          // arbitrary
-		PPostID:    1,          // arbitrary
-		PBody:      "whatever", // won't be used
+		PUserID:    1,
+		PPostID:    1,
+		PBody:      "whatever",
 	})
-
 	require.Error(t, err)
 	require.ErrorIs(t, err, pgx.ErrNoRows)
 }
 
 func TestUpdateComment_DeletedComment(t *testing.T) {
+	ctx := context.Background()
+
 	comment1 := createRandomComment(t)
 
 	// soft-delete the comment first
-	deleted, err := testStore.SoftDeleteComment(context.Background(), comment1.ID)
+	deleted, err := testStore.SoftDeleteComment(ctx, comment1.ID)
 	require.NoError(t, err)
 	require.True(t, deleted.IsDeleted)
 
 	newBody := util.RandomString(10)
 
-	result, err := testStore.UpdateComment(context.Background(), UpdateCommentParams{
+	result, err := testStore.UpdateComment(ctx, UpdateCommentParams{
 		PCommentID: comment1.ID,
 		PUserID:    comment1.UserID,
 		PPostID:    comment1.PostID,
 		PBody:      newBody,
 	})
-
 	require.NoError(t, err)
 
 	// update must NOT happen
@@ -403,52 +297,25 @@ func TestUpdateComment_DeletedComment(t *testing.T) {
 	require.Equal(t, comment1.PostID, result.PostID)
 
 	// DB state must stay "[deleted]"
-	comment2, err := testStore.GetComment(context.Background(), comment1.ID)
+	comment2, err := testStore.GetComment(ctx, comment1.ID)
 	require.NoError(t, err)
 	require.True(t, comment2.IsDeleted)
 	require.Equal(t, "[deleted]", comment2.Body)
 }
 
 func TestUpdateComment_WrongUser(t *testing.T) {
+	ctx := context.Background()
+
 	comment1 := createRandomComment(t)
 	otherUser := createRandomUser(t)
 	newBody := util.RandomString(10)
 
-	result, err := testStore.UpdateComment(context.Background(), UpdateCommentParams{
+	result, err := testStore.UpdateComment(ctx, UpdateCommentParams{
 		PCommentID: comment1.ID,
 		PUserID:    otherUser.ID, // NOT the author
 		PPostID:    comment1.PostID,
 		PBody:      newBody,
 	})
-
-	require.NoError(t, err)
-
-	// update must NOT happen
-	require.False(t, result.Updated)
-	require.False(t, result.IsDeleted)
-	require.Equal(t, comment1.ID, result.ID)
-	require.Equal(t, comment1.UserID, result.UserID) // still original author
-	require.Equal(t, comment1.PostID, result.PostID)
-	require.Equal(t, comment1.Body, result.Body) // body unchanged
-
-	// DB must still have original body
-	comment2, err := testStore.GetComment(context.Background(), comment1.ID)
-	require.NoError(t, err)
-	require.Equal(t, comment1.Body, comment2.Body)
-}
-
-func TestUpdateComment_WrongPost(t *testing.T) {
-	comment1 := createRandomComment(t)
-	otherPost := createRandomPost(t) // different post
-	newBody := util.RandomString(10)
-
-	result, err := testStore.UpdateComment(context.Background(), UpdateCommentParams{
-		PCommentID: comment1.ID,
-		PUserID:    comment1.UserID,
-		PPostID:    otherPost.ID, // wrong post
-		PBody:      newBody,
-	})
-
 	require.NoError(t, err)
 
 	// update must NOT happen
@@ -456,40 +323,72 @@ func TestUpdateComment_WrongPost(t *testing.T) {
 	require.False(t, result.IsDeleted)
 	require.Equal(t, comment1.ID, result.ID)
 	require.Equal(t, comment1.UserID, result.UserID)
-	require.Equal(t, comment1.PostID, result.PostID) // still original post
-	require.Equal(t, comment1.Body, result.Body)     // body unchanged
+	require.Equal(t, comment1.PostID, result.PostID)
+	require.Equal(t, comment1.Body, result.Body)
 
 	// DB must still have original body
-	comment2, err := testStore.GetComment(context.Background(), comment1.ID)
+	comment2, err := testStore.GetComment(ctx, comment1.ID)
+	require.NoError(t, err)
+	require.Equal(t, comment1.Body, comment2.Body)
+}
+
+func TestUpdateComment_WrongPost(t *testing.T) {
+	ctx := context.Background()
+
+	comment1 := createRandomComment(t)
+	otherPost := createRandomPost(t)
+	newBody := util.RandomString(10)
+
+	result, err := testStore.UpdateComment(ctx, UpdateCommentParams{
+		PCommentID: comment1.ID,
+		PUserID:    comment1.UserID,
+		PPostID:    otherPost.ID, // wrong post
+		PBody:      newBody,
+	})
+	require.NoError(t, err)
+
+	// update must NOT happen
+	require.False(t, result.Updated)
+	require.False(t, result.IsDeleted)
+	require.Equal(t, comment1.ID, result.ID)
+	require.Equal(t, comment1.UserID, result.UserID)
+	require.Equal(t, comment1.PostID, result.PostID)
+	require.Equal(t, comment1.Body, result.Body)
+
+	// DB must still have original body
+	comment2, err := testStore.GetComment(ctx, comment1.ID)
 	require.NoError(t, err)
 	require.Equal(t, comment1.Body, comment2.Body)
 }
 
 func TestGetCommentsByPopularityInvalidPostID(t *testing.T) {
-	comments, err := testStore.GetCommentsByPopularity(context.Background(), GetCommentsByPopularityParams{
+	ctx := context.Background()
+
+	comments, err := testStore.GetCommentsByPopularity(ctx, GetCommentsByPopularityParams{
 		PPostID: -1,
 	})
-
 	require.NoError(t, err)
-	require.True(t, len(comments) == 0)
+	require.Len(t, comments, 0)
 }
 
 func TestGetCommentsByPopularityInvalidLimit(t *testing.T) {
-	_, err := testStore.GetCommentsByPopularity(context.Background(), GetCommentsByPopularityParams{
+	ctx := context.Background()
+
+	_, err := testStore.GetCommentsByPopularity(ctx, GetCommentsByPopularityParams{
 		PPostID:    1,
 		PRootLimit: -1,
 	})
-
 	var pgErr *pgconn.PgError
 	require.ErrorAs(t, err, &pgErr)
 	require.Equal(t, "2201W", pgErr.Code)
-
 }
 
 func TestDeleteComment(t *testing.T) {
+	ctx := context.Background()
+
 	comment1 := createRandomComment(t)
 
-	comment2, err := testStore.SoftDeleteComment(context.Background(), comment1.ID)
+	comment2, err := testStore.SoftDeleteComment(ctx, comment1.ID)
 	require.NoError(t, err)
 
 	require.True(t, comment2.IsDeleted)

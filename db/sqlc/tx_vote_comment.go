@@ -9,6 +9,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const opVoteComment = "vote-comment"
+
 type VoteCommentTxParams struct {
 	UserID    int64
 	CommentID int64
@@ -20,11 +22,12 @@ func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (
 	err := s.execTx(ctx, func(q *Queries) error {
 		// sanity check for the vote value
 		if arg.Vote != -1 && arg.Vote != 1 {
-			return baseError(
-				"vote-comment",
-				"comment_vote",
+			return newOpError(
+				opVoteComment,
 				KindInvalid,
+				entCommentVote,
 				fmt.Errorf("voting value is invalid: %d. must be either 1 or -1", arg.Vote),
+				withField("vote"),
 			)
 		}
 
@@ -34,15 +37,17 @@ func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (
 			PVote:      arg.Vote,
 		})
 
+		voteStr := strconv.Itoa(int(arg.Vote))
+
 		// check if there are db violations to determine if either user id or comment id is invalid
 		if err != nil {
 			return sqlError(
-				"vote-comment",
+				opVoteComment,
 				opDetails{
 					userID:    arg.UserID,
 					commentID: arg.CommentID,
-					entity:    "comment_vote",
-					input:     strconv.Itoa(int(arg.Vote)),
+					entity:    entCommentVote,
+					input:     voteStr,
 				},
 				err,
 			)
@@ -53,11 +58,13 @@ func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (
 
 		// repeated vote: don't change anything
 		if oldVote == newVote {
-			return baseError(
-				"vote-comment",
-				"comment_vote",
+			return newOpError(
+				opVoteComment,
 				KindConflict,
+				entCommentVote,
 				fmt.Errorf("repeated voting value: %d", arg.Vote),
+				withField("vote"),
+				withEntityID(row.ID),
 			)
 		}
 
@@ -88,24 +95,23 @@ func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (
 		// if 'not found' returned it means
 		// the comment is deleted and cannot be voted
 		if errors.Is(err, pgx.ErrNoRows) {
-			return withEntityID(
-				baseError(
-					"vote-comment",
-					"comment",
-					KindDeleted,
-					fmt.Errorf("comment with id %d is deleted and cannot be voted", arg.CommentID),
-				),
-				arg.CommentID,
+			return newOpError(
+				opVoteComment,
+				KindDeleted,
+				entComment,
+				fmt.Errorf("comment with id %d is deleted and cannot be voted", arg.CommentID),
+				withEntityID(arg.CommentID),
 			)
 		}
 
 		if err != nil {
 			return sqlError(
-				"vote-comment",
+				opVoteComment,
 				opDetails{
 					userID:    arg.UserID,
 					commentID: arg.CommentID,
-					entity:    "comment",
+					entity:    entCommentVote,
+					input:     voteStr,
 				},
 				err,
 			)

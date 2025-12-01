@@ -35,17 +35,12 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 
 			// if there is no parent comment when parent id is provided abort with error
 			if err == pgx.ErrNoRows {
-				return withRelatedEntity(
-					withRelatedEntityID(
-						baseError(
-							opInsertComment,
-							entComment,
-							KindNotFound,
-							fmt.Errorf("cannot reply to the comment with id: %d, the comment doesn't exist", parentID),
-						),
-						parentID,
-					),
+				return newOpError(
+					opInsertComment,
+					KindNotFound,
 					entComment,
+					fmt.Errorf("cannot reply to the comment with id: %d, the comment doesn't exist", parentID),
+					withRelated(entComment, parentID),
 				)
 			}
 
@@ -67,25 +62,18 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 			// in this case i want to explicitely specify the incorrect field - "post_id"
 			// so the api handlers will not need to parse the error string
 			if parent.PostID != arg.PostID {
-				return withRelatedEntity(
-					withRelatedEntityID(
-						withFailingField(
-							baseError(
-								opInsertComment,
-								entComment,
-								KindRelation,
-								fmt.Errorf(
-									"cannot reply to comment %d for post %d: parent comment belongs to post %d",
-									parentID,
-									arg.PostID,
-									parent.PostID,
-								),
-							),
-							"post_id",
-						),
-						parentID,
-					),
+				return newOpError(
+					opInsertComment,
+					KindRelation,
 					entComment,
+					fmt.Errorf(
+						"cannot reply to comment %d for post %d: parent comment belongs to post %d",
+						parentID,
+						arg.PostID,
+						parent.PostID,
+					),
+					withRelated(entComment, parentID),
+					withField("post_id"),
 				)
 			}
 
@@ -93,14 +81,12 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 			if parent.IsDeleted {
 				parentID := parent.ID
 
-				return withEntityID(
-					baseError(
-						opInsertComment,
-						entComment,
-						KindDeleted,
-						fmt.Errorf("cannot reply to a deleted comment with id: %d", parentID),
-					),
-					parentID,
+				return newOpError(
+					opInsertComment,
+					KindDeleted,
+					entComment,
+					fmt.Errorf("cannot reply to a deleted comment with id: %d", parentID),
+					withEntityID(parentID),
 				)
 			}
 

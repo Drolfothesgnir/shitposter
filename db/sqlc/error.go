@@ -111,44 +111,40 @@ func (e *OpError) Unwrap() error {
 	return e.Err
 }
 
-// baseError creates OpError without optional fields (no entity or user IDs).
-func baseError(op, entity string, kind Kind, err error) *OpError {
-	return &OpError{
-		Op:     op,
-		Kind:   kind,
-		Entity: entity,
-		Err:    err,
+type errDecorator func(*OpError)
+
+// newOpError builds *OpError from basic and optional parts.
+func newOpError(op string, kind Kind, entity string, err error, opts ...errDecorator) *OpError {
+	be := &OpError{Op: op, Kind: kind, Entity: entity, Err: err}
+
+	for _, dec := range opts {
+		dec(be)
 	}
+
+	return be
 }
 
 // withEntityID augments base OpError with provided entity ID.
-func withEntityID(be *OpError, entityID int64) *OpError {
-	be.EntityID = entityID
-	return be
+func withEntityID(entityID int64) errDecorator {
+	return func(be *OpError) { be.EntityID = entityID }
 }
 
-// withUserID augments base OpError with provided user ID.
-func withUserID(be *OpError, userID int64) *OpError {
-	be.UserID = userID
-	return be
+// withUser augments base OpError with provided user ID.
+func withUser(userID int64) errDecorator {
+	return func(be *OpError) { be.UserID = userID }
 }
 
-// withRelatedEntity augments base OpError with provided related entity.
-func withRelatedEntity(be *OpError, relatedEntity string) *OpError {
-	be.RelatedEntity = relatedEntity
-	return be
+// withRelated augments base OpError with provided related entity info.
+func withRelated(entity string, entityID int64) errDecorator {
+	return func(be *OpError) {
+		be.RelatedEntity = entity
+		be.RelatedEntityID = entityID
+	}
 }
 
-// withRelatedEntityID augments base OpError with provided related entity ID.
-func withRelatedEntityID(be *OpError, relatedEntityID int64) *OpError {
-	be.RelatedEntityID = relatedEntityID
-	return be
-}
-
-// withFailingField augments base OpError with provided failing field.
-func withFailingField(be *OpError, failingField string) *OpError {
-	be.FailingField = failingField
-	return be
+// withField augments base OpError with provided failing field.
+func withField(failingField string) errDecorator {
+	return func(be *OpError) { be.FailingField = failingField }
 }
 
 type opDetails struct {
@@ -159,6 +155,7 @@ type opDetails struct {
 	entity    string
 }
 
+// sqlError builds *OpError for wrapping postgres errors.
 func sqlError(op string, det opDetails, err error) *OpError {
 	var pgError *pgconn.PgError
 	if errors.As(err, &pgError) {
@@ -171,51 +168,36 @@ func sqlError(op string, det opDetails, err error) *OpError {
 			switch pgError.ConstraintName {
 			// when attempting to create comment for non-existent post
 			case "comments_post_id_fkey":
-				return withRelatedEntity(
-					withRelatedEntityID(
-						baseError(
-							op,
-							entComment,
-							KindRelation,
-							fmt.Errorf("attempt to create comment for a non-existent post with id [%d]: %w", det.postID, pgError),
-						),
-						det.postID,
-					),
-					entPost,
+				return newOpError(
+					op,
+					KindRelation,
+					entComment,
+					fmt.Errorf("attempt to create comment for a non-existent post with id [%d]: %w", det.postID, pgError),
+					withRelated(entPost, det.postID),
 				)
 
 			// when attempting to vote for non-existent comment
 			case "comment_votes_comment_id_fkey":
-				return withRelatedEntity(
-					withRelatedEntityID(
-						baseError(
-							op,
-							entCommentVote,
-							KindRelation,
-							fmt.Errorf("attempt to vote for a non-existent comment with id [%d]: %w", det.commentID, pgError),
-						),
-						det.commentID,
-					),
-					entComment,
+				return newOpError(
+					op,
+					KindRelation,
+					entCommentVote,
+					fmt.Errorf("attempt to vote for a non-existent comment with id [%d]: %w", det.commentID, pgError),
+					withRelated(entComment, det.commentID),
 				)
 
 				// attempting to vote as non-existent user
 			case "comment_votes_user_id_fkey":
-				return withRelatedEntity(
-					withRelatedEntityID(
-						baseError(
-							op,
-							entCommentVote,
-							KindRelation,
-							fmt.Errorf("attempt to vote as a non-existent user with id [%d]: %w", det.userID, pgError),
-						),
-						det.userID,
-					),
-					entUser,
+				return newOpError(
+					op,
+					KindRelation,
+					entCommentVote,
+					fmt.Errorf("attempt to vote as a non-existent user with id [%d]: %w", det.userID, pgError),
+					withRelated(entUser, det.userID),
 				)
 
 			default:
-				return baseError(op, det.entity, KindRelation, pgError)
+				return newOpError(op, KindRelation, det.entity, pgError)
 			}
 		}
 
@@ -224,39 +206,31 @@ func sqlError(op string, det opDetails, err error) *OpError {
 			switch pgError.ConstraintName {
 			// when active user with this username exists
 			case "uniq_users_username_active":
-				return withEntityID(
-					withFailingField(
-						baseError(
-							op,
-							entUser,
-							KindConflict,
-							fmt.Errorf("user with username '%s' exists: %w", det.input, pgError),
-						),
-						"username",
-					),
-					det.userID,
+				return newOpError(
+					op,
+					KindConflict,
+					entUser,
+					fmt.Errorf("user with username '%s' exists: %w", det.input, pgError),
+					withEntityID(det.userID),
+					withField("username"),
 				)
 
 			// when active user with this email exists
 			case "uniq_users_email_active":
-				return withEntityID(
-					withFailingField(
-						baseError(
-							op,
-							entUser,
-							KindConflict,
-							fmt.Errorf("user with email '%s' exists: %w", det.input, pgError),
-						),
-						"email",
-					),
-					det.userID,
+				return newOpError(
+					op,
+					KindConflict,
+					entUser,
+					fmt.Errorf("user with email '%s' exists: %w", det.input, pgError),
+					withEntityID(det.userID),
+					withField("email"),
 				)
 
 			default:
-				return baseError(op, det.entity, KindConflict, pgError)
+				return newOpError(op, KindConflict, det.entity, pgError)
 			}
 		}
 	}
 
-	return baseError(op, det.entity, KindInternal, err)
+	return newOpError(op, KindInternal, det.entity, err)
 }

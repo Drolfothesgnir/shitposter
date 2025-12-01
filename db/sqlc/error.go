@@ -57,6 +57,14 @@ func (k Kind) String() string {
 	return "unknown"
 }
 
+const (
+	entPost        = "post"
+	entPostVote    = "post-vote"
+	entComment     = "comment"
+	entCommentVote = "comment-vote"
+	entUser        = "user"
+)
+
 // OpError describes a failure of a database operation.
 type OpError struct {
 	Op              string // logical operation: "insert-comment", "delete-comment", etc.
@@ -80,11 +88,18 @@ func (e *OpError) Error() string {
 	if e.EntityID != 0 {
 		parts = append(parts, fmt.Sprintf("entity_id=%d", e.EntityID))
 	}
-
+	if e.RelatedEntity != "" {
+		parts = append(parts, "related_entity="+e.RelatedEntity)
+	}
+	if e.RelatedEntityID != 0 {
+		parts = append(parts, fmt.Sprintf("related_entity_id=%d", e.RelatedEntityID))
+	}
+	if e.FailingField != "" {
+		parts = append(parts, "field="+e.FailingField)
+	}
 	if e.UserID != 0 {
 		parts = append(parts, fmt.Sprintf("user_id=%d", e.UserID))
 	}
-
 	if e.Err != nil {
 		parts = append(parts, "err="+e.Err.Error())
 	}
@@ -118,6 +133,24 @@ func withUserID(be *OpError, userID int64) *OpError {
 	return be
 }
 
+// withRelatedEntity augments base OpError with provided related entity.
+func withRelatedEntity(be *OpError, relatedEntity string) *OpError {
+	be.RelatedEntity = relatedEntity
+	return be
+}
+
+// withRelatedEntityID augments base OpError with provided related entity ID.
+func withRelatedEntityID(be *OpError, relatedEntityID int64) *OpError {
+	be.RelatedEntityID = relatedEntityID
+	return be
+}
+
+// withFailingField augments base OpError with provided failing field.
+func withFailingField(be *OpError, failingField string) *OpError {
+	be.FailingField = failingField
+	return be
+}
+
 type opDetails struct {
 	userID    int64
 	postID    int64
@@ -133,39 +166,53 @@ func sqlError(op string, det opDetails, err error) *OpError {
 		// check for the foreign key violation
 		// usually means that the caller trying to perform
 		// operations with entity related to other non-existent entity
-		// or operates on behalf of non-existent user
+		// or operates on behalf of a non-existent user
 		if pgError.Code == "23503" {
 			switch pgError.ConstraintName {
 			// when attempting to create comment for non-existent post
 			case "comments_post_id_fkey":
-				return &OpError{
-					Op:       op,
-					Kind:     KindRelation,
-					Entity:   "post",
-					EntityID: det.postID,
-					Err:      fmt.Errorf("attempt to create comment for a non-existent post with id [%d]: %w", det.postID, pgError),
-				}
+				return withRelatedEntity(
+					withRelatedEntityID(
+						baseError(
+							op,
+							entComment,
+							KindRelation,
+							fmt.Errorf("attempt to create comment for a non-existent post with id [%d]: %w", det.postID, pgError),
+						),
+						det.postID,
+					),
+					entPost,
+				)
 
 			// when attempting to vote for non-existent comment
 			case "comment_votes_comment_id_fkey":
-				return &OpError{
-					Op:       op,
-					Kind:     KindRelation,
-					Entity:   "comment",
-					EntityID: det.commentID,
-					Err:      fmt.Errorf("attempt to vote for a non-existent comment with id [%d]: %w", det.commentID, pgError),
-				}
+				return withRelatedEntity(
+					withRelatedEntityID(
+						baseError(
+							op,
+							entCommentVote,
+							KindRelation,
+							fmt.Errorf("attempt to vote for a non-existent comment with id [%d]: %w", det.commentID, pgError),
+						),
+						det.commentID,
+					),
+					entComment,
+				)
 
 				// attempting to vote as non-existent user
 			case "comment_votes_user_id_fkey":
-				return &OpError{
-					Op:       op,
-					Kind:     KindRelation,
-					Entity:   "user",
-					EntityID: det.userID,
-					UserID:   det.userID,
-					Err:      fmt.Errorf("attempt to vote as a non-existent user with id [%d]: %w", det.userID, pgError),
-				}
+				return withRelatedEntity(
+					withRelatedEntityID(
+						baseError(
+							op,
+							entCommentVote,
+							KindRelation,
+							fmt.Errorf("attempt to vote as a non-existent user with id [%d]: %w", det.userID, pgError),
+						),
+						det.userID,
+					),
+					entUser,
+				)
 
 			default:
 				return baseError(op, det.entity, KindRelation, pgError)
@@ -177,10 +224,34 @@ func sqlError(op string, det opDetails, err error) *OpError {
 			switch pgError.ConstraintName {
 			// when active user with this username exists
 			case "uniq_users_username_active":
-				return baseError(op, "user", KindConflict, fmt.Errorf("user with username '%s' exists: %w", det.input, pgError))
-				// when active user with this email exists
+				return withEntityID(
+					withFailingField(
+						baseError(
+							op,
+							entUser,
+							KindConflict,
+							fmt.Errorf("user with username '%s' exists: %w", det.input, pgError),
+						),
+						"username",
+					),
+					det.userID,
+				)
+
+			// when active user with this email exists
 			case "uniq_users_email_active":
-				return baseError(op, "user", KindConflict, fmt.Errorf("user with email '%s' exists: %w", det.input, pgError))
+				return withEntityID(
+					withFailingField(
+						baseError(
+							op,
+							entUser,
+							KindConflict,
+							fmt.Errorf("user with email '%s' exists: %w", det.input, pgError),
+						),
+						"email",
+					),
+					det.userID,
+				)
+
 			default:
 				return baseError(op, det.entity, KindConflict, pgError)
 			}

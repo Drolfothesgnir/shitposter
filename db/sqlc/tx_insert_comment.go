@@ -8,6 +8,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const opInsertComment = "insert-comment"
+
 type InsertCommentTxParams struct {
 	UserID    int64       `json:"user_id"`
 	PostID    int64       `json:"post_id"`
@@ -18,7 +20,7 @@ type InsertCommentTxParams struct {
 }
 
 // TODO: Currently user is allowed to reply to his own comments to the infinite depth.
-// I should limit this behavoiur.
+// I should limit this behaviour.
 func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParams) (Comment, error) {
 	var result Comment
 
@@ -33,47 +35,57 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 
 			// if there is no parent comment when parent id is provided abort with error
 			if err == pgx.ErrNoRows {
-				return withEntityID(
-					baseError(
-						"insert-comment",
-						"comment",
-						KindNotFound,
-						fmt.Errorf("cannot reply to the comment with id: %d, the comment doesn't exist", parentID),
+				return withRelatedEntity(
+					withRelatedEntityID(
+						baseError(
+							opInsertComment,
+							entComment,
+							KindNotFound,
+							fmt.Errorf("cannot reply to the comment with id: %d, the comment doesn't exist", parentID),
+						),
+						parentID,
 					),
-					parentID,
+					entComment,
 				)
 			}
 
 			// return generic error
 			if err != nil {
 				return sqlError(
-					"insert-comment",
+					opInsertComment,
 					opDetails{
 						userID:    arg.UserID,
 						postID:    arg.PostID,
 						commentID: parentID,
-						entity:    "comment",
+						entity:    entComment,
 					},
 					err,
 				)
 			}
 
 			// if parent comment's post_id and provided post_id differs abort
+			// in this case i want to explicitely specify the incorrect field - "post_id"
+			// so the api handlers will not need to parse the error string
 			if parent.PostID != arg.PostID {
-
-				return withEntityID(
-					baseError(
-						"insert-comment",
-						"comment",
-						KindRelation,
-						fmt.Errorf(
-							"cannot reply to comment %d for post %d: parent comment belongs to post %d",
-							parentID,
-							arg.PostID,
-							parent.PostID,
+				return withRelatedEntity(
+					withRelatedEntityID(
+						withFailingField(
+							baseError(
+								opInsertComment,
+								entComment,
+								KindRelation,
+								fmt.Errorf(
+									"cannot reply to comment %d for post %d: parent comment belongs to post %d",
+									parentID,
+									arg.PostID,
+									parent.PostID,
+								),
+							),
+							"post_id",
 						),
+						parentID,
 					),
-					parentID,
+					entComment,
 				)
 			}
 
@@ -83,8 +95,8 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 
 				return withEntityID(
 					baseError(
-						"insert-comment",
-						"comment",
+						opInsertComment,
+						entComment,
 						KindDeleted,
 						fmt.Errorf("cannot reply to a deleted comment with id: %d", parentID),
 					),
@@ -108,12 +120,12 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 
 		if err != nil {
 			return sqlError(
-				"insert-comment",
+				opInsertComment,
 				opDetails{
 					userID:    arg.UserID,
 					postID:    arg.PostID,
 					commentID: arg.ParentID.Int64,
-					entity:    "comment",
+					entity:    entComment,
 				},
 				err,
 			)

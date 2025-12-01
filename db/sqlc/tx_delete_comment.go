@@ -8,6 +8,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const opDeleteComment = "delete-comment"
+
 type DeleteCommentTxParams struct {
 	CommentID int64 `json:"comment_id"`
 	UserID    int64 `json:"user_id"`
@@ -16,7 +18,7 @@ type DeleteCommentTxParams struct {
 
 type DeleteCommentTxResult struct {
 	DeleteCommentIfLeafRow
-	Success bool // True if the delete operation is considered successful: hard delete, soft delete, or already deleted.
+	Success bool `json:"success"` // True if the delete operation is considered successful: hard delete, soft delete, or already deleted.
 }
 
 func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParams) (DeleteCommentTxResult, error) {
@@ -35,8 +37,8 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 			if errors.Is(err, pgx.ErrNoRows) {
 				return withEntityID(
 					baseError(
-						"delete-comment",
-						"comment",
+						opDeleteComment,
+						entComment,
 						KindNotFound,
 						fmt.Errorf("comment with id %d not found", arg.CommentID),
 					),
@@ -44,12 +46,12 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 				)
 			}
 			return sqlError(
-				"delete-comment",
+				opDeleteComment,
 				opDetails{
 					userID:    arg.UserID,
 					postID:    arg.PostID,
 					commentID: arg.CommentID,
-					entity:    "comment",
+					entity:    entComment,
 				},
 				err,
 			)
@@ -57,30 +59,48 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 
 		// check if the target comment does not belong to the provided user
 		if deleted.UserID != arg.UserID {
-			return withUserID(
-				withEntityID(
-					baseError(
-						"delete-comment",
-						"comment",
-						KindPermission,
-						fmt.Errorf("comment with id %d does not belong to user with id %d", arg.CommentID, arg.UserID),
+			return withRelatedEntity(
+				withRelatedEntityID(
+					withUserID(
+						withEntityID(
+							withFailingField(
+								baseError(
+									opDeleteComment,
+									entComment,
+									KindPermission,
+									fmt.Errorf("comment with id %d does not belong to user with id %d", arg.CommentID, arg.UserID),
+								),
+								"user_id",
+							),
+							arg.CommentID,
+						),
+						arg.UserID,
 					),
-					arg.CommentID,
+					arg.UserID,
 				),
-				arg.UserID,
+				entUser,
 			)
 		}
 
 		// check if the target comment does not belong to the provided post
 		if deleted.PostID != arg.PostID {
-			return withEntityID(
-				baseError(
-					"delete-comment",
-					"comment",
-					KindRelation,
-					fmt.Errorf("comment with id %d does not belong to post with id %d", arg.CommentID, arg.PostID),
+			return withRelatedEntity(
+				withRelatedEntityID(
+					withFailingField(
+						withEntityID(
+							baseError(
+								opDeleteComment,
+								entComment,
+								KindRelation,
+								fmt.Errorf("comment with id %d does not belong to post with id %d", arg.CommentID, arg.PostID),
+							),
+							arg.CommentID,
+						),
+						"post_id",
+					),
+					arg.PostID,
 				),
-				arg.CommentID,
+				entPost,
 			)
 		}
 
@@ -97,12 +117,12 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 			comment, err := q.SoftDeleteComment(ctx, arg.CommentID)
 			if err != nil {
 				return sqlError(
-					"delete-comment",
+					opDeleteComment,
 					opDetails{
 						userID:    arg.UserID,
 						postID:    arg.PostID,
 						commentID: arg.CommentID,
-						entity:    "comment",
+						entity:    entComment,
 					},
 					err,
 				)
@@ -123,8 +143,8 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 
 		// else the data must be corrupted
 		return baseError(
-			"delete-comment",
-			"comment",
+			opDeleteComment,
+			entComment,
 			KindCorrupted,
 			fmt.Errorf("cannot delete comment with id %d", arg.CommentID),
 		)

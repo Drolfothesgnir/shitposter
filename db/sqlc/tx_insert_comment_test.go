@@ -42,7 +42,6 @@ func TestInsertCommentTx_ChildComment(t *testing.T) {
 
 	// parent comment with depth = 0, no parent_id
 	parent := createRandomComment(t)
-
 	parentID := parent.ID
 
 	arg := InsertCommentTxParams{
@@ -73,7 +72,7 @@ func TestInsertCommentTx_ChildComment(t *testing.T) {
 	require.EqualValues(t, arg.Downvotes, comment.Downvotes)
 }
 
-// Non-existent parent -> OpError with KindRelation (or KindNotFound if you switch later)
+// Non-existent parent: should return OpError with KindNotFound
 func TestInsertCommentTx_ParentNotFound(t *testing.T) {
 	ctx := context.Background()
 
@@ -93,13 +92,19 @@ func TestInsertCommentTx_ParentNotFound(t *testing.T) {
 	var opErr *OpError
 	require.ErrorAs(t, err, &opErr)
 
-	require.Equal(t, "insert-comment", opErr.Op)
+	require.Equal(t, opInsertComment, opErr.Op)
 	require.Equal(t, KindNotFound, opErr.Kind)
-	require.Equal(t, "comment", opErr.Entity)
-	require.Equal(t, nonExistingParentID, opErr.EntityID)
+	require.Equal(t, entComment, opErr.Entity)
+
+	// you modelled this as "comment" related to missing "comment"
+	require.Equal(t, entComment, opErr.RelatedEntity)
+	require.EqualValues(t, nonExistingParentID, opErr.RelatedEntityID)
+
+	// no field-level issue here
+	require.Empty(t, opErr.FailingField)
 }
 
-// Parent belongs to different post -> OpError with KindRelation
+// Parent belongs to a different post: KindRelation + failing field "post_id"
 func TestInsertCommentTx_ParentPostIDMismatch(t *testing.T) {
 	ctx := context.Background()
 
@@ -124,13 +129,19 @@ func TestInsertCommentTx_ParentPostIDMismatch(t *testing.T) {
 	var opErr *OpError
 	require.ErrorAs(t, err, &opErr)
 
-	require.Equal(t, "insert-comment", opErr.Op)
+	require.Equal(t, opInsertComment, opErr.Op)
 	require.Equal(t, KindRelation, opErr.Kind)
-	require.Equal(t, "comment", opErr.Entity)
-	require.Equal(t, parentID, opErr.EntityID)
+	require.Equal(t, entComment, opErr.Entity)
+
+	// we explicitly marked the problematic field
+	require.Equal(t, "post_id", opErr.FailingField)
+
+	// you modelled parent as the related comment
+	require.Equal(t, entComment, opErr.RelatedEntity)
+	require.EqualValues(t, parentID, opErr.RelatedEntityID)
 }
 
-// Invalid post_id (FK violation) -> OpError with KindRelation, entity=post
+// Invalid post_id (FK violation): KindRelation, entity=comment, related_entity=post
 func TestInsertCommentTx_InvalidPostID(t *testing.T) {
 	ctx := context.Background()
 
@@ -149,17 +160,25 @@ func TestInsertCommentTx_InvalidPostID(t *testing.T) {
 	var opErr *OpError
 	require.ErrorAs(t, err, &opErr)
 
-	require.Equal(t, "insert-comment", opErr.Op)
+	require.Equal(t, opInsertComment, opErr.Op)
 	require.Equal(t, KindRelation, opErr.Kind)
-	require.Equal(t, "post", opErr.Entity)
-	require.Equal(t, invalidPostID, opErr.EntityID)
+
+	// you're creating a comment that relates to a missing post
+	require.Equal(t, entComment, opErr.Entity)
+	require.Equal(t, entPost, opErr.RelatedEntity)
+	require.EqualValues(t, invalidPostID, opErr.RelatedEntityID)
+
+	// no specific failing field here
+	require.Empty(t, opErr.FailingField)
 }
 
+// Deleted parent: KindDeleted on comment, EntityID = parentID
 func TestInsertCommentTx_DeletedParent(t *testing.T) {
 	ctx := context.Background()
 
 	comment := createRandomComment(t)
 
+	// soft-delete the parent comment
 	_, err := testStore.SoftDeleteComment(ctx, comment.ID)
 	require.NoError(t, err)
 
@@ -176,8 +195,13 @@ func TestInsertCommentTx_DeletedParent(t *testing.T) {
 	var opErr *OpError
 	require.ErrorAs(t, err, &opErr)
 
-	require.Equal(t, "insert-comment", opErr.Op)
+	require.Equal(t, opInsertComment, opErr.Op)
 	require.Equal(t, KindDeleted, opErr.Kind)
-	require.Equal(t, "comment", opErr.Entity)
-	require.Equal(t, comment.ID, opErr.EntityID)
+	require.Equal(t, entComment, opErr.Entity)
+	require.EqualValues(t, comment.ID, opErr.EntityID)
+
+	// deleted parent itself is the entity; no related entity/field necessary
+	require.Empty(t, opErr.RelatedEntity)
+	require.Zero(t, opErr.RelatedEntityID)
+	require.Empty(t, opErr.FailingField)
 }

@@ -7,8 +7,6 @@ import (
 )
 
 type Store interface {
-	Querier
-
 	// Shutdown shuts down the db connection pool gracefully.
 	Shutdown()
 

@@ -13,14 +13,14 @@ import (
 func createChildComment(t *testing.T, parent Comment) Comment {
 	t.Helper()
 
-	arg := CreateCommentParams{
+	arg := createCommentParams{
 		UserID:   parent.UserID,
 		PostID:   parent.PostID,
 		ParentID: pgtype.Int8{Int64: parent.ID, Valid: true},
 		Body:     "child comment body",
 	}
 
-	comment, err := testStore.CreateComment(context.Background(), arg)
+	comment, err := testStore.createComment(context.Background(), arg)
 	require.NoError(t, err)
 	require.NotZero(t, comment.ID)
 	require.Equal(t, parent.ID, comment.ParentID.Int64)
@@ -37,7 +37,7 @@ func TestDeleteCommentTx_LeafHardDelete(t *testing.T) {
 	comment := createRandomComment(t)
 
 	// sanity check: it exists
-	gotBefore, err := testStore.GetComment(ctx, comment.ID)
+	gotBefore, err := testStore.getComment(ctx, comment.ID)
 	require.NoError(t, err)
 	require.Equal(t, comment.ID, gotBefore.ID)
 
@@ -52,7 +52,7 @@ func TestDeleteCommentTx_LeafHardDelete(t *testing.T) {
 	// transaction-level success flag
 	require.True(t, result.Success)
 	// hard delete: row is gone from DB
-	_, err = testStore.GetComment(ctx, comment.ID)
+	_, err = testStore.getComment(ctx, comment.ID)
 	require.Error(t, err)
 	require.ErrorIs(t, err, pgx.ErrNoRows)
 
@@ -75,11 +75,11 @@ func TestDeleteCommentTx_NonLeafSoftDelete(t *testing.T) {
 	child := createChildComment(t, parent)
 
 	// sanity: both exist and not deleted
-	gotParentBefore, err := testStore.GetComment(ctx, parent.ID)
+	gotParentBefore, err := testStore.getComment(ctx, parent.ID)
 	require.NoError(t, err)
 	require.False(t, gotParentBefore.IsDeleted)
 
-	gotChildBefore, err := testStore.GetComment(ctx, child.ID)
+	gotChildBefore, err := testStore.getComment(ctx, child.ID)
 	require.NoError(t, err)
 	require.False(t, gotChildBefore.IsDeleted)
 
@@ -96,14 +96,14 @@ func TestDeleteCommentTx_NonLeafSoftDelete(t *testing.T) {
 	require.True(t, result.HasChildren)
 
 	// parent should be soft-deleted
-	gotParentAfter, err := testStore.GetComment(ctx, parent.ID)
+	gotParentAfter, err := testStore.getComment(ctx, parent.ID)
 	require.NoError(t, err)
 	require.True(t, gotParentAfter.IsDeleted)
 	require.Equal(t, "[deleted]", gotParentAfter.Body)
 	require.True(t, gotParentAfter.DeletedAt.After(gotParentBefore.CreatedAt))
 
 	// child should stay and NOT be deleted
-	gotChildAfter, err := testStore.GetComment(ctx, child.ID)
+	gotChildAfter, err := testStore.getComment(ctx, child.ID)
 	require.NoError(t, err)
 	require.Equal(t, child.ID, gotChildAfter.ID)
 	require.False(t, gotChildAfter.IsDeleted)
@@ -150,7 +150,7 @@ func TestDeleteCommentTx_LeafDeleteThenNotFound(t *testing.T) {
 	require.True(t, result1.Success)
 
 	// sanity: really gone
-	_, err = testStore.GetComment(ctx, comment.ID)
+	_, err = testStore.getComment(ctx, comment.ID)
 	require.Error(t, err)
 	require.ErrorIs(t, err, pgx.ErrNoRows)
 
@@ -199,7 +199,7 @@ func TestDeleteCommentTx_ForeignUserForbidden(t *testing.T) {
 	require.False(t, result.Success)
 
 	// ensure original comment still exists and not deleted
-	got, err := testStore.GetComment(ctx, ownerComment.ID)
+	got, err := testStore.getComment(ctx, ownerComment.ID)
 	require.NoError(t, err)
 	require.False(t, got.IsDeleted)
 }
@@ -231,7 +231,7 @@ func TestDeleteCommentTx_WrongPostID(t *testing.T) {
 	require.False(t, result.Success)
 
 	// ensure comment still exists and not deleted
-	got, err := testStore.GetComment(ctx, comment.ID)
+	got, err := testStore.getComment(ctx, comment.ID)
 	require.NoError(t, err)
 	require.False(t, got.IsDeleted)
 }

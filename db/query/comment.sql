@@ -1,4 +1,4 @@
--- name: CreateComment :one
+-- name: createComment :one
 INSERT INTO comments (
   user_id,
   post_id,
@@ -11,13 +11,13 @@ INSERT INTO comments (
   $1, $2, $3, $4, $5, $6, $7
 ) RETURNING *;
 
--- name: GetCommentWithLock :one
+-- name: getCommentWithLock :one
 SELECT * FROM comments
 WHERE id = $1 
 FOR KEY SHARE
 LIMIT 1;
 
--- name: DeleteCommentIfLeaf :one
+-- name: deleteCommentIfLeaf :one
 SELECT
   id::BIGINT AS id,
 	user_id::BIGINT AS user_id,
@@ -32,11 +32,11 @@ FROM delete_comment_leaf(
   p_post_id := $3
 );
 
--- name: GetComment :one
+-- name: getComment :one
 SELECT * FROM comments
 WHERE id = $1 LIMIT 1;
 
--- name: UpdateComment :one
+-- name: updateComment :one
 SELECT
     id::BIGINT AS id,
     user_id::BIGINT AS user_id,
@@ -52,28 +52,28 @@ FROM update_comment(
   p_body := $4
 );
 
--- name: GetCommentsByPopularity :many
+-- name: getCommentsByPopularity :many
 SELECT * FROM get_comments_by_popularity(
   p_post_id := $1,
   p_root_limit := $2,
   p_root_offset := $3
 );
 
--- name: GetOldestComments :many
+-- name: getOldestComments :many
 SELECT * FROM get_oldest_comments(
   p_post_id := $1,
   p_root_limit := $2,
   p_root_offset := $3
 );
 
--- name: GetNewestComments :many
+-- name: getNewestComments :many
 SELECT * FROM get_newest_comments(
   p_post_id := $1,
   p_root_limit := $2,
   p_root_offset := $3
 );
 
--- name: SoftDeleteComment :one
+-- name: softDeleteComment :one
 UPDATE comments
 SET 
   body = '[deleted]',
@@ -83,7 +83,7 @@ SET
 WHERE id = $1
 RETURNING *;
 
--- name: UpdateCommentPopularity :one
+-- name: updateCommentPopularity :one
 UPDATE comments
 SET
   upvotes = upvotes + sqlc.arg('upvotes_delta')::SMALLINT,

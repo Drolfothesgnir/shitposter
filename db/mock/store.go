@@ -263,19 +263,19 @@ func (mr *MockStoreMockRecorder) GetCommentVote(ctx, arg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommentVote", reflect.TypeOf((*MockStore)(nil).GetCommentVote), ctx, arg)
 }
 
-// GetCommentWithLock mocks base method.
-func (m *MockStore) GetCommentWithLock(ctx context.Context, id int64) (db.Comment, error) {
+// getCommentWithLock mocks base method.
+func (m *MockStore) getCommentWithLock(ctx context.Context, id int64) (db.Comment, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCommentWithLock", ctx, id)
+	ret := m.ctrl.Call(m, "getCommentWithLock", ctx, id)
 	ret0, _ := ret[0].(db.Comment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetCommentWithLock indicates an expected call of GetCommentWithLock.
-func (mr *MockStoreMockRecorder) GetCommentWithLock(ctx, id any) *gomock.Call {
+// getCommentWithLock indicates an expected call of getCommentWithLock.
+func (mr *MockStoreMockRecorder) getCommentWithLock(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommentWithLock", reflect.TypeOf((*MockStore)(nil).GetCommentWithLock), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "getCommentWithLock", reflect.TypeOf((*MockStore)(nil).getCommentWithLock), ctx, id)
 }
 
 // GetCommentsByPopularity mocks base method.

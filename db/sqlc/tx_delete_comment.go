@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -17,15 +18,21 @@ type DeleteCommentTxParams struct {
 }
 
 type DeleteCommentTxResult struct {
-	DeleteCommentIfLeafRow
-	Success bool `json:"success"` // True if the delete operation is considered successful: hard delete, soft delete, or already deleted.
+	ID          int64     `json:"id"`
+	UserID      int64     `json:"user_id"`
+	PostID      int64     `json:"post_id"`
+	IsDeleted   bool      `json:"is_deleted"`
+	DeletedAt   time.Time `json:"deleted_at"`
+	HasChildren bool      `json:"has_children"`
+	DeletedOk   bool      `json:"deleted_ok"`
+	Success     bool      `json:"success"` // True if the delete operation is considered successful: hard delete, soft delete, or already deleted.
 }
 
 func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParams) (DeleteCommentTxResult, error) {
-	var row DeleteCommentIfLeafRow
+	var row deleteCommentIfLeafRow
 	var result DeleteCommentTxResult
 	err := s.execTx(ctx, func(q *Queries) error {
-		deleted, err := q.DeleteCommentIfLeaf(ctx, DeleteCommentIfLeafParams{
+		deleted, err := q.deleteCommentIfLeaf(ctx, deleteCommentIfLeafParams{
 			PCommentID: arg.CommentID,
 			PUserID:    arg.UserID,
 			PPostID:    arg.PostID,
@@ -92,7 +99,7 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 		// if the comment has children perform soft delete
 		if deleted.HasChildren {
 
-			comment, err := q.SoftDeleteComment(ctx, arg.CommentID)
+			comment, err := q.softDeleteComment(ctx, arg.CommentID)
 			if err != nil {
 				return sqlError(
 					opDeleteComment,
@@ -106,7 +113,7 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 				)
 			}
 
-			row = DeleteCommentIfLeafRow{
+			row = deleteCommentIfLeafRow{
 				ID:          comment.ID,
 				UserID:      comment.UserID,
 				PostID:      comment.PostID,
@@ -133,8 +140,14 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 	}
 
 	result = DeleteCommentTxResult{
-		DeleteCommentIfLeafRow: row,
-		Success:                row.DeletedOk || row.IsDeleted,
+		ID:          row.ID,
+		UserID:      row.UserID,
+		PostID:      row.PostID,
+		IsDeleted:   row.IsDeleted,
+		DeletedAt:   row.DeletedAt,
+		HasChildren: row.HasChildren,
+		DeletedOk:   row.DeletedOk,
+		Success:     row.DeletedOk || row.IsDeleted,
 	}
 
 	return result, nil

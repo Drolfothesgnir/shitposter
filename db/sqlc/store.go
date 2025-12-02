@@ -29,6 +29,11 @@ type Store interface {
 	// May also return database or transaction errors.
 	InsertCommentTx(ctx context.Context, arg InsertCommentTxParams) (Comment, error)
 
+	// QueryComments returns paginated set of comments ordered by popularity or date (old/new).
+	QueryComments(ctx context.Context, query CommentQuery) ([]CommentsWithAuthor, error)
+
+	UpdateComment(ctx context.Context, arg UpdateCommentParams) (UpdateCommentResult, error)
+
 	// DeleteCommentTx deletes a comment or soft-deletes it if it has children.
 	//
 	// Errors returned:
@@ -39,9 +44,6 @@ type Store interface {
 	//
 	// May also return database or transaction errors.
 	DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParams) (DeleteCommentTxResult, error)
-
-	// QueryComments returns paginated set of comments ordered by popularity or date (old/new).
-	QueryComments(ctx context.Context, query CommentQuery) ([]CommentsWithAuthor, error)
 
 	// VoteCommentTx performs voting for comment.
 	//

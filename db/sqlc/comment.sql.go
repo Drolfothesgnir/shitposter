@@ -438,3 +438,31 @@ func (q *Queries) UpdateCommentPopularity(ctx context.Context, arg UpdateComment
 	)
 	return i, err
 }
+
+const getCommentWithAuthor = `-- name: getCommentWithAuthor :one
+SELECT id, user_id, post_id, parent_id, depth, upvotes, downvotes, body, created_at, last_modified_at, is_deleted, deleted_at, popularity, user_display_name, user_profile_img_url FROM comments_with_author
+WHERE id = $1
+`
+
+func (q *Queries) getCommentWithAuthor(ctx context.Context, id int64) (CommentsWithAuthor, error) {
+	row := q.db.QueryRow(ctx, getCommentWithAuthor, id)
+	var i CommentsWithAuthor
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PostID,
+		&i.ParentID,
+		&i.Depth,
+		&i.Upvotes,
+		&i.Downvotes,
+		&i.Body,
+		&i.CreatedAt,
+		&i.LastModifiedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.Popularity,
+		&i.UserDisplayName,
+		&i.UserProfileImgUrl,
+	)
+	return i, err
+}

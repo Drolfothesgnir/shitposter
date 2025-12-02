@@ -91,3 +91,7 @@ SET
   last_modified_at = NOW()
 WHERE id = $1 AND is_deleted = false
 RETURNING *;
+
+-- name: getCommentWithAuthor :one
+SELECT * FROM comments_with_author
+WHERE id = $1;

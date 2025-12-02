@@ -51,6 +51,7 @@ type Querier interface {
 	UpsertCommentVote(ctx context.Context, arg UpsertCommentVoteParams) (UpsertCommentVoteRow, error)
 	UsernameExists(ctx context.Context, username string) (bool, error)
 	VotePost(ctx context.Context, arg VotePostParams) (Post, error)
+	getCommentWithAuthor(ctx context.Context, id int64) (CommentsWithAuthor, error)
 }
 
 var _ Querier = (*Queries)(nil)

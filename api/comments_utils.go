@@ -70,14 +70,8 @@ func PrepareCommentTree(orderedPlainComments []db.CommentsWithAuthor, n_roots in
 	return result, nil
 }
 
-var commentOrderMethods = []string{
-	db.CommentOrderPopular,
-	db.CommentOrderNewest,
-	db.CommentOrderOldest,
-}
-
 var isValidCommentOrder validator.Func = func(fl validator.FieldLevel) bool {
-	if order, ok := fl.Field().Interface().(string); ok && slices.Contains(commentOrderMethods, order) {
+	if order, ok := fl.Field().Interface().(string); ok && slices.Contains(db.CommentOrderMethods, order) {
 		return true
 	}
 	return false

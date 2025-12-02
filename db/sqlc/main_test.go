@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var testStore Store
+var testStore *SQLStore
 
 func TestMain(m *testing.M) {
 	config, err := util.LoadConfig("../../")
@@ -23,7 +23,7 @@ func TestMain(m *testing.M) {
 		log.Fatal("Cannot connect to the database: ", err)
 	}
 
-	testStore = NewStore(connPool)
+	testStore = NewStore(connPool).(*SQLStore)
 
 	os.Exit(m.Run())
 }

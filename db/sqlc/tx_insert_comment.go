@@ -31,7 +31,7 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 		if arg.ParentID.Valid {
 			// getting parent comment and preventing its deletion from other queries
 			parentID := arg.ParentID.Int64
-			parent, err := q.GetCommentWithLock(ctx, parentID)
+			parent, err := q.getCommentWithLock(ctx, parentID)
 
 			// if there is no parent comment when parent id is provided abort with error
 			if err == pgx.ErrNoRows {
@@ -94,7 +94,7 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 			depth = parent.Depth + 1
 		}
 
-		comment, err := q.CreateComment(ctx, CreateCommentParams{
+		comment, err := q.createComment(ctx, createCommentParams{
 			UserID:    arg.UserID,
 			PostID:    arg.PostID,
 			Body:      arg.Body,

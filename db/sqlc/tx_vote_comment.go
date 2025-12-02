@@ -86,7 +86,7 @@ func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (
 			downDelta--
 		}
 
-		comment, err := q.UpdateCommentPopularity(ctx, UpdateCommentPopularityParams{
+		comment, err := q.updateCommentPopularity(ctx, updateCommentPopularityParams{
 			ID:             arg.CommentID,
 			UpvotesDelta:   upDelta,
 			DownvotesDelta: downDelta,

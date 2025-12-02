@@ -179,7 +179,7 @@ func TestInsertCommentTx_DeletedParent(t *testing.T) {
 	comment := createRandomComment(t)
 
 	// soft-delete the parent comment
-	_, err := testStore.SoftDeleteComment(ctx, comment.ID)
+	_, err := testStore.softDeleteComment(ctx, comment.ID)
 	require.NoError(t, err)
 
 	arg := InsertCommentTxParams{

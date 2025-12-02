@@ -57,11 +57,11 @@ func (s *SQLStore) QueryComments(ctx context.Context, q CommentQuery) ([]Comment
 
 	switch q.Order {
 	case CommentOrderPopular:
-		result, err = s.GetCommentsByPopularity(ctx, GetCommentsByPopularityParams{q.PostID, q.Limit, q.Offset})
+		result, err = s.getCommentsByPopularity(ctx, getCommentsByPopularityParams{q.PostID, q.Limit, q.Offset})
 	case CommentOrderNewest:
-		result, err = s.GetNewestComments(ctx, GetNewestCommentsParams{q.PostID, q.Limit, q.Offset})
+		result, err = s.getNewestComments(ctx, getNewestCommentsParams{q.PostID, q.Limit, q.Offset})
 	case CommentOrderOldest:
-		result, err = s.GetOldestComments(ctx, GetOldestCommentsParams{q.PostID, q.Limit, q.Offset})
+		result, err = s.getOldestComments(ctx, getOldestCommentsParams{q.PostID, q.Limit, q.Offset})
 	}
 
 	// even if the post doesn't have comments

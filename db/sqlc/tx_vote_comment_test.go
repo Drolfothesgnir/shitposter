@@ -151,7 +151,7 @@ func TestVoteCommentTx_DuplicateVote(t *testing.T) {
 	require.Equal(t, "vote", opErr.FailingField)
 
 	// Reload comment and ensure counters unchanged from first result.
-	reloaded, err := testStore.GetCommentWithLock(ctx, comment.ID)
+	reloaded, err := testStore.getCommentWithLock(ctx, comment.ID)
 	require.NoError(t, err)
 	require.EqualValues(t, first.Upvotes, reloaded.Upvotes)
 	require.EqualValues(t, first.Downvotes, reloaded.Downvotes)
@@ -181,7 +181,7 @@ func TestVoteCommentTx_InvalidVoteValue(t *testing.T) {
 	require.Equal(t, entCommentVote, opErr.Entity)
 	require.Equal(t, "vote", opErr.FailingField)
 
-	reloaded, err := testStore.GetCommentWithLock(ctx, comment.ID)
+	reloaded, err := testStore.getCommentWithLock(ctx, comment.ID)
 	require.NoError(t, err)
 	require.EqualValues(t, initialUp, reloaded.Upvotes)
 	require.EqualValues(t, initialDown, reloaded.Downvotes)
@@ -210,7 +210,7 @@ func TestVoteCommentTx_InvalidUserID(t *testing.T) {
 	require.EqualValues(t, invalidUserID, opErr.RelatedEntityID)
 
 	// Ensure counters didn't change.
-	reloaded, err := testStore.GetCommentWithLock(ctx, comment.ID)
+	reloaded, err := testStore.getCommentWithLock(ctx, comment.ID)
 	require.NoError(t, err)
 	require.EqualValues(t, comment.Upvotes, reloaded.Upvotes)
 	require.EqualValues(t, comment.Downvotes, reloaded.Downvotes)
@@ -247,7 +247,7 @@ func TestVoteCommentTx_DeletedComment(t *testing.T) {
 	user := createRandomUser(t)
 
 	// Soft delete the comment.
-	_, err := testStore.SoftDeleteComment(ctx, comment.ID)
+	_, err := testStore.softDeleteComment(ctx, comment.ID)
 	require.NoError(t, err)
 
 	_, err = testStore.VoteCommentTx(ctx, VoteCommentTxParams{
@@ -265,7 +265,7 @@ func TestVoteCommentTx_DeletedComment(t *testing.T) {
 	require.EqualValues(t, comment.ID, opErr.EntityID)
 
 	// Ensure counters are unchanged after failed vote.
-	reloaded, err := testStore.GetCommentWithLock(ctx, comment.ID)
+	reloaded, err := testStore.getCommentWithLock(ctx, comment.ID)
 	require.NoError(t, err)
 	require.EqualValues(t, comment.Upvotes, reloaded.Upvotes)
 	require.EqualValues(t, comment.Downvotes, reloaded.Downvotes)
@@ -306,7 +306,7 @@ func TestVoteCommentTx_ConcurrentSameUserSameComment(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	reloaded, err := testStore.GetCommentWithLock(ctx, comment.ID)
+	reloaded, err := testStore.getCommentWithLock(ctx, comment.ID)
 	require.NoError(t, err)
 
 	// Exactly one upvote should be applied.

@@ -13,6 +13,9 @@ type Store interface {
 	// CreateUserWithCredentialsTx creates both user and their credentials in one transaction.
 	CreateUserWithCredentialsTx(ctx context.Context, arg CreateUserWithCredentialsTxParams) (CreateUserWithCredentialsTxResult, error)
 
+	// GetUser retrieves data of user with provided ID.
+	GetUser(ctx context.Context, userID int64) (User, error)
+
 	// SoftDeleteUserTx deletes user's auth sessions, webauthn credentials and soft deletes the user.
 	SoftDeleteUserTx(ctx context.Context, userID int64) error
 

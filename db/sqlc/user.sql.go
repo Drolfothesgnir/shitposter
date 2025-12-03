@@ -22,30 +22,6 @@ func (q *Queries) EmailExists(ctx context.Context, email string) (bool, error) {
 	return email_exists, err
 }
 
-const getUser = `-- name: GetUser :one
-SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email FROM users
-WHERE id = $1 LIMIT 1
-`
-
-func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
-	row := q.db.QueryRow(ctx, getUser, id)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Username,
-		&i.WebauthnUserHandle,
-		&i.ProfileImgUrl,
-		&i.Email,
-		&i.CreatedAt,
-		&i.IsDeleted,
-		&i.DeletedAt,
-		&i.DisplayName,
-		&i.ArchivedUsername,
-		&i.ArchivedEmail,
-	)
-	return i, err
-}
-
 const getUserByUsername = `-- name: GetUserByUsername :one
 SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email FROM users
 WHERE username = $1
@@ -68,25 +44,6 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.ArchivedEmail,
 	)
 	return i, err
-}
-
-const softDeleteUser = `-- name: SoftDeleteUser :exec
-UPDATE users
-SET
-  is_deleted = TRUE,
-  display_name = '[deleted]',
-  deleted_at = NOW(),
-  archived_username = username,
-  archived_email    = email,
-  username = CONCAT('deleted_user_', id),
-  email    = CONCAT('deleted_', id, '@invalid.local'),
-  profile_img_url = ''
-WHERE id = $1 AND is_deleted = FALSE
-`
-
-func (q *Queries) SoftDeleteUser(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, softDeleteUser, id)
-	return err
 }
 
 const testUtilGetActiveUsers = `-- name: TestUtilGetActiveUsers :many
@@ -226,6 +183,30 @@ func (q *Queries) createUser(ctx context.Context, arg createUserParams) (User, e
 	return i, err
 }
 
+const getUser = `-- name: getUser :one
+SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email FROM users
+WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) getUser(ctx context.Context, id int64) (User, error) {
+	row := q.db.QueryRow(ctx, getUser, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.WebauthnUserHandle,
+		&i.ProfileImgUrl,
+		&i.Email,
+		&i.CreatedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.DisplayName,
+		&i.ArchivedUsername,
+		&i.ArchivedEmail,
+	)
+	return i, err
+}
+
 const getUserByEmail = `-- name: getUserByEmail :one
 SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email FROM users
 WHERE email = $1
@@ -233,6 +214,40 @@ WHERE email = $1
 
 func (q *Queries) getUserByEmail(ctx context.Context, email string) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.WebauthnUserHandle,
+		&i.ProfileImgUrl,
+		&i.Email,
+		&i.CreatedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.DisplayName,
+		&i.ArchivedUsername,
+		&i.ArchivedEmail,
+	)
+	return i, err
+}
+
+const softDeleteUser = `-- name: softDeleteUser :one
+UPDATE users
+SET
+  is_deleted = TRUE,
+  display_name = '[deleted]',
+  deleted_at = NOW(),
+  archived_username = username,
+  archived_email    = email,
+  username = CONCAT('deleted_user_', id),
+  email    = CONCAT('deleted_', id, '@invalid.local'),
+  profile_img_url = ''
+WHERE id = $1 AND is_deleted = FALSE
+RETURNING id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email
+`
+
+func (q *Queries) softDeleteUser(ctx context.Context, id int64) (User, error) {
+	row := q.db.QueryRow(ctx, softDeleteUser, id)
 	var i User
 	err := row.Scan(
 		&i.ID,

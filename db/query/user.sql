@@ -9,7 +9,7 @@ INSERT INTO users (
   $1, $1, $2, $3, $4
 ) RETURNING *;
 
--- name: GetUser :one
+-- name: getUser :one
 SELECT * FROM users
 WHERE id = $1 LIMIT 1;
 
@@ -23,7 +23,7 @@ SELECT EXISTS (SELECT 1 from users WHERE email = $1) AS email_exists;
 SELECT * FROM users
 WHERE username = $1;
 
--- name: SoftDeleteUser :exec
+-- name: softDeleteUser :one
 UPDATE users
 SET
   is_deleted = TRUE,
@@ -34,7 +34,8 @@ SET
   username = CONCAT('deleted_user_', id),
   email    = CONCAT('deleted_', id, '@invalid.local'),
   profile_img_url = ''
-WHERE id = $1 AND is_deleted = FALSE;
+WHERE id = $1 AND is_deleted = FALSE
+RETURNING *;
 
 -- name: UpdateUser :one
 UPDATE users

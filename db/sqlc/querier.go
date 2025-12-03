@@ -26,11 +26,9 @@ type Querier interface {
 	GetPostWithAuthor(ctx context.Context, id int64) (PostsWithAuthor, error)
 	GetPostsByPopularity(ctx context.Context, arg GetPostsByPopularityParams) ([]PostsWithAuthor, error)
 	GetSession(ctx context.Context, id uuid.UUID) (Session, error)
-	GetUser(ctx context.Context, id int64) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	ListSessionsByUser(ctx context.Context, userID int64) ([]Session, error)
 	ListUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error)
-	SoftDeleteUser(ctx context.Context, id int64) error
 	TestUtilGetActiveUsers(ctx context.Context, limit int32) ([]User, error)
 	UpdateCredentialSignCount(ctx context.Context, arg UpdateCredentialSignCountParams) error
 	UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, error)
@@ -49,9 +47,11 @@ type Querier interface {
 	getCredentialsByID(ctx context.Context, id []byte) (WebauthnCredential, error)
 	getNewestComments(ctx context.Context, arg getNewestCommentsParams) ([]CommentsWithAuthor, error)
 	getOldestComments(ctx context.Context, arg getOldestCommentsParams) ([]CommentsWithAuthor, error)
+	getUser(ctx context.Context, id int64) (User, error)
 	getUserByEmail(ctx context.Context, email string) (User, error)
 	getUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error)
 	softDeleteComment(ctx context.Context, id int64) (Comment, error)
+	softDeleteUser(ctx context.Context, id int64) (User, error)
 	updateComment(ctx context.Context, arg updateCommentParams) (updateCommentRow, error)
 	updateCommentPopularity(ctx context.Context, arg updateCommentPopularityParams) (Comment, error)
 }

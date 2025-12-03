@@ -20,7 +20,7 @@ func TestSoftDeleteUserTx(t *testing.T) {
 	_ = createCredentialForUser(t, user.ID)
 
 	// Check if data exist
-	gotUser, err := testStore.GetUser(ctx, user.ID)
+	gotUser, err := testStore.getUser(ctx, user.ID)
 	require.NoError(t, err)
 	require.False(t, gotUser.IsDeleted)
 	require.Equal(t, user.Username, gotUser.Username)
@@ -39,7 +39,7 @@ func TestSoftDeleteUserTx(t *testing.T) {
 	require.Len(t, creds, 0, "webauthn credentials should be deleted")
 
 	// 5️⃣ — Check if user has been marked as deleted
-	deletedUser, err := testStore.GetUser(ctx, user.ID)
+	deletedUser, err := testStore.getUser(ctx, user.ID)
 	require.NoError(t, err)
 	require.True(t, deletedUser.IsDeleted, "user must be marked deleted")
 	require.WithinDuration(t, time.Now(), deletedUser.DeletedAt, 2*time.Second)

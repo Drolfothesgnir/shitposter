@@ -1,8 +1,12 @@
--- name: GetUserCredentials :many
+-- name: getUserCredentials :many
 SELECT * FROM webauthn_credentials
 WHERE user_id = $1;
 
--- name: CreateWebauthnCredentials :one
+-- name: getCredentialsByID :one
+SELECT * FROM webauthn_credentials
+WHERE id = $1;
+
+-- name: createWebauthnCredentials :one
 INSERT INTO webauthn_credentials (
   id,
   user_id,                  

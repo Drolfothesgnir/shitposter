@@ -7,6 +7,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const opCreateUserWithCredentials = "create-user-with-credentials"
+
 type CreateCredentialsTxParams struct {
 	ID                      []byte                  `json:"id"`
 	PublicKey               []byte                  `json:"public_key"`
@@ -23,8 +25,26 @@ type CreateCredentialsTxParams struct {
 	PublicKeyAlgorithm      int32                   `json:"public_key_algorithm"`
 }
 
+// CreateUserWithCredentialsTx creates a user and a WebAuthn credential
+// in a single transaction. On error, neither the user nor the credential
+// is persisted.
+func NewCreateUserParams(username, email string, profileImgURL *string, webauthnUserHandle []byte) createUserParams {
+	imgURL, valid := "", false
+	if profileImgURL != nil {
+		imgURL = *profileImgURL
+		valid = true
+	}
+
+	return createUserParams{
+		Username:           username,
+		Email:              email,
+		ProfileImgUrl:      pgtype.Text{String: imgURL, Valid: valid},
+		WebauthnUserHandle: webauthnUserHandle,
+	}
+}
+
 type CreateUserWithCredentialsTxParams struct {
-	User CreateUserParams          `json:"user"`
+	User createUserParams          `json:"user"`
 	Cred CreateCredentialsTxParams `json:"cred"`
 }
 
@@ -37,12 +57,18 @@ func (store *SQLStore) CreateUserWithCredentialsTx(ctx context.Context, arg Crea
 	var result CreateUserWithCredentialsTxResult
 	err := store.execTx(ctx, func(q *Queries) error {
 		var err error
-		result.User, err = q.CreateUser(ctx, arg.User)
+		result.User, err = q.createUser(ctx, arg.User)
 		if err != nil {
-			return err
+			return sqlError(
+				opCreateUserWithCredentials,
+				opDetails{
+					entity: entUser,
+				},
+				err,
+			)
 		}
 
-		params := CreateWebauthnCredentialsParams{
+		params := createWebauthnCredentialsParams{
 			ID:                      arg.Cred.ID,
 			UserID:                  result.User.ID,
 			PublicKey:               arg.Cred.PublicKey,
@@ -60,8 +86,16 @@ func (store *SQLStore) CreateUserWithCredentialsTx(ctx context.Context, arg Crea
 			PublicKeyAlgorithm:      arg.Cred.PublicKeyAlgorithm,
 		}
 
-		_, err = q.CreateWebauthnCredentials(ctx, params)
-		return err
+		_, err = q.createWebauthnCredentials(ctx, params)
+
+		if err != nil {
+			return sqlError(
+				opCreateUserWithCredentials,
+				opDetails{entity: entWauthnCred, userID: result.User.ID},
+				err,
+			)
+		}
+		return nil
 	})
 
 	return result, err

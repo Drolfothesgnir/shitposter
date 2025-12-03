@@ -1,4 +1,4 @@
--- name: CreateUser :one
+-- name: createUser :one
 INSERT INTO users (
   username, 
   display_name,
@@ -53,3 +53,7 @@ RETURNING *;
 SELECT * FROM users
 WHERE is_deleted = FALSE
 LIMIT $1;
+
+-- name: getUserByEmail :one
+SELECT * FROM users
+WHERE email = $1;

@@ -25,6 +25,7 @@ func (service *Service) setupRouter(server *http.Server) {
 	// renew access token
 	router.POST("/users/renew_access", service.renewAccessToken)
 
+	// TODO: create private user path
 	// get user's public info
 	router.GET("/users/:id", service.getUser)
 

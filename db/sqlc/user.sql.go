@@ -11,49 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createUser = `-- name: CreateUser :one
-INSERT INTO users (
-  username, 
-  display_name,
-  profile_img_url,
-  email,
-  webauthn_user_handle
-) VALUES (
-  $1, $1, $2, $3, $4
-) RETURNING id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email
-`
-
-type CreateUserParams struct {
-	Username           string      `json:"username"`
-	ProfileImgUrl      pgtype.Text `json:"profile_img_url"`
-	Email              string      `json:"email"`
-	WebauthnUserHandle []byte      `json:"webauthn_user_handle"`
-}
-
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser,
-		arg.Username,
-		arg.ProfileImgUrl,
-		arg.Email,
-		arg.WebauthnUserHandle,
-	)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Username,
-		&i.WebauthnUserHandle,
-		&i.ProfileImgUrl,
-		&i.Email,
-		&i.CreatedAt,
-		&i.IsDeleted,
-		&i.DeletedAt,
-		&i.DisplayName,
-		&i.ArchivedUsername,
-		&i.ArchivedEmail,
-	)
-	return i, err
-}
-
 const emailExists = `-- name: EmailExists :one
 SELECT EXISTS (SELECT 1 from users WHERE email = $1) AS email_exists
 `
@@ -224,4 +181,71 @@ func (q *Queries) UsernameExists(ctx context.Context, username string) (bool, er
 	var username_exists bool
 	err := row.Scan(&username_exists)
 	return username_exists, err
+}
+
+const createUser = `-- name: createUser :one
+INSERT INTO users (
+  username, 
+  display_name,
+  profile_img_url,
+  email,
+  webauthn_user_handle
+) VALUES (
+  $1, $1, $2, $3, $4
+) RETURNING id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email
+`
+
+type createUserParams struct {
+	Username           string      `json:"username"`
+	ProfileImgUrl      pgtype.Text `json:"profile_img_url"`
+	Email              string      `json:"email"`
+	WebauthnUserHandle []byte      `json:"webauthn_user_handle"`
+}
+
+func (q *Queries) createUser(ctx context.Context, arg createUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, createUser,
+		arg.Username,
+		arg.ProfileImgUrl,
+		arg.Email,
+		arg.WebauthnUserHandle,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.WebauthnUserHandle,
+		&i.ProfileImgUrl,
+		&i.Email,
+		&i.CreatedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.DisplayName,
+		&i.ArchivedUsername,
+		&i.ArchivedEmail,
+	)
+	return i, err
+}
+
+const getUserByEmail = `-- name: getUserByEmail :one
+SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email FROM users
+WHERE email = $1
+`
+
+func (q *Queries) getUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.WebauthnUserHandle,
+		&i.ProfileImgUrl,
+		&i.Email,
+		&i.CreatedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.DisplayName,
+		&i.ArchivedUsername,
+		&i.ArchivedEmail,
+	)
+	return i, err
 }

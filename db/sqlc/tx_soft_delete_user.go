@@ -15,7 +15,7 @@ func (store *SQLStore) SoftDeleteUserTx(ctx context.Context, userID int64) error
 			return err
 		}
 
-		err = q.SoftDeleteUser(ctx, userID)
+		_, err = q.softDeleteUser(ctx, userID)
 
 		return err
 	})

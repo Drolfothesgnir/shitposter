@@ -37,18 +37,21 @@ SET
 WHERE id = $1 AND is_deleted = FALSE
 RETURNING *;
 
--- name: UpdateUser :one
-UPDATE users
-SET
-  username = COALESCE(sqlc.narg(username), username),
-  display_name = COALESCE(sqlc.narg(username), display_name),
-  archived_username = COALESCE(sqlc.narg(username), archived_username),
-  email = COALESCE(sqlc.narg(email), email),
-  archived_email = COALESCE(sqlc.narg(email), archived_email),
-  profile_img_url = COALESCE(sqlc.narg(profile_img_url), profile_img_url),
-  last_modified_at = NOW()
-WHERE id = $1 AND is_deleted = FALSE
-RETURNING *;
+-- name: updateUser :one
+SELECT 
+  id::BIGINT AS id,
+	username::TEXT AS username,
+	email::TEXT AS email,
+	profile_img_url::TEXT AS profile_img_url,
+	is_deleted::BOOLEAN AS is_deleted,
+	last_modified_at::TIMESTAMPTZ AS last_modified_at,
+	updated::BOOLEAN AS updated
+FROM update_user(
+  p_user_id := $1,
+  p_username := sqlc.narg(username),
+  p_email := sqlc.narg(email),
+  p_profile_img_url := sqlc.narg(profile_img_url)
+);
 
 -- name: TestUtilGetActiveUsers :many
 SELECT * FROM users

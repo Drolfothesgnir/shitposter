@@ -16,6 +16,9 @@ type Store interface {
 	// GetUser retrieves data of user with provided ID.
 	GetUser(ctx context.Context, userID int64) (User, error)
 
+	// UpdateUser updates user's record with provided optional fields.
+	UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserResult, error)
+
 	// SoftDeleteUserTx deletes user's auth sessions, webauthn credentials and soft deletes the user.
 	SoftDeleteUserTx(ctx context.Context, userID int64) error
 

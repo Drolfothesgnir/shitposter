@@ -32,7 +32,6 @@ type Querier interface {
 	TestUtilGetActiveUsers(ctx context.Context, limit int32) ([]User, error)
 	UpdateCredentialSignCount(ctx context.Context, arg UpdateCredentialSignCountParams) error
 	UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, error)
-	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpsertCommentVote(ctx context.Context, arg UpsertCommentVoteParams) (UpsertCommentVoteRow, error)
 	UsernameExists(ctx context.Context, username string) (bool, error)
 	VotePost(ctx context.Context, arg VotePostParams) (Post, error)
@@ -54,6 +53,7 @@ type Querier interface {
 	softDeleteUser(ctx context.Context, id int64) (User, error)
 	updateComment(ctx context.Context, arg updateCommentParams) (updateCommentRow, error)
 	updateCommentPopularity(ctx context.Context, arg updateCommentPopularityParams) (Comment, error)
+	updateUser(ctx context.Context, arg updateUserParams) (updateUserRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

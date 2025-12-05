@@ -12,17 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const emailExists = `-- name: EmailExists :one
-SELECT EXISTS (SELECT 1 from users WHERE email = $1) AS email_exists
-`
-
-func (q *Queries) EmailExists(ctx context.Context, email string) (bool, error) {
-	row := q.db.QueryRow(ctx, emailExists, email)
-	var email_exists bool
-	err := row.Scan(&email_exists)
-	return email_exists, err
-}
-
 const getUserByUsername = `-- name: GetUserByUsername :one
 SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email, last_modified_at FROM users
 WHERE username = $1
@@ -87,17 +76,6 @@ func (q *Queries) TestUtilGetActiveUsers(ctx context.Context, limit int32) ([]Us
 	return items, nil
 }
 
-const usernameExists = `-- name: UsernameExists :one
-SELECT EXISTS (SELECT 1 from users WHERE username = $1) AS username_exists
-`
-
-func (q *Queries) UsernameExists(ctx context.Context, username string) (bool, error) {
-	row := q.db.QueryRow(ctx, usernameExists, username)
-	var username_exists bool
-	err := row.Scan(&username_exists)
-	return username_exists, err
-}
-
 const createUser = `-- name: createUser :one
 INSERT INTO users (
   username, 
@@ -140,6 +118,17 @@ func (q *Queries) createUser(ctx context.Context, arg createUserParams) (User, e
 		&i.LastModifiedAt,
 	)
 	return i, err
+}
+
+const emailExists = `-- name: emailExists :one
+SELECT EXISTS (SELECT 1 from users WHERE email = $1) AS email_exists
+`
+
+func (q *Queries) emailExists(ctx context.Context, email string) (bool, error) {
+	row := q.db.QueryRow(ctx, emailExists, email)
+	var email_exists bool
+	err := row.Scan(&email_exists)
+	return email_exists, err
 }
 
 const getUser = `-- name: getUser :one
@@ -289,4 +278,15 @@ func (q *Queries) updateUser(ctx context.Context, arg updateUserParams) (updateU
 		&i.Updated,
 	)
 	return i, err
+}
+
+const usernameExists = `-- name: usernameExists :one
+SELECT EXISTS (SELECT 1 from users WHERE username = $1) AS username_exists
+`
+
+func (q *Queries) usernameExists(ctx context.Context, username string) (bool, error) {
+	row := q.db.QueryRow(ctx, usernameExists, username)
+	var username_exists bool
+	err := row.Scan(&username_exists)
+	return username_exists, err
 }

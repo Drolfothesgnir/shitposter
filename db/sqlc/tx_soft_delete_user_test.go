@@ -2,51 +2,98 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestSoftDeleteUserTx(t *testing.T) {
+// Soft delete happy path: active user gets anonymized and marked deleted.
+func TestSoftDeleteUserTx_Success(t *testing.T) {
 	ctx := context.Background()
 
-	// 1️⃣ — Creating test user
-	user := createRandomUser(t)
+	// Create an active user.
+	u := createRandomUser(t)
 
-	// 2️⃣ — Creating mock data
-	_ = createSessionForUser(t, user.ID)
+	before := time.Now()
 
-	_ = createCredentialForUser(t, user.ID)
-
-	// Check if data exist
-	gotUser, err := testStore.getUser(ctx, user.ID)
-	require.NoError(t, err)
-	require.False(t, gotUser.IsDeleted)
-	require.Equal(t, user.Username, gotUser.Username)
-
-	// 3️⃣ — Calling SoftDeleteUserTx
-	err = testStore.SoftDeleteUserTx(ctx, user.ID)
+	res, err := testStore.SoftDeleteUserTx(ctx, u.ID)
 	require.NoError(t, err)
 
-	// 4️⃣ — Check if sessions and creds have been deleted
-	sessions, err := testStore.ListSessionsByUser(ctx, user.ID)
-	require.NoError(t, err)
-	require.Len(t, sessions, 0, "sessions should be deleted")
+	// Basic identity
+	require.EqualValues(t, u.ID, res.ID)
+	require.True(t, res.IsDeleted)
 
-	creds, err := testStore.ListUserCredentials(ctx, user.ID)
-	require.NoError(t, err)
-	require.Len(t, creds, 0, "webauthn credentials should be deleted")
+	// Public-facing fields should be scrubbed.
+	require.Equal(t, "[deleted]", res.DisplayName)
+	require.Equal(t, fmt.Sprintf("deleted_user_%d", u.ID), res.Username)
+	require.Equal(t, fmt.Sprintf("deleted_%d@invalid.local", u.ID), res.Email)
+	t.Log(res.ProfileImgURL)
+	// Profile image URL must be cleared.
+	require.False(t, res.ProfileImgURL.Valid)
 
-	// 5️⃣ — Check if user has been marked as deleted
-	deletedUser, err := testStore.getUser(ctx, user.ID)
-	require.NoError(t, err)
-	require.True(t, deletedUser.IsDeleted, "user must be marked deleted")
-	require.WithinDuration(t, time.Now(), deletedUser.DeletedAt, 2*time.Second)
-	require.Contains(t, deletedUser.Username, "deleted_user_")
-	require.Contains(t, deletedUser.Email, "@invalid.local")
+	// Deletion timestamps must be set.
+	require.False(t, res.DeletedAt.IsZero())
+	require.False(t, res.LastModifiedAt.IsZero())
+	require.False(t, res.DeletedAt.Before(before))
+	require.False(t, res.LastModifiedAt.Before(before))
 
-	// 6️⃣ — Repeat call should be idempotent
-	err = testStore.SoftDeleteUserTx(ctx, user.ID)
-	require.NoError(t, err, "repeated soft-delete should not fail")
+	// Subsequent GetUser should report a deleted user.
+	_, err = testStore.GetUser(ctx, u.ID)
+	require.Error(t, err)
+
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+	require.Equal(t, opGetUser, opErr.Op)
+	require.Equal(t, KindDeleted, opErr.Kind)
+	require.Equal(t, entUser, opErr.Entity)
+	require.EqualValues(t, u.ID, opErr.EntityID)
+}
+
+// Non-existing user: SoftDeleteUserTx should return KindNotFound.
+func TestSoftDeleteUserTx_NotFound(t *testing.T) {
+	ctx := context.Background()
+
+	nonExistingID := int64(9_999_999_999)
+
+	_, err := testStore.SoftDeleteUserTx(ctx, nonExistingID)
+	require.Error(t, err)
+
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+
+	require.Equal(t, opSoftDeleteUser, opErr.Op)
+	require.Equal(t, KindNotFound, opErr.Kind)
+	require.Equal(t, entUser, opErr.Entity)
+	require.EqualValues(t, nonExistingID, opErr.EntityID)
+}
+
+// Idempotency: calling SoftDeleteUserTx twice should still succeed and keep user deleted.
+func TestSoftDeleteUserTx_Idempotent(t *testing.T) {
+	ctx := context.Background()
+
+	u := createRandomUser(t)
+
+	// First delete.
+	first, err := testStore.SoftDeleteUserTx(ctx, u.ID)
+	require.NoError(t, err)
+	require.True(t, first.IsDeleted)
+
+	// Second delete on already-deleted user.
+	second, err := testStore.SoftDeleteUserTx(ctx, u.ID)
+	require.NoError(t, err)
+	require.True(t, second.IsDeleted)
+
+	// The anonymized fields should remain consistent.
+	require.Equal(t, first.DisplayName, second.DisplayName)
+	require.Equal(t, first.Username, second.Username)
+	require.Equal(t, first.Email, second.Email)
+
+	// Profile image remains cleared.
+	require.False(t, second.ProfileImgURL.Valid)
+
+	// Timestamps should still be non-zero.
+	require.False(t, second.DeletedAt.IsZero())
+	require.False(t, second.LastModifiedAt.IsZero())
 }

@@ -15,8 +15,6 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	DeletePost(ctx context.Context, id int64) error
 	DeletePostVote(ctx context.Context, arg DeletePostVoteParams) error
-	DeleteUserCredentials(ctx context.Context, userID int64) error
-	DeleteUserSessions(ctx context.Context, userID int64) error
 	EmailExists(ctx context.Context, email string) (bool, error)
 	GetCommentVote(ctx context.Context, arg GetCommentVoteParams) (CommentVote, error)
 	GetNewestPosts(ctx context.Context, arg GetNewestPostsParams) ([]PostsWithAuthor, error)
@@ -39,6 +37,8 @@ type Querier interface {
 	createUser(ctx context.Context, arg createUserParams) (User, error)
 	createWebauthnCredentials(ctx context.Context, arg createWebauthnCredentialsParams) (WebauthnCredential, error)
 	deleteCommentIfLeaf(ctx context.Context, arg deleteCommentIfLeafParams) (deleteCommentIfLeafRow, error)
+	deleteUserCredentials(ctx context.Context, userID int64) error
+	deleteUserSessions(ctx context.Context, userID int64) error
 	getComment(ctx context.Context, id int64) (Comment, error)
 	getCommentWithAuthor(ctx context.Context, id int64) (CommentsWithAuthor, error)
 	getCommentWithLock(ctx context.Context, id int64) (Comment, error)
@@ -50,7 +50,7 @@ type Querier interface {
 	getUserByEmail(ctx context.Context, email string) (User, error)
 	getUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error)
 	softDeleteComment(ctx context.Context, id int64) (Comment, error)
-	softDeleteUser(ctx context.Context, id int64) (User, error)
+	softDeleteUser(ctx context.Context, pUserID int64) (softDeleteUserRow, error)
 	updateComment(ctx context.Context, arg updateCommentParams) (updateCommentRow, error)
 	updateCommentPopularity(ctx context.Context, arg updateCommentPopularityParams) (Comment, error)
 	updateUser(ctx context.Context, arg updateUserParams) (updateUserRow, error)

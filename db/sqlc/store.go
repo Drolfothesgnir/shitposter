@@ -20,7 +20,7 @@ type Store interface {
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserResult, error)
 
 	// SoftDeleteUserTx deletes user's auth sessions, webauthn credentials and soft deletes the user.
-	SoftDeleteUserTx(ctx context.Context, userID int64) error
+	SoftDeleteUserTx(ctx context.Context, userID int64) (SoftDeleteUserTxResult, error)
 
 	// InsertCommentTx creates a new comment, either root or reply.
 	//

@@ -60,16 +60,6 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 	return i, err
 }
 
-const deleteUserSessions = `-- name: DeleteUserSessions :exec
-DELETE FROM sessions
-WHERE user_id = $1
-`
-
-func (q *Queries) DeleteUserSessions(ctx context.Context, userID int64) error {
-	_, err := q.db.Exec(ctx, deleteUserSessions, userID)
-	return err
-}
-
 const getSession = `-- name: GetSession :one
 SELECT id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at FROM sessions
 WHERE id = $1 LIMIT 1
@@ -123,4 +113,14 @@ func (q *Queries) ListSessionsByUser(ctx context.Context, userID int64) ([]Sessi
 		return nil, err
 	}
 	return items, nil
+}
+
+const deleteUserSessions = `-- name: deleteUserSessions :exec
+DELETE FROM sessions
+WHERE user_id = $1
+`
+
+func (q *Queries) deleteUserSessions(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteUserSessions, userID)
+	return err
 }

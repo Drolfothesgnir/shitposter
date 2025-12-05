@@ -193,36 +193,46 @@ func (q *Queries) getUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const softDeleteUser = `-- name: softDeleteUser :one
-UPDATE users
-SET
-  is_deleted = TRUE,
-  display_name = '[deleted]',
-  deleted_at = NOW(),
-  archived_username = username,
-  archived_email    = email,
-  username = CONCAT('deleted_user_', id),
-  email    = CONCAT('deleted_', id, '@invalid.local'),
-  profile_img_url = ''
-WHERE id = $1 AND is_deleted = FALSE
-RETURNING id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email, last_modified_at
+SELECT 
+  id::BIGINT AS id,
+  username::TEXT AS username,
+  display_name::TEXT AS display_name,
+  email::TEXT AS email,
+  profile_img_url::optional_string AS profile_img_url ,
+  is_deleted::BOOLEAN AS is_deleted,
+  deleted_at::TIMESTAMPTZ AS deleted_at,
+  last_modified_at::TIMESTAMPTZ AS last_modified_at,
+  success::BOOLEAN AS success
+FROM soft_delete_user(
+  p_user_id := $1
+)
 `
 
-func (q *Queries) softDeleteUser(ctx context.Context, id int64) (User, error) {
-	row := q.db.QueryRow(ctx, softDeleteUser, id)
-	var i User
+type softDeleteUserRow struct {
+	ID             int64       `json:"id"`
+	Username       string      `json:"username"`
+	DisplayName    string      `json:"display_name"`
+	Email          string      `json:"email"`
+	ProfileImgUrl  pgtype.Text `json:"profile_img_url"`
+	IsDeleted      bool        `json:"is_deleted"`
+	DeletedAt      time.Time   `json:"deleted_at"`
+	LastModifiedAt time.Time   `json:"last_modified_at"`
+	Success        bool        `json:"success"`
+}
+
+func (q *Queries) softDeleteUser(ctx context.Context, pUserID int64) (softDeleteUserRow, error) {
+	row := q.db.QueryRow(ctx, softDeleteUser, pUserID)
+	var i softDeleteUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
-		&i.WebauthnUserHandle,
-		&i.ProfileImgUrl,
+		&i.DisplayName,
 		&i.Email,
-		&i.CreatedAt,
+		&i.ProfileImgUrl,
 		&i.IsDeleted,
 		&i.DeletedAt,
-		&i.DisplayName,
-		&i.ArchivedUsername,
-		&i.ArchivedEmail,
 		&i.LastModifiedAt,
+		&i.Success,
 	)
 	return i, err
 }
@@ -232,7 +242,7 @@ SELECT
   id::BIGINT AS id,
 	username::TEXT AS username,
 	email::TEXT AS email,
-	profile_img_url::TEXT AS profile_img_url,
+	profile_img_url::optional_string AS profile_img_url,
 	is_deleted::BOOLEAN AS is_deleted,
 	last_modified_at::TIMESTAMPTZ AS last_modified_at,
 	updated::BOOLEAN AS updated
@@ -252,13 +262,13 @@ type updateUserParams struct {
 }
 
 type updateUserRow struct {
-	ID             int64     `json:"id"`
-	Username       string    `json:"username"`
-	Email          string    `json:"email"`
-	ProfileImgUrl  string    `json:"profile_img_url"`
-	IsDeleted      bool      `json:"is_deleted"`
-	LastModifiedAt time.Time `json:"last_modified_at"`
-	Updated        bool      `json:"updated"`
+	ID             int64       `json:"id"`
+	Username       string      `json:"username"`
+	Email          string      `json:"email"`
+	ProfileImgUrl  pgtype.Text `json:"profile_img_url"`
+	IsDeleted      bool        `json:"is_deleted"`
+	LastModifiedAt time.Time   `json:"last_modified_at"`
+	Updated        bool        `json:"updated"`
 }
 
 func (q *Queries) updateUser(ctx context.Context, arg updateUserParams) (updateUserRow, error) {

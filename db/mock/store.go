@@ -71,6 +71,21 @@ func (mr *MockStoreMockRecorder) DeleteCommentTx(ctx, arg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCommentTx", reflect.TypeOf((*MockStore)(nil).DeleteCommentTx), ctx, arg)
 }
 
+// GetUser mocks base method.
+func (m *MockStore) GetUser(ctx context.Context, userID int64) (db.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUser", ctx, userID)
+	ret0, _ := ret[0].(db.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUser indicates an expected call of GetUser.
+func (mr *MockStoreMockRecorder) GetUser(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUser", reflect.TypeOf((*MockStore)(nil).GetUser), ctx, userID)
+}
+
 // InsertCommentTx mocks base method.
 func (m *MockStore) InsertCommentTx(ctx context.Context, arg db.InsertCommentTxParams) (db.Comment, error) {
 	m.ctrl.T.Helper()
@@ -114,11 +129,12 @@ func (mr *MockStoreMockRecorder) Shutdown() *gomock.Call {
 }
 
 // SoftDeleteUserTx mocks base method.
-func (m *MockStore) SoftDeleteUserTx(ctx context.Context, userID int64) error {
+func (m *MockStore) SoftDeleteUserTx(ctx context.Context, userID int64) (db.SoftDeleteUserTxResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SoftDeleteUserTx", ctx, userID)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(db.SoftDeleteUserTxResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // SoftDeleteUserTx indicates an expected call of SoftDeleteUserTx.
@@ -140,6 +156,21 @@ func (m *MockStore) UpdateComment(ctx context.Context, arg db.UpdateCommentParam
 func (mr *MockStoreMockRecorder) UpdateComment(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateComment", reflect.TypeOf((*MockStore)(nil).UpdateComment), ctx, arg)
+}
+
+// UpdateUser mocks base method.
+func (m *MockStore) UpdateUser(ctx context.Context, arg db.UpdateUserParams) (db.UpdateUserResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUser", ctx, arg)
+	ret0, _ := ret[0].(db.UpdateUserResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateUser indicates an expected call of UpdateUser.
+func (mr *MockStoreMockRecorder) UpdateUser(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUser", reflect.TypeOf((*MockStore)(nil).UpdateUser), ctx, arg)
 }
 
 // VoteCommentTx mocks base method.

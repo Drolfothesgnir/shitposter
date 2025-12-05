@@ -35,7 +35,7 @@ SET
   sign_count = $2
 WHERE id = $1;
 
--- name: DeleteUserCredentials :exec
+-- name: deleteUserCredentials :exec
 DELETE FROM webauthn_credentials
 WHERE user_id = $1;
 

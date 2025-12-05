@@ -8,6 +8,7 @@ import (
 
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const opUpdateUser = "update-user"
@@ -28,11 +29,11 @@ func (p *UpdateUserParams) empty() bool {
 
 // UpdateUserResult consists of fields only relevant for the update operation.
 type UpdateUserResult struct {
-	ID             int64     `json:"id"`
-	Username       string    `json:"username"`
-	Email          string    `json:"email"`
-	ProfileImgURL  string    `json:"profile_img_url"`
-	LastModifiedAt time.Time `json:"last_modified_at"`
+	ID             int64       `json:"id"`
+	Username       string      `json:"username"`
+	Email          string      `json:"email"`
+	ProfileImgURL  pgtype.Text `json:"profile_img_url"`
+	LastModifiedAt time.Time   `json:"last_modified_at"`
 }
 
 func (s *SQLStore) UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserResult, error) {

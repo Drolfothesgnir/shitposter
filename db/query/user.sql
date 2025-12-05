@@ -24,25 +24,26 @@ SELECT * FROM users
 WHERE username = $1;
 
 -- name: softDeleteUser :one
-UPDATE users
-SET
-  is_deleted = TRUE,
-  display_name = '[deleted]',
-  deleted_at = NOW(),
-  archived_username = username,
-  archived_email    = email,
-  username = CONCAT('deleted_user_', id),
-  email    = CONCAT('deleted_', id, '@invalid.local'),
-  profile_img_url = ''
-WHERE id = $1 AND is_deleted = FALSE
-RETURNING *;
+SELECT 
+  id::BIGINT AS id,
+  username::TEXT AS username,
+  display_name::TEXT AS display_name,
+  email::TEXT AS email,
+  profile_img_url::optional_string AS profile_img_url ,
+  is_deleted::BOOLEAN AS is_deleted,
+  deleted_at::TIMESTAMPTZ AS deleted_at,
+  last_modified_at::TIMESTAMPTZ AS last_modified_at,
+  success::BOOLEAN AS success
+FROM soft_delete_user(
+  p_user_id := $1
+);
 
 -- name: updateUser :one
 SELECT 
   id::BIGINT AS id,
 	username::TEXT AS username,
 	email::TEXT AS email,
-	profile_img_url::TEXT AS profile_img_url,
+	profile_img_url::optional_string AS profile_img_url,
 	is_deleted::BOOLEAN AS is_deleted,
 	last_modified_at::TIMESTAMPTZ AS last_modified_at,
 	updated::BOOLEAN AS updated

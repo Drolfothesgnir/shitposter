@@ -64,6 +64,7 @@ const (
 	entCommentVote = "comment-vote"
 	entUser        = "user"
 	entWauthnCred  = "webauthn-credential"
+	entSession     = "session"
 )
 
 // OpError describes a failure of a database operation.

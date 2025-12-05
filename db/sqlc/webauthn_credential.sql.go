@@ -12,16 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const deleteUserCredentials = `-- name: DeleteUserCredentials :exec
-DELETE FROM webauthn_credentials
-WHERE user_id = $1
-`
-
-func (q *Queries) DeleteUserCredentials(ctx context.Context, userID int64) error {
-	_, err := q.db.Exec(ctx, deleteUserCredentials, userID)
-	return err
-}
-
 const listUserCredentials = `-- name: ListUserCredentials :many
 SELECT id, user_id, public_key, attestation_type, transports, user_present, user_verified, backup_eligible, backup_state, aaguid, sign_count, clone_warning, authenticator_attachment, authenticator_data, public_key_algorithm, created_at, last_used_at FROM webauthn_credentials
 WHERE user_id = $1
@@ -163,6 +153,16 @@ func (q *Queries) createWebauthnCredentials(ctx context.Context, arg createWebau
 		&i.LastUsedAt,
 	)
 	return i, err
+}
+
+const deleteUserCredentials = `-- name: deleteUserCredentials :exec
+DELETE FROM webauthn_credentials
+WHERE user_id = $1
+`
+
+func (q *Queries) deleteUserCredentials(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteUserCredentials, userID)
+	return err
 }
 
 const getCredentialsByID = `-- name: getCredentialsByID :one

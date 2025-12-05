@@ -33,8 +33,8 @@ func TestUpdateUser_Success_Partial(t *testing.T) {
 
 	require.EqualValues(t, u.ID, res.ID)
 	require.Equal(t, newUsername, res.Username)
-	require.Equal(t, u.Email, res.Email)                        // not changed
-	require.Equal(t, u.ProfileImgUrl.String, res.ProfileImgURL) // not changed
+	require.Equal(t, u.Email, res.Email)                               // not changed
+	require.Equal(t, u.ProfileImgUrl.String, res.ProfileImgURL.String) // not changed
 	require.False(t, res.LastModifiedAt.Before(before))
 
 	// Double-check DB state
@@ -117,7 +117,7 @@ func TestUpdateUser_DeletedUser(t *testing.T) {
 	require.Error(t, err)
 	var opErr *OpError
 	require.ErrorAs(t, err, &opErr)
-
+	t.Log(err)
 	require.Equal(t, opUpdateUser, opErr.Op)
 	require.Equal(t, KindDeleted, opErr.Kind)
 	require.Equal(t, entUser, opErr.Entity)

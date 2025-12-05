@@ -12,70 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email, last_modified_at FROM users
-WHERE username = $1
-`
-
-func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByUsername, username)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Username,
-		&i.WebauthnUserHandle,
-		&i.ProfileImgUrl,
-		&i.Email,
-		&i.CreatedAt,
-		&i.IsDeleted,
-		&i.DeletedAt,
-		&i.DisplayName,
-		&i.ArchivedUsername,
-		&i.ArchivedEmail,
-		&i.LastModifiedAt,
-	)
-	return i, err
-}
-
-const testUtilGetActiveUsers = `-- name: TestUtilGetActiveUsers :many
-SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email, last_modified_at FROM users
-WHERE is_deleted = FALSE
-LIMIT $1
-`
-
-func (q *Queries) TestUtilGetActiveUsers(ctx context.Context, limit int32) ([]User, error) {
-	rows, err := q.db.Query(ctx, testUtilGetActiveUsers, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []User{}
-	for rows.Next() {
-		var i User
-		if err := rows.Scan(
-			&i.ID,
-			&i.Username,
-			&i.WebauthnUserHandle,
-			&i.ProfileImgUrl,
-			&i.Email,
-			&i.CreatedAt,
-			&i.IsDeleted,
-			&i.DeletedAt,
-			&i.DisplayName,
-			&i.ArchivedUsername,
-			&i.ArchivedEmail,
-			&i.LastModifiedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const createUser = `-- name: createUser :one
 INSERT INTO users (
   username, 
@@ -131,6 +67,45 @@ func (q *Queries) emailExists(ctx context.Context, email string) (bool, error) {
 	return email_exists, err
 }
 
+const getActiveUsers = `-- name: getActiveUsers :many
+SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email, last_modified_at FROM users
+WHERE is_deleted = FALSE
+LIMIT $1
+`
+
+func (q *Queries) getActiveUsers(ctx context.Context, limit int32) ([]User, error) {
+	rows, err := q.db.Query(ctx, getActiveUsers, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.WebauthnUserHandle,
+			&i.ProfileImgUrl,
+			&i.Email,
+			&i.CreatedAt,
+			&i.IsDeleted,
+			&i.DeletedAt,
+			&i.DisplayName,
+			&i.ArchivedUsername,
+			&i.ArchivedEmail,
+			&i.LastModifiedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUser = `-- name: getUser :one
 SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email, last_modified_at FROM users
 WHERE id = $1 LIMIT 1
@@ -163,6 +138,31 @@ WHERE email = $1
 
 func (q *Queries) getUserByEmail(ctx context.Context, email string) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.WebauthnUserHandle,
+		&i.ProfileImgUrl,
+		&i.Email,
+		&i.CreatedAt,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.DisplayName,
+		&i.ArchivedUsername,
+		&i.ArchivedEmail,
+		&i.LastModifiedAt,
+	)
+	return i, err
+}
+
+const getUserByUsername = `-- name: getUserByUsername :one
+SELECT id, username, webauthn_user_handle, profile_img_url, email, created_at, is_deleted, deleted_at, display_name, archived_username, archived_email, last_modified_at FROM users
+WHERE username = $1
+`
+
+func (q *Queries) getUserByUsername(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByUsername, username)
 	var i User
 	err := row.Scan(
 		&i.ID,

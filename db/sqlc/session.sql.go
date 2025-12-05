@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const createSession = `-- name: CreateSession :one
+const createSession = `-- name: createSession :one
 INSERT INTO sessions (
   id,
   user_id,
@@ -26,7 +26,7 @@ INSERT INTO sessions (
 ) RETURNING id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at
 `
 
-type CreateSessionParams struct {
+type createSessionParams struct {
 	ID           uuid.UUID `json:"id"`
 	UserID       int64     `json:"user_id"`
 	RefreshToken string    `json:"refresh_token"`
@@ -36,7 +36,7 @@ type CreateSessionParams struct {
 	ExpiresAt    time.Time `json:"expires_at"`
 }
 
-func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
+func (q *Queries) createSession(ctx context.Context, arg createSessionParams) (Session, error) {
 	row := q.db.QueryRow(ctx, createSession,
 		arg.ID,
 		arg.UserID,
@@ -60,12 +60,22 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 	return i, err
 }
 
-const getSession = `-- name: GetSession :one
+const deleteUserSessions = `-- name: deleteUserSessions :exec
+DELETE FROM sessions
+WHERE user_id = $1
+`
+
+func (q *Queries) deleteUserSessions(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteUserSessions, userID)
+	return err
+}
+
+const getSession = `-- name: getSession :one
 SELECT id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at FROM sessions
 WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) GetSession(ctx context.Context, id uuid.UUID) (Session, error) {
+func (q *Queries) getSession(ctx context.Context, id uuid.UUID) (Session, error) {
 	row := q.db.QueryRow(ctx, getSession, id)
 	var i Session
 	err := row.Scan(
@@ -81,12 +91,12 @@ func (q *Queries) GetSession(ctx context.Context, id uuid.UUID) (Session, error)
 	return i, err
 }
 
-const listSessionsByUser = `-- name: ListSessionsByUser :many
+const listSessionsByUser = `-- name: listSessionsByUser :many
 SELECT id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at, created_at FROM sessions
 WHERE user_id = $1
 `
 
-func (q *Queries) ListSessionsByUser(ctx context.Context, userID int64) ([]Session, error) {
+func (q *Queries) listSessionsByUser(ctx context.Context, userID int64) ([]Session, error) {
 	rows, err := q.db.Query(ctx, listSessionsByUser, userID)
 	if err != nil {
 		return nil, err
@@ -113,14 +123,4 @@ func (q *Queries) ListSessionsByUser(ctx context.Context, userID int64) ([]Sessi
 		return nil, err
 	}
 	return items, nil
-}
-
-const deleteUserSessions = `-- name: deleteUserSessions :exec
-DELETE FROM sessions
-WHERE user_id = $1
-`
-
-func (q *Queries) deleteUserSessions(ctx context.Context, userID int64) error {
-	_, err := q.db.Exec(ctx, deleteUserSessions, userID)
-	return err
 }

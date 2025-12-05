@@ -1,9 +1,9 @@
--- name: GetCommentVote :one 
+-- name: getCommentVote :one 
 SELECT * from comment_votes
 WHERE user_id = $1 AND comment_id = $2
 LIMIT 1;
 
--- name: UpsertCommentVote :one
+-- name: upsertCommentVote :one
 SELECT
   id::BIGINT AS id,
 	user_id::BIGINT AS user_id,

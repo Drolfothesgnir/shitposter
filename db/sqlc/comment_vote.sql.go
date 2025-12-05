@@ -10,18 +10,18 @@ import (
 	"time"
 )
 
-const getCommentVote = `-- name: GetCommentVote :one
+const getCommentVote = `-- name: getCommentVote :one
 SELECT id, user_id, comment_id, vote, created_at, last_modified_at from comment_votes
 WHERE user_id = $1 AND comment_id = $2
 LIMIT 1
 `
 
-type GetCommentVoteParams struct {
+type getCommentVoteParams struct {
 	UserID    int64 `json:"user_id"`
 	CommentID int64 `json:"comment_id"`
 }
 
-func (q *Queries) GetCommentVote(ctx context.Context, arg GetCommentVoteParams) (CommentVote, error) {
+func (q *Queries) getCommentVote(ctx context.Context, arg getCommentVoteParams) (CommentVote, error) {
 	row := q.db.QueryRow(ctx, getCommentVote, arg.UserID, arg.CommentID)
 	var i CommentVote
 	err := row.Scan(
@@ -35,7 +35,7 @@ func (q *Queries) GetCommentVote(ctx context.Context, arg GetCommentVoteParams) 
 	return i, err
 }
 
-const upsertCommentVote = `-- name: UpsertCommentVote :one
+const upsertCommentVote = `-- name: upsertCommentVote :one
 SELECT
   id::BIGINT AS id,
 	user_id::BIGINT AS user_id,
@@ -51,13 +51,13 @@ FROM upsert_comment_vote(
 )
 `
 
-type UpsertCommentVoteParams struct {
+type upsertCommentVoteParams struct {
 	PUserID    int64 `json:"p_user_id"`
 	PCommentID int64 `json:"p_comment_id"`
 	PVote      int16 `json:"p_vote"`
 }
 
-type UpsertCommentVoteRow struct {
+type upsertCommentVoteRow struct {
 	ID             int64     `json:"id"`
 	UserID         int64     `json:"user_id"`
 	CommentID      int64     `json:"comment_id"`
@@ -67,9 +67,9 @@ type UpsertCommentVoteRow struct {
 	OriginalVote   int16     `json:"original_vote"`
 }
 
-func (q *Queries) UpsertCommentVote(ctx context.Context, arg UpsertCommentVoteParams) (UpsertCommentVoteRow, error) {
+func (q *Queries) upsertCommentVote(ctx context.Context, arg upsertCommentVoteParams) (upsertCommentVoteRow, error) {
 	row := q.db.QueryRow(ctx, upsertCommentVote, arg.PUserID, arg.PCommentID, arg.PVote)
-	var i UpsertCommentVoteRow
+	var i upsertCommentVoteRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,

@@ -9,18 +9,18 @@ import (
 	"context"
 )
 
-const getPostVote = `-- name: GetPostVote :one
+const getPostVote = `-- name: getPostVote :one
 SELECT id, user_id, post_id, vote, created_at, last_modified_at from post_votes
 WHERE user_id = $1 AND post_id = $2
 LIMIT 1
 `
 
-type GetPostVoteParams struct {
+type getPostVoteParams struct {
 	UserID int64 `json:"user_id"`
 	PostID int64 `json:"post_id"`
 }
 
-func (q *Queries) GetPostVote(ctx context.Context, arg GetPostVoteParams) (PostVote, error) {
+func (q *Queries) getPostVote(ctx context.Context, arg getPostVoteParams) (PostVote, error) {
 	row := q.db.QueryRow(ctx, getPostVote, arg.UserID, arg.PostID)
 	var i PostVote
 	err := row.Scan(

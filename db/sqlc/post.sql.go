@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createPost = `-- name: CreatePost :one
+const createPost = `-- name: createPost :one
 INSERT INTO posts (
   user_id, 
   title,
@@ -22,14 +22,14 @@ INSERT INTO posts (
 ) RETURNING id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity
 `
 
-type CreatePostParams struct {
+type createPostParams struct {
 	UserID int64  `json:"user_id"`
 	Title  string `json:"title"`
 	Topics []byte `json:"topics"`
 	Body   []byte `json:"body"`
 }
 
-func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, error) {
+func (q *Queries) createPost(ctx context.Context, arg createPostParams) (Post, error) {
 	row := q.db.QueryRow(ctx, createPost,
 		arg.UserID,
 		arg.Title,
@@ -52,45 +52,45 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 	return i, err
 }
 
-const deletePost = `-- name: DeletePost :exec
+const deletePost = `-- name: deletePost :exec
 DELETE FROM posts
 WHERE id = $1
 `
 
-func (q *Queries) DeletePost(ctx context.Context, id int64) error {
+func (q *Queries) deletePost(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deletePost, id)
 	return err
 }
 
-const deletePostVote = `-- name: DeletePostVote :exec
+const deletePostVote = `-- name: deletePostVote :exec
 SELECT delete_post_vote(
   p_post_id := $1,
   p_user_id := $2
 )
 `
 
-type DeletePostVoteParams struct {
+type deletePostVoteParams struct {
 	PPostID int64 `json:"p_post_id"`
 	PUserID int64 `json:"p_user_id"`
 }
 
-func (q *Queries) DeletePostVote(ctx context.Context, arg DeletePostVoteParams) error {
+func (q *Queries) deletePostVote(ctx context.Context, arg deletePostVoteParams) error {
 	_, err := q.db.Exec(ctx, deletePostVote, arg.PPostID, arg.PUserID)
 	return err
 }
 
-const getNewestPosts = `-- name: GetNewestPosts :many
+const getNewestPosts = `-- name: getNewestPosts :many
 SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity, user_display_name, user_profile_img_url FROM posts_with_author
 ORDER BY created_at DESC, id DESC
 LIMIT $1 OFFSET $2
 `
 
-type GetNewestPostsParams struct {
+type getNewestPostsParams struct {
 	Limit  int32 `json:"limit"`
 	Offset int32 `json:"offset"`
 }
 
-func (q *Queries) GetNewestPosts(ctx context.Context, arg GetNewestPostsParams) ([]PostsWithAuthor, error) {
+func (q *Queries) getNewestPosts(ctx context.Context, arg getNewestPostsParams) ([]PostsWithAuthor, error) {
 	rows, err := q.db.Query(ctx, getNewestPosts, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
@@ -123,18 +123,18 @@ func (q *Queries) GetNewestPosts(ctx context.Context, arg GetNewestPostsParams) 
 	return items, nil
 }
 
-const getOldestPosts = `-- name: GetOldestPosts :many
+const getOldestPosts = `-- name: getOldestPosts :many
 SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity, user_display_name, user_profile_img_url FROM posts_with_author
 ORDER BY created_at ASC, id ASC
 LIMIT $1 OFFSET $2
 `
 
-type GetOldestPostsParams struct {
+type getOldestPostsParams struct {
 	Limit  int32 `json:"limit"`
 	Offset int32 `json:"offset"`
 }
 
-func (q *Queries) GetOldestPosts(ctx context.Context, arg GetOldestPostsParams) ([]PostsWithAuthor, error) {
+func (q *Queries) getOldestPosts(ctx context.Context, arg getOldestPostsParams) ([]PostsWithAuthor, error) {
 	rows, err := q.db.Query(ctx, getOldestPosts, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
@@ -167,13 +167,13 @@ func (q *Queries) GetOldestPosts(ctx context.Context, arg GetOldestPostsParams) 
 	return items, nil
 }
 
-const getPost = `-- name: GetPost :one
+const getPost = `-- name: getPost :one
 SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity FROM posts
 WHERE id = $1
 LIMIT 1
 `
 
-func (q *Queries) GetPost(ctx context.Context, id int64) (Post, error) {
+func (q *Queries) getPost(ctx context.Context, id int64) (Post, error) {
 	row := q.db.QueryRow(ctx, getPost, id)
 	var i Post
 	err := row.Scan(
@@ -191,13 +191,13 @@ func (q *Queries) GetPost(ctx context.Context, id int64) (Post, error) {
 	return i, err
 }
 
-const getPostWithAuthor = `-- name: GetPostWithAuthor :one
+const getPostWithAuthor = `-- name: getPostWithAuthor :one
 SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity, user_display_name, user_profile_img_url FROM posts_with_author
 WHERE id = $1
 LIMIT 1
 `
 
-func (q *Queries) GetPostWithAuthor(ctx context.Context, id int64) (PostsWithAuthor, error) {
+func (q *Queries) getPostWithAuthor(ctx context.Context, id int64) (PostsWithAuthor, error) {
 	row := q.db.QueryRow(ctx, getPostWithAuthor, id)
 	var i PostsWithAuthor
 	err := row.Scan(
@@ -217,7 +217,7 @@ func (q *Queries) GetPostWithAuthor(ctx context.Context, id int64) (PostsWithAut
 	return i, err
 }
 
-const getPostsByPopularity = `-- name: GetPostsByPopularity :many
+const getPostsByPopularity = `-- name: getPostsByPopularity :many
 SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity, user_display_name, user_profile_img_url FROM posts_with_author
 WHERE p.created_at >= (NOW() - $3::INTERVAL)
 ORDER BY (p.upvotes - p.downvotes) DESC
@@ -225,13 +225,13 @@ LIMIT $1
 OFFSET $2
 `
 
-type GetPostsByPopularityParams struct {
+type getPostsByPopularityParams struct {
 	Limit    int32           `json:"limit"`
 	Offset   int32           `json:"offset"`
 	Interval pgtype.Interval `json:"interval"`
 }
 
-func (q *Queries) GetPostsByPopularity(ctx context.Context, arg GetPostsByPopularityParams) ([]PostsWithAuthor, error) {
+func (q *Queries) getPostsByPopularity(ctx context.Context, arg getPostsByPopularityParams) ([]PostsWithAuthor, error) {
 	rows, err := q.db.Query(ctx, getPostsByPopularity, arg.Limit, arg.Offset, arg.Interval)
 	if err != nil {
 		return nil, err
@@ -264,7 +264,7 @@ func (q *Queries) GetPostsByPopularity(ctx context.Context, arg GetPostsByPopula
 	return items, nil
 }
 
-const updatePost = `-- name: UpdatePost :one
+const updatePost = `-- name: updatePost :one
 UPDATE posts
 SET 
   title = COALESCE($2, title),
@@ -275,14 +275,14 @@ WHERE id = $1
 RETURNING id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity
 `
 
-type UpdatePostParams struct {
+type updatePostParams struct {
 	ID     int64       `json:"id"`
 	Title  pgtype.Text `json:"title"`
 	Body   []byte      `json:"body"`
 	Topics []byte      `json:"topics"`
 }
 
-func (q *Queries) UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, error) {
+func (q *Queries) updatePost(ctx context.Context, arg updatePostParams) (Post, error) {
 	row := q.db.QueryRow(ctx, updatePost,
 		arg.ID,
 		arg.Title,
@@ -305,7 +305,7 @@ func (q *Queries) UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, e
 	return i, err
 }
 
-const votePost = `-- name: VotePost :one
+const votePost = `-- name: votePost :one
 SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_modified_at, popularity FROM vote_post(
   p_user_id := $1,
   p_post_id := $2,
@@ -313,13 +313,13 @@ SELECT id, user_id, title, topics, body, upvotes, downvotes, created_at, last_mo
 )
 `
 
-type VotePostParams struct {
+type votePostParams struct {
 	PUserID int64 `json:"p_user_id"`
 	PPostID int64 `json:"p_post_id"`
 	PVote   int32 `json:"p_vote"`
 }
 
-func (q *Queries) VotePost(ctx context.Context, arg VotePostParams) (Post, error) {
+func (q *Queries) votePost(ctx context.Context, arg votePostParams) (Post, error) {
 	row := q.db.QueryRow(ctx, votePost, arg.PUserID, arg.PPostID, arg.PVote)
 	var i Post
 	err := row.Scan(

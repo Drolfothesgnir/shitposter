@@ -31,7 +31,7 @@ func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (
 			)
 		}
 
-		row, err := q.UpsertCommentVote(ctx, UpsertCommentVoteParams{
+		row, err := q.upsertCommentVote(ctx, upsertCommentVoteParams{
 			PUserID:    arg.UserID,
 			PCommentID: arg.CommentID,
 			PVote:      arg.Vote,

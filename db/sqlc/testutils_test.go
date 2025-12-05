@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/go-webauthn/webauthn/protocol"
@@ -147,4 +148,20 @@ func createCredentialForUserWithID(t *testing.T, userID int64, id []byte) Webaut
 	require.NoError(t, err)
 
 	return cred
+}
+
+func createSessionForUser(t *testing.T, userID int64) Session {
+	arg := createSessionParams{
+		ID:           uuid.New(),
+		UserID:       userID,
+		RefreshToken: util.RandomString(32),
+		UserAgent:    "Chrome",
+		ClientIp:     "198.162.0.0",
+		IsBlocked:    false,
+		ExpiresAt:    time.Now().Add(time.Minute),
+	}
+	session, err := testStore.createSession(context.Background(), arg)
+	require.NoError(t, err)
+
+	return session
 }

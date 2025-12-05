@@ -1,4 +1,4 @@
--- name: CreatePost :one
+-- name: createPost :one
 INSERT INTO posts (
   user_id, 
   title,
@@ -8,17 +8,17 @@ INSERT INTO posts (
   $1, $2, $3, $4
 ) RETURNING *;
 
--- name: GetPostWithAuthor :one
+-- name: getPostWithAuthor :one
 SELECT * FROM posts_with_author
 WHERE id = $1
 LIMIT 1;
 
--- name: GetPost :one
+-- name: getPost :one
 SELECT * FROM posts
 WHERE id = $1
 LIMIT 1;
 
--- name: UpdatePost :one
+-- name: updatePost :one
 UPDATE posts
 SET 
   title = COALESCE(sqlc.narg('title'), title),
@@ -28,36 +28,36 @@ SET
 WHERE id = $1
 RETURNING *;
 
--- name: GetPostsByPopularity :many
+-- name: getPostsByPopularity :many
 SELECT * FROM posts_with_author
 WHERE p.created_at >= (NOW() - sqlc.arg(interval)::INTERVAL)
 ORDER BY (p.upvotes - p.downvotes) DESC
 LIMIT $1
 OFFSET $2;
 
--- name: GetOldestPosts :many
+-- name: getOldestPosts :many
 SELECT * FROM posts_with_author
 ORDER BY created_at ASC, id ASC
 LIMIT $1 OFFSET $2;
 
--- name: GetNewestPosts :many
+-- name: getNewestPosts :many
 SELECT * FROM posts_with_author
 ORDER BY created_at DESC, id DESC
 LIMIT $1 OFFSET $2;
 
--- name: VotePost :one
+-- name: votePost :one
 SELECT * FROM vote_post(
   p_user_id := $1,
   p_post_id := $2,
   p_vote := $3   
 );
 
--- name: DeletePostVote :exec
+-- name: deletePostVote :exec
 SELECT delete_post_vote(
   p_post_id := $1,
   p_user_id := $2
 );
 
--- name: DeletePost :exec
+-- name: deletePost :exec
 DELETE FROM posts
 WHERE id = $1;

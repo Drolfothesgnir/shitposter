@@ -29,7 +29,7 @@ func TestCreateDummyComments(t *testing.T) {
 	)
 
 	// getting available user ids
-	users, err := testStore.TestUtilGetActiveUsers(context.Background(), numUsers)
+	users, err := testStore.getActiveUsers(context.Background(), numUsers)
 	require.NoError(t, err)
 	require.NotEmpty(t, users)
 
@@ -42,7 +42,7 @@ func TestCreateDummyComments(t *testing.T) {
 	}
 
 	// getting active post to add comments to
-	post, err := testStore.GetNewestPosts(context.Background(), GetNewestPostsParams{
+	post, err := testStore.getNewestPosts(context.Background(), getNewestPostsParams{
 		Limit:  1,
 		Offset: 0,
 	})

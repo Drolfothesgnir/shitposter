@@ -71,6 +71,21 @@ func (mr *MockStoreMockRecorder) DeleteCommentTx(ctx, arg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCommentTx", reflect.TypeOf((*MockStore)(nil).DeleteCommentTx), ctx, arg)
 }
 
+// EmailExists mocks base method.
+func (m *MockStore) EmailExists(ctx context.Context, email string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EmailExists", ctx, email)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EmailExists indicates an expected call of EmailExists.
+func (mr *MockStoreMockRecorder) EmailExists(ctx, email any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EmailExists", reflect.TypeOf((*MockStore)(nil).EmailExists), ctx, email)
+}
+
 // GetUser mocks base method.
 func (m *MockStore) GetUser(ctx context.Context, userID int64) (db.User, error) {
 	m.ctrl.T.Helper()
@@ -171,6 +186,21 @@ func (m *MockStore) UpdateUser(ctx context.Context, arg db.UpdateUserParams) (db
 func (mr *MockStoreMockRecorder) UpdateUser(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUser", reflect.TypeOf((*MockStore)(nil).UpdateUser), ctx, arg)
+}
+
+// UsernameExists mocks base method.
+func (m *MockStore) UsernameExists(ctx context.Context, username string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UsernameExists", ctx, username)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UsernameExists indicates an expected call of UsernameExists.
+func (mr *MockStoreMockRecorder) UsernameExists(ctx, username any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UsernameExists", reflect.TypeOf((*MockStore)(nil).UsernameExists), ctx, username)
 }
 
 // VoteCommentTx mocks base method.

@@ -19,7 +19,7 @@ SELECT EXISTS (SELECT 1 from users WHERE username = $1) AS username_exists;
 -- name: emailExists :one 
 SELECT EXISTS (SELECT 1 from users WHERE email = $1) AS email_exists;
 
--- name: GetUserByUsername :one
+-- name: getUserByUsername :one
 SELECT * FROM users
 WHERE username = $1;
 
@@ -54,7 +54,7 @@ FROM update_user(
   p_profile_img_url := sqlc.narg(profile_img_url)
 );
 
--- name: TestUtilGetActiveUsers :many
+-- name: getActiveUsers :many
 SELECT * FROM users
 WHERE is_deleted = FALSE
 LIMIT $1;

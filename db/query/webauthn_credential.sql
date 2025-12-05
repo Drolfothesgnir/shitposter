@@ -29,7 +29,7 @@ INSERT INTO webauthn_credentials (
   $11, $12, $13, $14, $15
 ) RETURNING *;
 
--- name: UpdateCredentialSignCount :exec
+-- name: updateCredentialSignCount :exec
 UPDATE webauthn_credentials
 SET
   sign_count = $2
@@ -39,6 +39,6 @@ WHERE id = $1;
 DELETE FROM webauthn_credentials
 WHERE user_id = $1;
 
--- name: ListUserCredentials :many
+-- name: listUserCredentials :many
 SELECT * FROM webauthn_credentials
 WHERE user_id = $1;

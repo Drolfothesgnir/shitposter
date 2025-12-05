@@ -1,4 +1,4 @@
--- name: CreateSession :one
+-- name: createSession :one
 INSERT INTO sessions (
   id,
   user_id,
@@ -11,7 +11,7 @@ INSERT INTO sessions (
   $1, $2, $3, $4, $5, $6, $7
 ) RETURNING *;
 
--- name: GetSession :one
+-- name: getSession :one
 SELECT * FROM sessions
 WHERE id = $1 LIMIT 1;
 
@@ -19,6 +19,6 @@ WHERE id = $1 LIMIT 1;
 DELETE FROM sessions
 WHERE user_id = $1;
 
--- name: ListSessionsByUser :many
+-- name: listSessionsByUser :many
 SELECT * FROM sessions
 WHERE user_id = $1;

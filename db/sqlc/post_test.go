@@ -28,14 +28,14 @@ func createRandomPost(t *testing.T) Post {
 	json_body, err := json.Marshal(body1)
 	require.NoError(t, err)
 
-	arg := CreatePostParams{
+	arg := createPostParams{
 		UserID: user.ID,
 		Title:  title,
 		Topics: json_topics,
 		Body:   json_body,
 	}
 
-	post, err := testStore.CreatePost(context.Background(), arg)
+	post, err := testStore.createPost(context.Background(), arg)
 	require.NoError(t, err)
 	require.NotEmpty(t, post)
 
@@ -88,7 +88,7 @@ func TestGetNewestPosts(t *testing.T) {
 
 	for i := range n {
 		// inserting posts into array in reverse order
-		posts[n-i-1], err = testStore.CreatePost(context.Background(), CreatePostParams{
+		posts[n-i-1], err = testStore.createPost(context.Background(), createPostParams{
 			UserID: user.ID,
 			Title:  util.RandomString(10),
 			Body:   json_body,
@@ -117,7 +117,7 @@ func TestGetNewestPosts(t *testing.T) {
 	}
 
 	// get all n new posts first
-	query_result1, err := testStore.GetNewestPosts(context.Background(), GetNewestPostsParams{
+	query_result1, err := testStore.getNewestPosts(context.Background(), getNewestPostsParams{
 		Limit:  int32(n),
 		Offset: 0,
 	})
@@ -126,7 +126,7 @@ func TestGetNewestPosts(t *testing.T) {
 	require.Equal(t, postsWithAuthor, query_result1)
 
 	// get first 5 posts
-	query_result2, err := testStore.GetNewestPosts(context.Background(), GetNewestPostsParams{
+	query_result2, err := testStore.getNewestPosts(context.Background(), getNewestPostsParams{
 		Limit:  int32(5),
 		Offset: 0,
 	})
@@ -135,7 +135,7 @@ func TestGetNewestPosts(t *testing.T) {
 	require.Equal(t, postsWithAuthor[:5], query_result2)
 
 	// get second 5 posts
-	query_result3, err := testStore.GetNewestPosts(context.Background(), GetNewestPostsParams{
+	query_result3, err := testStore.getNewestPosts(context.Background(), getNewestPostsParams{
 		Limit:  int32(5),
 		Offset: 5,
 	})
@@ -150,7 +150,7 @@ func TestVotePost(t *testing.T) {
 	user := createRandomUser(t)
 
 	// there should be no vote initially
-	vote1, err := testStore.GetPostVote(context.Background(), GetPostVoteParams{
+	vote1, err := testStore.getPostVote(context.Background(), getPostVoteParams{
 		UserID: user.ID,
 		PostID: post1.ID,
 	})
@@ -160,7 +160,7 @@ func TestVotePost(t *testing.T) {
 	require.ErrorIs(t, err, pgx.ErrNoRows)
 
 	// happy upvote case
-	post2, err := testStore.VotePost(context.Background(), VotePostParams{
+	post2, err := testStore.votePost(context.Background(), votePostParams{
 		PUserID: user.ID,
 		PPostID: post1.ID,
 		PVote:   1,
@@ -169,7 +169,7 @@ func TestVotePost(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, post1.Upvotes+1, post2.Upvotes)
 
-	vote2, err := testStore.GetPostVote(context.Background(), GetPostVoteParams{
+	vote2, err := testStore.getPostVote(context.Background(), getPostVoteParams{
 		UserID: user.ID,
 		PostID: post1.ID,
 	})
@@ -178,7 +178,7 @@ func TestVotePost(t *testing.T) {
 	require.Equal(t, int16(1), vote2.Vote)
 
 	// vote change to -1
-	post3, err := testStore.VotePost(context.Background(), VotePostParams{
+	post3, err := testStore.votePost(context.Background(), votePostParams{
 		PUserID: user.ID,
 		PPostID: post1.ID,
 		PVote:   -1,
@@ -188,7 +188,7 @@ func TestVotePost(t *testing.T) {
 	require.Equal(t, post1.Downvotes+1, post3.Downvotes)
 	require.Equal(t, post1.Upvotes, post3.Upvotes)
 
-	vote3, err := testStore.GetPostVote(context.Background(), GetPostVoteParams{
+	vote3, err := testStore.getPostVote(context.Background(), getPostVoteParams{
 		UserID: user.ID,
 		PostID: post1.ID,
 	})
@@ -196,7 +196,7 @@ func TestVotePost(t *testing.T) {
 	require.Equal(t, int16(-1), vote3.Vote)
 
 	// check voting idempotency
-	post4, err := testStore.VotePost(context.Background(), VotePostParams{
+	post4, err := testStore.votePost(context.Background(), votePostParams{
 		PUserID: user.ID,
 		PPostID: post1.ID,
 		PVote:   -1,
@@ -205,7 +205,7 @@ func TestVotePost(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, post3.Downvotes, post4.Downvotes)
 
-	vote4, err := testStore.GetPostVote(context.Background(), GetPostVoteParams{
+	vote4, err := testStore.getPostVote(context.Background(), getPostVoteParams{
 		UserID: user.ID,
 		PostID: post1.ID,
 	})
@@ -238,7 +238,7 @@ func TestUpdatePost(t *testing.T) {
 	newTopicsJson, err := json.Marshal(newTopics)
 	require.NoError(t, err)
 
-	post2, err := testStore.UpdatePost(context.Background(), UpdatePostParams{
+	post2, err := testStore.updatePost(context.Background(), updatePostParams{
 		ID:     post1.ID,
 		Title:  pgtype.Text{String: newTitle, Valid: true},
 		Body:   newBodyJson,
@@ -266,7 +266,7 @@ func TestDeletePostVote(t *testing.T) {
 
 	user := createRandomUser(t)
 
-	_, err := testStore.VotePost(context.Background(), VotePostParams{
+	_, err := testStore.votePost(context.Background(), votePostParams{
 		PUserID: user.ID,
 		PPostID: post1.ID,
 		PVote:   1,
@@ -274,7 +274,7 @@ func TestDeletePostVote(t *testing.T) {
 
 	require.NoError(t, err)
 
-	vote1, err := testStore.GetPostVote(context.Background(), GetPostVoteParams{
+	vote1, err := testStore.getPostVote(context.Background(), getPostVoteParams{
 		UserID: user.ID,
 		PostID: post1.ID,
 	})
@@ -283,20 +283,20 @@ func TestDeletePostVote(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int16(1), vote1.Vote)
 
-	err = testStore.DeletePostVote(context.Background(), DeletePostVoteParams{
+	err = testStore.deletePostVote(context.Background(), deletePostVoteParams{
 		PPostID: post1.ID,
 		PUserID: user.ID,
 	})
 
 	require.NoError(t, err)
 
-	post2, err := testStore.GetPostWithAuthor(context.Background(), post1.ID)
+	post2, err := testStore.getPostWithAuthor(context.Background(), post1.ID)
 
 	require.NoError(t, err)
 	require.Equal(t, post1.Upvotes, post2.Upvotes)
 	require.Equal(t, post1.Downvotes, post2.Downvotes)
 
-	vote2, err := testStore.GetPostVote(context.Background(), GetPostVoteParams{
+	vote2, err := testStore.getPostVote(context.Background(), getPostVoteParams{
 		UserID: user.ID,
 		PostID: post1.ID,
 	})
@@ -327,10 +327,10 @@ func TestDeletePost(t *testing.T) {
 
 	require.NoError(t, err)
 
-	err = testStore.DeletePost(context.Background(), post1.ID)
+	err = testStore.deletePost(context.Background(), post1.ID)
 	require.NoError(t, err)
 
-	_, err = testStore.GetPostWithAuthor(context.Background(), post1.ID)
+	_, err = testStore.getPostWithAuthor(context.Background(), post1.ID)
 	require.Error(t, err)
 	require.ErrorIs(t, err, pgx.ErrNoRows)
 

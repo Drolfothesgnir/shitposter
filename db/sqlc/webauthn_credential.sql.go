@@ -12,66 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const listUserCredentials = `-- name: ListUserCredentials :many
-SELECT id, user_id, public_key, attestation_type, transports, user_present, user_verified, backup_eligible, backup_state, aaguid, sign_count, clone_warning, authenticator_attachment, authenticator_data, public_key_algorithm, created_at, last_used_at FROM webauthn_credentials
-WHERE user_id = $1
-`
-
-func (q *Queries) ListUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error) {
-	rows, err := q.db.Query(ctx, listUserCredentials, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []WebauthnCredential{}
-	for rows.Next() {
-		var i WebauthnCredential
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.PublicKey,
-			&i.AttestationType,
-			&i.Transports,
-			&i.UserPresent,
-			&i.UserVerified,
-			&i.BackupEligible,
-			&i.BackupState,
-			&i.Aaguid,
-			&i.SignCount,
-			&i.CloneWarning,
-			&i.AuthenticatorAttachment,
-			&i.AuthenticatorData,
-			&i.PublicKeyAlgorithm,
-			&i.CreatedAt,
-			&i.LastUsedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const updateCredentialSignCount = `-- name: UpdateCredentialSignCount :exec
-UPDATE webauthn_credentials
-SET
-  sign_count = $2
-WHERE id = $1
-`
-
-type UpdateCredentialSignCountParams struct {
-	ID        []byte `json:"id"`
-	SignCount int64  `json:"sign_count"`
-}
-
-func (q *Queries) UpdateCredentialSignCount(ctx context.Context, arg UpdateCredentialSignCountParams) error {
-	_, err := q.db.Exec(ctx, updateCredentialSignCount, arg.ID, arg.SignCount)
-	return err
-}
-
 const createWebauthnCredentials = `-- name: createWebauthnCredentials :one
 INSERT INTO webauthn_credentials (
   id,
@@ -236,4 +176,64 @@ func (q *Queries) getUserCredentials(ctx context.Context, userID int64) ([]Webau
 		return nil, err
 	}
 	return items, nil
+}
+
+const listUserCredentials = `-- name: listUserCredentials :many
+SELECT id, user_id, public_key, attestation_type, transports, user_present, user_verified, backup_eligible, backup_state, aaguid, sign_count, clone_warning, authenticator_attachment, authenticator_data, public_key_algorithm, created_at, last_used_at FROM webauthn_credentials
+WHERE user_id = $1
+`
+
+func (q *Queries) listUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error) {
+	rows, err := q.db.Query(ctx, listUserCredentials, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WebauthnCredential{}
+	for rows.Next() {
+		var i WebauthnCredential
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.PublicKey,
+			&i.AttestationType,
+			&i.Transports,
+			&i.UserPresent,
+			&i.UserVerified,
+			&i.BackupEligible,
+			&i.BackupState,
+			&i.Aaguid,
+			&i.SignCount,
+			&i.CloneWarning,
+			&i.AuthenticatorAttachment,
+			&i.AuthenticatorData,
+			&i.PublicKeyAlgorithm,
+			&i.CreatedAt,
+			&i.LastUsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateCredentialSignCount = `-- name: updateCredentialSignCount :exec
+UPDATE webauthn_credentials
+SET
+  sign_count = $2
+WHERE id = $1
+`
+
+type updateCredentialSignCountParams struct {
+	ID        []byte `json:"id"`
+	SignCount int64  `json:"sign_count"`
+}
+
+func (q *Queries) updateCredentialSignCount(ctx context.Context, arg updateCredentialSignCountParams) error {
+	_, err := q.db.Exec(ctx, updateCredentialSignCount, arg.ID, arg.SignCount)
+	return err
 }

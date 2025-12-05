@@ -22,6 +22,12 @@ type Store interface {
 	// SoftDeleteUserTx deletes user's auth sessions, webauthn credentials and soft deletes the user.
 	SoftDeleteUserTx(ctx context.Context, userID int64) (SoftDeleteUserTxResult, error)
 
+	// UsernameExists checks if user with provided username exists and returns boolean and error.
+	UsernameExists(ctx context.Context, username string) (bool, error)
+
+	// EmailExists checks if user with provided email exists and returns boolean and error.
+	EmailExists(ctx context.Context, email string) (bool, error)
+
 	// InsertCommentTx creates a new comment, either root or reply.
 	//
 	// Errors returned:

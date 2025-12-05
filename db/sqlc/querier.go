@@ -15,7 +15,6 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	DeletePost(ctx context.Context, id int64) error
 	DeletePostVote(ctx context.Context, arg DeletePostVoteParams) error
-	EmailExists(ctx context.Context, email string) (bool, error)
 	GetCommentVote(ctx context.Context, arg GetCommentVoteParams) (CommentVote, error)
 	GetNewestPosts(ctx context.Context, arg GetNewestPostsParams) ([]PostsWithAuthor, error)
 	GetOldestPosts(ctx context.Context, arg GetOldestPostsParams) ([]PostsWithAuthor, error)
@@ -31,7 +30,6 @@ type Querier interface {
 	UpdateCredentialSignCount(ctx context.Context, arg UpdateCredentialSignCountParams) error
 	UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, error)
 	UpsertCommentVote(ctx context.Context, arg UpsertCommentVoteParams) (UpsertCommentVoteRow, error)
-	UsernameExists(ctx context.Context, username string) (bool, error)
 	VotePost(ctx context.Context, arg VotePostParams) (Post, error)
 	createComment(ctx context.Context, arg createCommentParams) (Comment, error)
 	createUser(ctx context.Context, arg createUserParams) (User, error)
@@ -39,6 +37,7 @@ type Querier interface {
 	deleteCommentIfLeaf(ctx context.Context, arg deleteCommentIfLeafParams) (deleteCommentIfLeafRow, error)
 	deleteUserCredentials(ctx context.Context, userID int64) error
 	deleteUserSessions(ctx context.Context, userID int64) error
+	emailExists(ctx context.Context, email string) (bool, error)
 	getComment(ctx context.Context, id int64) (Comment, error)
 	getCommentWithAuthor(ctx context.Context, id int64) (CommentsWithAuthor, error)
 	getCommentWithLock(ctx context.Context, id int64) (Comment, error)
@@ -54,6 +53,7 @@ type Querier interface {
 	updateComment(ctx context.Context, arg updateCommentParams) (updateCommentRow, error)
 	updateCommentPopularity(ctx context.Context, arg updateCommentPopularityParams) (Comment, error)
 	updateUser(ctx context.Context, arg updateUserParams) (updateUserRow, error)
+	usernameExists(ctx context.Context, username string) (bool, error)
 }
 
 var _ Querier = (*Queries)(nil)

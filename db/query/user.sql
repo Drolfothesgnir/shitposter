@@ -13,10 +13,10 @@ INSERT INTO users (
 SELECT * FROM users
 WHERE id = $1 LIMIT 1;
 
--- name: UsernameExists :one 
+-- name: usernameExists :one 
 SELECT EXISTS (SELECT 1 from users WHERE username = $1) AS username_exists;
 
--- name: EmailExists :one 
+-- name: emailExists :one 
 SELECT EXISTS (SELECT 1 from users WHERE email = $1) AS email_exists;
 
 -- name: GetUserByUsername :one

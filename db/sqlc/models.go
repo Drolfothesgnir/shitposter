@@ -160,6 +160,7 @@ type User struct {
 	DisplayName        string      `json:"display_name"`
 	ArchivedUsername   string      `json:"archived_username"`
 	ArchivedEmail      string      `json:"archived_email"`
+	LastModifiedAt     time.Time   `json:"last_modified_at"`
 }
 
 type WebauthnCredential struct {

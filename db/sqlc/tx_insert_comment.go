@@ -2,12 +2,13 @@ package db
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const opInsertComment = "insert-comment"
 
 type InsertCommentTxParams struct {
 	UserID    int64       `json:"user_id"`
@@ -19,7 +20,7 @@ type InsertCommentTxParams struct {
 }
 
 // TODO: Currently user is allowed to reply to his own comments to the infinite depth.
-// I should limit this behavoiur.
+// I should limit this behaviour.
 func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParams) (Comment, error) {
 	var result Comment
 
@@ -29,33 +30,71 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 
 		if arg.ParentID.Valid {
 			// getting parent comment and preventing its deletion from other queries
-			parent, err := q.GetCommentWithLock(ctx, arg.ParentID.Int64)
+			parentID := arg.ParentID.Int64
+			parent, err := q.getCommentWithLock(ctx, parentID)
 
 			// if there is no parent comment when parent id is provided abort with error
 			if err == pgx.ErrNoRows {
-				return ErrParentCommentNotFound
+				return newOpError(
+					opInsertComment,
+					KindNotFound,
+					entComment,
+					fmt.Errorf("cannot reply to the comment with id: %d, the comment doesn't exist", parentID),
+					withRelated(entComment, parentID),
+				)
 			}
 
 			// return generic error
 			if err != nil {
-				return err
+				return sqlError(
+					opInsertComment,
+					opDetails{
+						userID:    arg.UserID,
+						postID:    arg.PostID,
+						commentID: parentID,
+						entity:    entComment,
+					},
+					err,
+				)
 			}
 
 			// if parent comment's post_id and provided post_id differs abort
+			// in this case i want to explicitely specify the incorrect field - "post_id"
+			// so the api handlers will not need to parse the error string
 			if parent.PostID != arg.PostID {
-				return ErrParentCommentPostIDMismatch
+				return newOpError(
+					opInsertComment,
+					KindRelation,
+					entComment,
+					fmt.Errorf(
+						"cannot reply to comment %d for post %d: parent comment belongs to post %d",
+						parentID,
+						arg.PostID,
+						parent.PostID,
+					),
+					withRelated(entComment, parentID),
+					withField("post_id"),
+				)
 			}
 
 			// check if comment is alive
 			if parent.IsDeleted {
-				return ErrParentCommentDeleted
+				parentID := parent.ID
+
+				return newOpError(
+					opInsertComment,
+					KindDeleted,
+					entComment,
+					fmt.Errorf("cannot reply to a deleted comment with id: %d", parentID),
+					withEntityID(parentID),
+				)
 			}
 
 			// if everything is ok child will have parent's depth + 1
 			depth = parent.Depth + 1
 		}
 
-		comment, err := q.CreateComment(ctx, CreateCommentParams{
+		comment, err := q.createComment(ctx, createCommentParams{
 			UserID:    arg.UserID,
 			PostID:    arg.PostID,
 			Body:      arg.Body,
@@ -65,18 +104,17 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 			Downvotes: arg.Downvotes,
 		})
 
-		// instead of making another trip to the db to check if parent post exists
-		// i'm trying to insert the new comment and check if there is foreign key violation,
-		// that is if the parent post is missing
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == "23503" && pgErr.ConstraintName == "comments_post_id_fkey" {
-				return ErrInvalidPostID
-			}
-		}
-
 		if err != nil {
-			return err
+			return sqlError(
+				opInsertComment,
+				opDetails{
+					userID:    arg.UserID,
+					postID:    arg.PostID,
+					commentID: arg.ParentID.Int64,
+					entity:    entComment,
+				},
+				err,
+			)
 		}
 
 		result = comment

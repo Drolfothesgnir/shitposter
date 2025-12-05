@@ -100,6 +100,7 @@ func (service *Service) Start() error {
 	return service.server.ListenAndServe()
 }
 
+// TODO: shutdown db store and other sub-services
 func (service *Service) Shutdown(ctx context.Context) error {
 	return service.server.Shutdown(ctx)
 }

@@ -1,4 +1,4 @@
--- name: CreateUser :one
+-- name: createUser :one
 INSERT INTO users (
   username, 
   display_name,
@@ -9,7 +9,7 @@ INSERT INTO users (
   $1, $1, $2, $3, $4
 ) RETURNING *;
 
--- name: GetUser :one
+-- name: getUser :one
 SELECT * FROM users
 WHERE id = $1 LIMIT 1;
 
@@ -23,33 +23,42 @@ SELECT EXISTS (SELECT 1 from users WHERE email = $1) AS email_exists;
 SELECT * FROM users
 WHERE username = $1;
 
--- name: SoftDeleteUser :exec
-UPDATE users
-SET
-  is_deleted = TRUE,
-  display_name = '[deleted]',
-  deleted_at = NOW(),
-  archived_username = username,
-  archived_email    = email,
-  username = CONCAT('deleted_user_', id),
-  email    = CONCAT('deleted_', id, '@invalid.local'),
-  profile_img_url = ''
-WHERE id = $1 AND is_deleted = FALSE;
+-- name: softDeleteUser :one
+SELECT 
+  id::BIGINT AS id,
+  username::TEXT AS username,
+  display_name::TEXT AS display_name,
+  email::TEXT AS email,
+  profile_img_url::optional_string AS profile_img_url ,
+  is_deleted::BOOLEAN AS is_deleted,
+  deleted_at::TIMESTAMPTZ AS deleted_at,
+  last_modified_at::TIMESTAMPTZ AS last_modified_at,
+  success::BOOLEAN AS success
+FROM soft_delete_user(
+  p_user_id := $1
+);
 
--- name: UpdateUser :one
-UPDATE users
-SET
-  username = COALESCE(sqlc.narg(username), username),
-  display_name = COALESCE(sqlc.narg(username), display_name),
-  archived_username = COALESCE(sqlc.narg(username), archived_username),
-  email = COALESCE(sqlc.narg(email), email),
-  archived_email = COALESCE(sqlc.narg(email), archived_email),
-  profile_img_url = COALESCE(sqlc.narg(profile_img_url), profile_img_url),
-  last_modified_at = NOW()
-WHERE id = $1 AND is_deleted = FALSE
-RETURNING *;
+-- name: updateUser :one
+SELECT 
+  id::BIGINT AS id,
+	username::TEXT AS username,
+	email::TEXT AS email,
+	profile_img_url::optional_string AS profile_img_url,
+	is_deleted::BOOLEAN AS is_deleted,
+	last_modified_at::TIMESTAMPTZ AS last_modified_at,
+	updated::BOOLEAN AS updated
+FROM update_user(
+  p_user_id := $1,
+  p_username := sqlc.narg(username),
+  p_email := sqlc.narg(email),
+  p_profile_img_url := sqlc.narg(profile_img_url)
+);
 
 -- name: TestUtilGetActiveUsers :many
 SELECT * FROM users
 WHERE is_deleted = FALSE
 LIMIT $1;
+
+-- name: getUserByEmail :one
+SELECT * FROM users
+WHERE email = $1;

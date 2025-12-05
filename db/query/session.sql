@@ -15,7 +15,7 @@ INSERT INTO sessions (
 SELECT * FROM sessions
 WHERE id = $1 LIMIT 1;
 
--- name: DeleteUserSessions :exec
+-- name: deleteUserSessions :exec
 DELETE FROM sessions
 WHERE user_id = $1;
 

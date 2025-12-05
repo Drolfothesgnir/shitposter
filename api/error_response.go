@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -124,7 +125,7 @@ func getBindingErrorMessage(tag string, value any, param string) string {
 	case "comment_order":
 		return fmt.Sprintf(
 			"comment order must be one of [%s]",
-			strings.Join(commentOrderMethods, ", "),
+			strings.Join(db.CommentOrderMethods, ", "),
 		)
 
 	default:

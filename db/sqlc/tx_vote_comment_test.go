@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"errors"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -121,7 +120,7 @@ func TestVoteCommentTx_ChangeDownToUp(t *testing.T) {
 	require.EqualValues(t, initialDown, updated.Downvotes)
 }
 
-// Repeated vote should return ErrDuplicateVote and not change counters.
+// Repeated vote should return OpError with KindConflict and not change counters.
 func TestVoteCommentTx_DuplicateVote(t *testing.T) {
 	ctx := context.Background()
 
@@ -143,16 +142,22 @@ func TestVoteCommentTx_DuplicateVote(t *testing.T) {
 		Vote:      1,
 	})
 	require.Error(t, err)
-	require.ErrorIs(t, err, ErrDuplicateVote)
+
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+	require.Equal(t, opVoteComment, opErr.Op)
+	require.Equal(t, KindConflict, opErr.Kind)
+	require.Equal(t, entCommentVote, opErr.Entity)
+	require.Equal(t, "vote", opErr.FailingField)
 
 	// Reload comment and ensure counters unchanged from first result.
-	reloaded, err := testStore.GetCommentWithLock(ctx, comment.ID)
+	reloaded, err := testStore.getCommentWithLock(ctx, comment.ID)
 	require.NoError(t, err)
 	require.EqualValues(t, first.Upvotes, reloaded.Upvotes)
 	require.EqualValues(t, first.Downvotes, reloaded.Downvotes)
 }
 
-// Invalid vote value should return ErrInvalidVoteValue and not touch counters.
+// Invalid vote value should return OpError KindInvalid and not touch counters.
 func TestVoteCommentTx_InvalidVoteValue(t *testing.T) {
 	ctx := context.Background()
 
@@ -168,15 +173,21 @@ func TestVoteCommentTx_InvalidVoteValue(t *testing.T) {
 		Vote:      0, // invalid
 	})
 	require.Error(t, err)
-	require.ErrorIs(t, err, ErrInvalidVoteValue)
 
-	reloaded, err := testStore.GetCommentWithLock(ctx, comment.ID)
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+	require.Equal(t, opVoteComment, opErr.Op)
+	require.Equal(t, KindInvalid, opErr.Kind)
+	require.Equal(t, entCommentVote, opErr.Entity)
+	require.Equal(t, "vote", opErr.FailingField)
+
+	reloaded, err := testStore.getCommentWithLock(ctx, comment.ID)
 	require.NoError(t, err)
 	require.EqualValues(t, initialUp, reloaded.Upvotes)
 	require.EqualValues(t, initialDown, reloaded.Downvotes)
 }
 
-// Invalid user ID (FK violation) -> ErrInvalidUserID.
+// Invalid user ID (FK violation) -> OpError KindRelation, entity=comment-vote, related=user.
 func TestVoteCommentTx_InvalidUserID(t *testing.T) {
 	ctx := context.Background()
 
@@ -189,16 +200,23 @@ func TestVoteCommentTx_InvalidUserID(t *testing.T) {
 		Vote:      1,
 	})
 	require.Error(t, err)
-	require.ErrorIs(t, err, ErrInvalidUserID)
+
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+	require.Equal(t, opVoteComment, opErr.Op)
+	require.Equal(t, KindRelation, opErr.Kind)
+	require.Equal(t, entCommentVote, opErr.Entity)
+	require.Equal(t, entUser, opErr.RelatedEntity)
+	require.EqualValues(t, invalidUserID, opErr.RelatedEntityID)
 
 	// Ensure counters didn't change.
-	reloaded, err := testStore.GetCommentWithLock(ctx, comment.ID)
+	reloaded, err := testStore.getCommentWithLock(ctx, comment.ID)
 	require.NoError(t, err)
 	require.EqualValues(t, comment.Upvotes, reloaded.Upvotes)
 	require.EqualValues(t, comment.Downvotes, reloaded.Downvotes)
 }
 
-// Invalid comment ID (FK violation) -> ErrInvalidCommentID.
+// Invalid comment ID (FK violation) -> OpError KindRelation, entity=comment-vote, related=comment.
 func TestVoteCommentTx_InvalidCommentID(t *testing.T) {
 	ctx := context.Background()
 
@@ -211,10 +229,17 @@ func TestVoteCommentTx_InvalidCommentID(t *testing.T) {
 		Vote:      1,
 	})
 	require.Error(t, err)
-	require.ErrorIs(t, err, ErrInvalidCommentID)
+
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+	require.Equal(t, opVoteComment, opErr.Op)
+	require.Equal(t, KindRelation, opErr.Kind)
+	require.Equal(t, entCommentVote, opErr.Entity)
+	require.Equal(t, entComment, opErr.RelatedEntity)
+	require.EqualValues(t, invalidCommentID, opErr.RelatedEntityID)
 }
 
-// Soft-deleted comment cannot be voted -> ErrEntityDeleted.
+// Soft-deleted comment cannot be voted -> OpError KindDeleted, entity=comment, EntityID=commentID.
 func TestVoteCommentTx_DeletedComment(t *testing.T) {
 	ctx := context.Background()
 
@@ -222,7 +247,7 @@ func TestVoteCommentTx_DeletedComment(t *testing.T) {
 	user := createRandomUser(t)
 
 	// Soft delete the comment.
-	_, err := testStore.SoftDeleteComment(ctx, comment.ID)
+	_, err := testStore.softDeleteComment(ctx, comment.ID)
 	require.NoError(t, err)
 
 	_, err = testStore.VoteCommentTx(ctx, VoteCommentTxParams{
@@ -231,10 +256,16 @@ func TestVoteCommentTx_DeletedComment(t *testing.T) {
 		Vote:      1,
 	})
 	require.Error(t, err)
-	require.ErrorIs(t, err, ErrEntityDeleted)
+
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+	require.Equal(t, opVoteComment, opErr.Op)
+	require.Equal(t, KindDeleted, opErr.Kind)
+	require.Equal(t, entComment, opErr.Entity)
+	require.EqualValues(t, comment.ID, opErr.EntityID)
 
 	// Ensure counters are unchanged after failed vote.
-	reloaded, err := testStore.GetCommentWithLock(ctx, comment.ID)
+	reloaded, err := testStore.getCommentWithLock(ctx, comment.ID)
 	require.NoError(t, err)
 	require.EqualValues(t, comment.Upvotes, reloaded.Upvotes)
 	require.EqualValues(t, comment.Downvotes, reloaded.Downvotes)
@@ -252,34 +283,30 @@ func TestVoteCommentTx_ConcurrentSameUserSameComment(t *testing.T) {
 	initialDown := comment.Downvotes
 
 	const n = 10
-	var wg sync.WaitGroup
-	wg.Add(n)
-
 	errCh := make(chan error, n)
 
 	for i := 0; i < n; i++ {
 		go func() {
-			defer wg.Done()
 			_, err := testStore.VoteCommentTx(ctx, VoteCommentTxParams{
 				UserID:    user.ID,
 				CommentID: comment.ID,
 				Vote:      1,
 			})
-			if !isNilOrDuplicateVote(err) {
-				// We expect either nil or ErrDuplicateVote here.
+			if !isNilOrConflictVote(err) {
+				// We expect either nil or a conflict about the vote.
 				errCh <- err
+			} else {
+				errCh <- nil
 			}
 		}()
 	}
 
-	wg.Wait()
-	close(errCh)
-
-	for err := range errCh {
+	for i := 0; i < n; i++ {
+		err := <-errCh
 		require.NoError(t, err)
 	}
 
-	reloaded, err := testStore.GetCommentWithLock(ctx, comment.ID)
+	reloaded, err := testStore.getCommentWithLock(ctx, comment.ID)
 	require.NoError(t, err)
 
 	// Exactly one upvote should be applied.
@@ -287,10 +314,17 @@ func TestVoteCommentTx_ConcurrentSameUserSameComment(t *testing.T) {
 	require.EqualValues(t, initialDown, reloaded.Downvotes)
 }
 
-// helper for concurrent test: treat ErrDuplicateVote as non-fatal.
-func isNilOrDuplicateVote(err error) bool {
+// helper for concurrent test: treat KIND conflict on vote as non-fatal.
+func isNilOrConflictVote(err error) bool {
 	if err == nil {
 		return true
 	}
-	return errors.Is(err, ErrDuplicateVote)
+	var opErr *OpError
+	if errors.As(err, &opErr) {
+		return opErr.Op == opVoteComment &&
+			opErr.Kind == KindConflict &&
+			opErr.Entity == entCommentVote &&
+			opErr.FailingField == "vote"
+	}
+	return false
 }

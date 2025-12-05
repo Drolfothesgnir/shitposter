@@ -7,16 +7,20 @@ import (
 )
 
 type Store interface {
-	Querier
-
 	// Shutdown shuts down the db connection pool gracefully.
 	Shutdown()
 
 	// CreateUserWithCredentialsTx creates both user and their credentials in one transaction.
 	CreateUserWithCredentialsTx(ctx context.Context, arg CreateUserWithCredentialsTxParams) (CreateUserWithCredentialsTxResult, error)
 
+	// GetUser retrieves data of user with provided ID.
+	GetUser(ctx context.Context, userID int64) (User, error)
+
+	// UpdateUser updates user's record with provided optional fields.
+	UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserResult, error)
+
 	// SoftDeleteUserTx deletes user's auth sessions, webauthn credentials and soft deletes the user.
-	SoftDeleteUserTx(ctx context.Context, userID int64) error
+	SoftDeleteUserTx(ctx context.Context, userID int64) (SoftDeleteUserTxResult, error)
 
 	// InsertCommentTx creates a new comment, either root or reply.
 	//
@@ -29,6 +33,11 @@ type Store interface {
 	// May also return database or transaction errors.
 	InsertCommentTx(ctx context.Context, arg InsertCommentTxParams) (Comment, error)
 
+	// QueryComments returns paginated set of comments ordered by popularity or date (old/new).
+	QueryComments(ctx context.Context, query CommentQuery) ([]CommentsWithAuthor, error)
+
+	UpdateComment(ctx context.Context, arg UpdateCommentParams) (UpdateCommentResult, error)
+
 	// DeleteCommentTx deletes a comment or soft-deletes it if it has children.
 	//
 	// Errors returned:
@@ -39,9 +48,6 @@ type Store interface {
 	//
 	// May also return database or transaction errors.
 	DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParams) (DeleteCommentTxResult, error)
-
-	// QueryComments returns paginated set of comments ordered by popularity or date (old/new).
-	QueryComments(ctx context.Context, query CommentQuery) ([]CommentsWithAuthor, error)
 
 	// VoteCommentTx performs voting for comment.
 	//

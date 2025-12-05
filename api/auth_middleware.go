@@ -16,6 +16,7 @@ const (
 	ctxAuthorizationPayloadKey = "authorization_payload"
 )
 
+// TODO: check sessions
 func authMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authorizationHeader := ctx.GetHeader(authorizationheaderKey)

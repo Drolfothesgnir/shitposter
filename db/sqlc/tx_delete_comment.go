@@ -3,9 +3,13 @@ package db
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
+
+const opDeleteComment = "delete-comment"
 
 type DeleteCommentTxParams struct {
 	CommentID int64 `json:"comment_id"`
@@ -14,24 +18,21 @@ type DeleteCommentTxParams struct {
 }
 
 type DeleteCommentTxResult struct {
-	DeleteCommentIfLeafRow
-	Success bool // True if the delete operation is considered successful: hard delete, soft delete, or already deleted.
+	ID          int64     `json:"id"`
+	UserID      int64     `json:"user_id"`
+	PostID      int64     `json:"post_id"`
+	IsDeleted   bool      `json:"is_deleted"`
+	DeletedAt   time.Time `json:"deleted_at"`
+	HasChildren bool      `json:"has_children"`
+	DeletedOk   bool      `json:"deleted_ok"`
+	Success     bool      `json:"success"` // True if the delete operation is considered successful: hard delete, soft delete, or already deleted.
 }
 
-// DeleteCommentTx deletes a comment or soft-deletes it if it has children.
-//
-// Errors returned:
-//   - ErrEntityNotFound            – if the target comment does not exist
-//   - ErrEntityDoesNotBelongToUser – if the comment belongs to another user
-//   - ErrInvalidPostID             – if post_id mismatch happens
-//   - ErrDataCorrupted             – unexpected inconsistent DB state
-//
-// May also return database or transaction errors.
 func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParams) (DeleteCommentTxResult, error) {
-	var row DeleteCommentIfLeafRow
+	var row deleteCommentIfLeafRow
 	var result DeleteCommentTxResult
 	err := s.execTx(ctx, func(q *Queries) error {
-		deleted, err := q.DeleteCommentIfLeaf(ctx, DeleteCommentIfLeafParams{
+		deleted, err := q.deleteCommentIfLeaf(ctx, deleteCommentIfLeafParams{
 			PCommentID: arg.CommentID,
 			PUserID:    arg.UserID,
 			PPostID:    arg.PostID,
@@ -41,19 +42,51 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 		// otherwise return "not found"
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return ErrEntityNotFound
+				return newOpError(
+					opDeleteComment,
+					KindNotFound,
+					entComment,
+					fmt.Errorf("comment with id %d not found", arg.CommentID),
+					withEntityID(arg.CommentID),
+				)
 			}
-			return err
+			return sqlError(
+				opDeleteComment,
+				opDetails{
+					userID:    arg.UserID,
+					postID:    arg.PostID,
+					commentID: arg.CommentID,
+					entity:    entComment,
+				},
+				err,
+			)
 		}
 
 		// check if the target comment does not belong to the provided user
 		if deleted.UserID != arg.UserID {
-			return ErrEntityDoesNotBelongToUser
+			return newOpError(
+				opDeleteComment,
+				KindPermission,
+				entComment,
+				fmt.Errorf("comment with id %d does not belong to user with id %d", arg.CommentID, arg.UserID),
+				withRelated(entUser, arg.UserID),
+				withUser(arg.UserID),
+				withEntityID(arg.CommentID),
+				withField("user_id"),
+			)
 		}
 
 		// check if the target comment does not belong to the provided post
 		if deleted.PostID != arg.PostID {
-			return ErrInvalidPostID
+			return newOpError(
+				opDeleteComment,
+				KindRelation,
+				entComment,
+				fmt.Errorf("comment with id %d does not belong to post with id %d", arg.CommentID, arg.PostID),
+				withRelated(entPost, arg.PostID),
+				withEntityID(arg.CommentID),
+				withField("post_id"),
+			)
 		}
 
 		// if deletion performed successfully or
@@ -66,12 +99,21 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 		// if the comment has children perform soft delete
 		if deleted.HasChildren {
 
-			comment, err := q.SoftDeleteComment(ctx, arg.CommentID)
+			comment, err := q.softDeleteComment(ctx, arg.CommentID)
 			if err != nil {
-				return err
+				return sqlError(
+					opDeleteComment,
+					opDetails{
+						userID:    arg.UserID,
+						postID:    arg.PostID,
+						commentID: arg.CommentID,
+						entity:    entComment,
+					},
+					err,
+				)
 			}
 
-			row = DeleteCommentIfLeafRow{
+			row = deleteCommentIfLeafRow{
 				ID:          comment.ID,
 				UserID:      comment.UserID,
 				PostID:      comment.PostID,
@@ -85,7 +127,12 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 		}
 
 		// else the data must be corrupted
-		return ErrDataCorrupted
+		return newOpError(
+			opDeleteComment,
+			KindCorrupted,
+			entComment,
+			fmt.Errorf("cannot delete comment with id %d", arg.CommentID),
+		)
 	})
 
 	if err != nil {
@@ -93,8 +140,14 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 	}
 
 	result = DeleteCommentTxResult{
-		DeleteCommentIfLeafRow: row,
-		Success:                row.DeletedOk || row.IsDeleted,
+		ID:          row.ID,
+		UserID:      row.UserID,
+		PostID:      row.PostID,
+		IsDeleted:   row.IsDeleted,
+		DeletedAt:   row.DeletedAt,
+		HasChildren: row.HasChildren,
+		DeletedOk:   row.DeletedOk,
+		Success:     row.DeletedOk || row.IsDeleted,
 	}
 
 	return result, nil

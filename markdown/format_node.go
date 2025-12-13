@@ -27,7 +27,7 @@ func (n *FormatNode) Markdown() string {
 }
 
 // NewFormatNode creates new *FormatNode with a given type.
-func NewFormatNode(nodeType NodeType) Node {
+func NewFormatNode(nodeType NodeType) *FormatNode {
 	return &FormatNode{
 		BaseNode: NewBaseNode(nodeType),
 	}

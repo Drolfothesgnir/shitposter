@@ -30,7 +30,7 @@ func (n *URLNode) Markdown() string {
 }
 
 // NewURLNode creates new *URLNode with a given URL.
-func NewURLNode(url string) Node {
+func NewURLNode(url string) *URLNode {
 	return &URLNode{
 		URL:      url,
 		BaseNode: NewBaseNode(NodeLink),

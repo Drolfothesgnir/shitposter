@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -18,7 +19,6 @@ const (
 	TypeLinkURLEnd
 	TypeImageMarker
 	TypeText
-	TypeEscape
 )
 
 // Tag defines the string representation of markdown tags,
@@ -53,7 +53,6 @@ var tagToType = map[Tag]Type{
 	TagLinkURLStart:  TypeLinkURLStart,
 	TagLinkURLEnd:    TypeLinkURLEnd,
 	TagImageMarker:   TypeImageMarker,
-	TagEscape:        TypeEscape,
 }
 
 // Token represents a single markdown token.
@@ -87,6 +86,7 @@ var multiCharTagList = []Tag{
 // It returns the matched tag, its string length, and ok = true if a match is found.
 //
 // Otherwise it returns zero values and ok = false.
+// TODO: refactor it with map
 func extractMultiCharTag(substr string) (tag Tag, length int, ok bool) {
 	for _, t := range multiCharTagList {
 		strTag := string(t)
@@ -138,8 +138,7 @@ func findNextTagStart(substr string) int {
 }
 
 // Tokenize transforms a raw markdown string into a slice of tokens.
-func Tokenize(s string) []*Token {
-	result := make([]*Token, 0)
+func Tokenize(s string) (result []*Token, warnings []*Warning) {
 
 	// Current byte position in the input string.
 	var p int
@@ -171,24 +170,20 @@ func Tokenize(s string) []*Token {
 		// 3) Otherwise, it's text. Consume as much text as possible
 		// until the next tag-like character.
 
-		var textEnd int
-		nextTagRelativeIndex := findNextTagStart(substr)
+		consumed, step, warns := consumeUntilNextTag(substr, p)
 
-		// If no tags are found, consume the rest of the string as text.
-		if nextTagRelativeIndex == -1 {
-			textEnd = n
+		// if some bytes was consumed as text
+		if step > 0 {
+			token := newText(p, consumed)
+			result = append(result, token)
+			warnings = append(warnings, warns...)
+			p += step
 		} else {
-			textEnd = p + nextTagRelativeIndex
+			p++
 		}
-
-		textValue := s[p:textEnd]
-		token := newText(p, textValue)
-		result = append(result, token)
-
-		p = textEnd
 	}
 
-	return result
+	return
 }
 
 // newTag creates a new *Token for the given tag at byte position p.
@@ -211,4 +206,81 @@ func newText(p int, val string) *Token {
 		Len:  len(val),
 		Val:  val,
 	}
+}
+
+// consumeUntilNextTag iterates through the string and acumulates all non-tag bytes,
+// including escaped characters, until the tag-start rune is found.
+// Accepts substring and original string's current position index.
+// Will create a warning if redundant escape is found.
+//
+// Returns accumulated string, number of processed bytes and possible Warnings.
+func consumeUntilNextTag(substr string, i int) (consumed string, step int, warnings []*Warning) {
+
+	var b strings.Builder
+
+	n := len(substr)
+
+	for step < n {
+		cur := substr[step]
+
+		// 1) check if the current byte is not a tag of any type
+		// and write it to the builder if true
+		if !isTagStartRune(rune(cur)) {
+			b.WriteByte(cur)
+			step++
+			continue
+		}
+
+		// 2) if current byte is a tag but not an escape - return
+		if isTagStartRune(rune(cur)) && Tag(cur) != TagEscape {
+			consumed = b.String()
+			return
+		}
+
+		// 3) if the tag is an escape there are 3 possible cases
+		if Tag(cur) == TagEscape {
+			// 3.1) escape as a last byte in the substring - add Warning
+			if step+1 >= n {
+				// TODO: create *Warning factory
+				w := &Warning{
+					Node:        NodeText, // since escape errors can occur only in plain text
+					Index:       i + step,
+					Issue:       IssueRedundantEscape,
+					Description: fmt.Sprintf("Escape \"%s\" at the very end of the input string. It is a no-op and will be ignored.", TagEscape),
+				}
+
+				warnings = append(warnings, w)
+
+				// 3.2) escaped character represents a tag - write it to the builder and continue
+			} else if nextByte := substr[step+1]; isTagStartRune(rune(nextByte)) {
+				b.WriteByte(nextByte)
+				// moving to the next byte to account for it to be used already
+				step++
+
+				// 3.3) escaped character represents plain text - write it to the builder, add a Warning and continue
+			} else {
+				// nextByte := substr[step+1]
+				b.WriteByte(nextByte)
+				near := string(nextByte)
+
+				w := &Warning{
+					Node:        NodeText, // since escape errors can occur only in plain text
+					Near:        near,
+					Index:       i + step,
+					Issue:       IssueRedundantEscape,
+					Description: fmt.Sprintf("Escape \"%s\" before plain text at byte index %d near \"%s\"", TagEscape, i+step, near),
+				}
+				warnings = append(warnings, w)
+
+				// moving to the next byte to account for it to be used already
+				step++
+			}
+
+			// move forward anyway
+			step++
+		}
+	}
+
+	consumed = b.String()
+	return
 }

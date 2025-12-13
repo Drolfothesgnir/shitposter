@@ -1,9 +1,5 @@
 package markdown
 
-// Issue describes the kind of problem detected during parsing,
-// e.g. unclosed tag, mis-nested tag, redundant escape, malformed link, etc.
-type Issue int
-
 // Warning represents details about a non-critical issue that occurred
 // during parsing. Parsing still succeeded and produced an AST/output,
 // but something about the input was inconsistent, ambiguous, or malformed.
@@ -31,7 +27,7 @@ type Warning struct {
 	// highlighting or slicing by "characters".
 	Index int `json:"index"`
 
-	// Near is a short snippet (often a single character or a few characters)
+	// Near is an optional short snippet (often a single character or a few characters)
 	// from the raw input around Index that likely caused the problem.
 	Near string `json:"near"`
 

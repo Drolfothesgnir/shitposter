@@ -39,7 +39,7 @@ func (n *TextNode) Append(child Node) {
 }
 
 // NewTextNode creates new *TextNode with provided text content.
-func NewTextNode(content string) Node {
+func NewTextNode(content string) *TextNode {
 	return &TextNode{
 		Content:  content,
 		BaseNode: NewBaseNode(NodeText),

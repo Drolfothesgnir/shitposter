@@ -18,7 +18,7 @@ func (n *ImageNode) Markdown() string {
 // NewImageNode returns new *ImageNode with provided URL.
 func NewImageNode(url string) Node {
 	return &ImageNode{
-		URLNode: NewURLNode(url).(*URLNode),
+		URLNode: NewURLNode(url),
 	}
 }
 

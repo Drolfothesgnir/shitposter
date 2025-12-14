@@ -9,4 +9,6 @@ const (
 	IssueMisNestedTag
 	IssueRedundantEscape
 	IssueMalformedLink
+	IssueUnexpectedEOL
+	IssueUnexpectedSymbol
 )

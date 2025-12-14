@@ -2,8 +2,13 @@ package markdown
 
 import (
 	"fmt"
-	"strings"
+	"unicode/utf8"
 )
+
+// import (
+// 	"fmt"
+// 	"strings"
+// )
 
 // Type defines the kind of token, e.g. bold, italic, link start, etc.
 type Type int
@@ -39,20 +44,180 @@ const (
 	TagEscape        Tag = "\\"
 )
 
-// tagToType maps tag strings to their corresponding token types.
-// This is useful for mapping characters to token types and avoiding
-// large if-else / switch chains.
-var tagToType = map[Tag]Type{
-	TagBold:          TypeBold,
-	TagStrikethrough: TypeStrikethrough,
-	TagItalic:        TypeItalic,
-	TagItalicAlt:     TypeItalic,
-	TagCode:          TypeCode,
-	TagLinkTextStart: TypeLinkTextStart,
-	TagLinkTextEnd:   TypeLinkTextEnd,
-	TagLinkURLStart:  TypeLinkURLStart,
-	TagLinkURLEnd:    TypeLinkURLEnd,
-	TagImageMarker:   TypeImageMarker,
+type Symbol rune
+
+const (
+	SymbolStrikethrough Symbol = '~'
+)
+
+// ActionResult represents a result of a processing string by a particular action function.
+type ActionResult struct {
+	// Possible Token created by an action during the processing.
+	Tok *Token
+
+	// Possible list of issues occured during string proccessing,
+	// e.g. redundant escape ('\'), or malformed tag, like '~' instead of '~~'.
+	Warns []Warning
+
+	// Number of bytes processed. Used for adjusting the main loop pointer.
+	Stride int
+}
+
+// Token returns the token value from the action result and an indicator,
+// which will be true if the token is available.
+func (ar *ActionResult) Token() (Token, bool) {
+	if ar.Tok != nil {
+		return *ar.Tok, true
+	}
+
+	return Token{}, false
+}
+
+// Warings return list of warnings occured during the action and an indicator
+// which will be true if the list is not empty.
+func (ar *ActionResult) Warnings() ([]Warning, bool) {
+	return ar.Warns, len(ar.Warns) > 0
+}
+
+// Action defines a function used to process the substring after the
+// corresponding special symbol occured.
+//
+// Recieves rest of the string, starting from the occurance index - `substr`,
+// index of the occurance in the original string - `i`
+// and indicator if the occured rune was last in the sequence - `isLastRune`.
+type Action func(substr string, cur rune, i int, isLastRune bool) ActionResult
+
+// actStrikethrough processes rest of the string after first occurance of the
+// Strikethrough rune, '~'.
+func actStrikethrough(substr string, _ rune, i int, isLastRune bool) ActionResult {
+	var res ActionResult
+
+	symLen := utf8.RuneLen(rune(SymbolStrikethrough))
+
+	// if the first '~' occured at the very end of the string ->
+	// create a token with plain text and return a warning
+	if isLastRune {
+		res.Tok = &Token{
+			Type: TypeText,
+			Pos:  i,
+			Len:  symLen,
+			Val:  string(SymbolStrikethrough),
+		}
+
+		w := Warning{
+			Node:        NodeText,
+			Index:       i + symLen,
+			Issue:       IssueUnexpectedEOL,
+			Description: fmt.Sprintf("Unexpected end of the line: expected to get %q, got EOL instead.", SymbolStrikethrough),
+		}
+
+		// making stride equal to the byte length of the striketrhough symbol ('~') to
+		// signal the main loop we effectively processed the last item
+		// and the loop should terminate by violating the `i < n` condition.
+		res.Stride = symLen
+
+		res.Warns = append(res.Warns, w)
+		return res
+	}
+
+	// checking next rune
+	nextRune, _ := utf8.DecodeRuneInString(substr[symLen:])
+
+	// if the next rune is not '~' -> make a first '~' as a plain text token, and
+	// add a warning
+	if Symbol(nextRune) != SymbolStrikethrough {
+		res.Tok = &Token{
+			Type: TypeText,
+			Pos:  i,
+			Len:  symLen,
+			Val:  string(SymbolStrikethrough),
+		}
+
+		w := Warning{
+			Node:        NodeText,
+			Index:       i + symLen,
+			Issue:       IssueUnexpectedSymbol,
+			Description: fmt.Sprintf("Unexpected symbol near %q: expected %q, got %q", nextRune, SymbolStrikethrough, nextRune),
+			Near:        string(nextRune),
+		}
+
+		res.Stride = symLen
+
+		res.Warns = append(res.Warns, w)
+		return res
+	}
+	// OK case, create token and return
+	res.Tok = &Token{
+		Type: TypeStrikethrough,
+		Pos:  i,
+		Len:  utf8.RuneLen(rune(SymbolStrikethrough)) * 2,
+		Val:  string(SymbolStrikethrough) + string(SymbolStrikethrough),
+	}
+
+	res.Stride = symLen * 2
+
+	return res
+}
+
+// actText is an oversimplified version of the text accumulator.
+func actText(substr string, cur rune, i int, isLastRune bool) ActionResult {
+	var res ActionResult
+
+	// NOTE: complete until-next-special-symbol text search should be happening here
+	// Don't think i went full retard
+
+	textLen := utf8.RuneLen(cur)
+
+	res.Tok = &Token{
+		Type: TypeText,
+		Pos:  i,
+		Len:  textLen,
+		Val:  string(cur),
+	}
+
+	res.Stride = textLen
+	return res
+}
+
+// runeToAction is far from complete rune to its action mapper.
+var runeToAction = map[rune]Action{
+	'~': actStrikethrough,
+}
+
+func Tokenize(input string) (tokens []Token, warnigs []Warning) {
+
+	n := len(input)
+
+	for i, w := 0, 0; i < n; i += w {
+		substr := input[i:]
+		runeValue, width := utf8.DecodeRuneInString(substr)
+		isLastRune := i+width == n
+
+		// making default stride 'w' to equal the current rune's width
+		w = width
+
+		act, ok := runeToAction[runeValue]
+		// if the rune doesn't have corresponding action, then it must be a plain text
+		if !ok {
+			act = actText
+		}
+
+		res := act(substr, runeValue, i, isLastRune)
+		if token, ok := res.Token(); ok {
+			tokens = append(tokens, token)
+		}
+
+		if warns, ok := res.Warnings(); ok {
+			warnigs = append(warnigs, warns...)
+		}
+
+		// IMPORTANT: making sure we've accounted for all processed bytes
+		if res.Stride > 0 {
+			w = res.Stride
+		}
+	}
+
+	return
 }
 
 // Token represents a single markdown token.
@@ -72,215 +237,4 @@ type Token struct {
 	// - for tags: the literal tag/delimiter ("**", "*", "[", etc.),
 	// - for text: the raw text content.
 	Val string
-}
-
-// multiCharTagList stores tags whose string representation is longer than 1 byte.
-// NOTE: This must be ordered by tag length in descending order if you ever add
-// overlapping tags (e.g. "***" and "**") to ensure correct matching.
-var multiCharTagList = []Tag{
-	TagBold,
-	TagStrikethrough,
-}
-
-// extractMultiCharTag checks if the provided string starts with any multi-character tag.
-// It returns the matched tag, its string length, and ok = true if a match is found.
-//
-// Otherwise it returns zero values and ok = false.
-// TODO: refactor it with map
-func extractMultiCharTag(substr string) (tag Tag, length int, ok bool) {
-	for _, t := range multiCharTagList {
-		strTag := string(t)
-		if strings.HasPrefix(substr, strTag) {
-			tag = t
-			length = len(strTag)
-			ok = true
-			break
-		}
-	}
-	return
-}
-
-// charIsTag returns true if the character belongs to any known tag.
-func charIsTag(char string) bool {
-	_, found := tagToType[Tag(char)]
-	return found
-}
-
-// tagStartRunes contains runes that can start a markdown tag (single- or multi-char).
-var tagStartRunes = map[rune]struct{}{
-	'*':  {},
-	'_':  {},
-	'~':  {},
-	'`':  {},
-	'[':  {},
-	']':  {},
-	'(':  {},
-	')':  {},
-	'!':  {},
-	'\\': {},
-}
-
-func isTagStartRune(r rune) bool {
-	_, ok := tagStartRunes[r]
-	return ok
-}
-
-// findNextTagStart finds the byte offset of the next tag-like character
-// inside substr. It returns the offset relative to substr, or -1 if no tag
-// characters are found.
-func findNextTagStart(substr string) int {
-	for i, r := range substr {
-		if isTagStartRune(r) {
-			return i
-		}
-	}
-	return -1
-}
-
-// Tokenize transforms a raw markdown string into a slice of tokens.
-func Tokenize(s string) (result []*Token, warnings []*Warning) {
-
-	// Current byte position in the input string.
-	var p int
-
-	n := len(s)
-
-	for p < n {
-		substr := s[p:]
-
-		// 1) Check for multi-character tags (e.g. "**", "~~").
-		if t, l, ok := extractMultiCharTag(substr); ok {
-			token := newTag(p, t)
-			result = append(result, token)
-
-			// Move past the multi-character tag.
-			p += l
-			continue
-		}
-
-		// 2) Check for single-character tags.
-		c := string(s[p])
-		if ok := charIsTag(c); ok {
-			token := newTag(p, Tag(c))
-			result = append(result, token)
-			p++
-			continue
-		}
-
-		// 3) Otherwise, it's text. Consume as much text as possible
-		// until the next tag-like character.
-
-		consumed, step, warns := consumeUntilNextTag(substr, p)
-
-		// if some bytes was consumed as text
-		if step > 0 {
-			token := newText(p, consumed)
-			result = append(result, token)
-			warnings = append(warnings, warns...)
-			p += step
-		} else {
-			p++
-		}
-	}
-
-	return
-}
-
-// newTag creates a new *Token for the given tag at byte position p.
-func newTag(p int, tag Tag) *Token {
-	t := tagToType[tag]
-	s := string(tag)
-	return &Token{
-		Type: t,
-		Pos:  p,
-		Len:  len(s),
-		Val:  s,
-	}
-}
-
-// newText creates a new *Token of type TypeText at byte position p.
-func newText(p int, val string) *Token {
-	return &Token{
-		Type: TypeText,
-		Pos:  p,
-		Len:  len(val),
-		Val:  val,
-	}
-}
-
-// consumeUntilNextTag iterates through the string and acumulates all non-tag bytes,
-// including escaped characters, until the tag-start rune is found.
-// Accepts substring and original string's current position index.
-// Will create a warning if redundant escape is found.
-//
-// Returns accumulated string, number of processed bytes and possible Warnings.
-func consumeUntilNextTag(substr string, i int) (consumed string, step int, warnings []*Warning) {
-
-	var b strings.Builder
-
-	n := len(substr)
-
-	for step < n {
-		cur := substr[step]
-
-		// 1) check if the current byte is not a tag of any type
-		// and write it to the builder if true
-		if !isTagStartRune(rune(cur)) {
-			b.WriteByte(cur)
-			step++
-			continue
-		}
-
-		// 2) if current byte is a tag but not an escape - return
-		if isTagStartRune(rune(cur)) && Tag(cur) != TagEscape {
-			consumed = b.String()
-			return
-		}
-
-		// 3) if the tag is an escape there are 3 possible cases
-		if Tag(cur) == TagEscape {
-			// 3.1) escape as a last byte in the substring - add Warning
-			if step+1 >= n {
-				// TODO: create *Warning factory
-				w := &Warning{
-					Node:        NodeText, // since escape errors can occur only in plain text
-					Index:       i + step,
-					Issue:       IssueRedundantEscape,
-					Description: fmt.Sprintf("Escape \"%s\" at the very end of the input string. It is a no-op and will be ignored.", TagEscape),
-				}
-
-				warnings = append(warnings, w)
-
-				// 3.2) escaped character represents a tag - write it to the builder and continue
-			} else if nextByte := substr[step+1]; isTagStartRune(rune(nextByte)) {
-				b.WriteByte(nextByte)
-				// moving to the next byte to account for it to be used already
-				step++
-
-				// 3.3) escaped character represents plain text - write it to the builder, add a Warning and continue
-			} else {
-				// nextByte := substr[step+1]
-				b.WriteByte(nextByte)
-				near := string(nextByte)
-
-				w := &Warning{
-					Node:        NodeText, // since escape errors can occur only in plain text
-					Near:        near,
-					Index:       i + step,
-					Issue:       IssueRedundantEscape,
-					Description: fmt.Sprintf("Escape \"%s\" before plain text at byte index %d near \"%s\"", TagEscape, i+step, near),
-				}
-				warnings = append(warnings, w)
-
-				// moving to the next byte to account for it to be used already
-				step++
-			}
-
-			// move forward anyway
-			step++
-		}
-	}
-
-	consumed = b.String()
-	return
 }

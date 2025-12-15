@@ -38,7 +38,7 @@ func actEscape(substr string, cur rune, width int, i int, isLastRune bool) (toke
 	// getting the next rune
 	next, w := utf8.DecodeRuneInString(substr[width:])
 
-	sequence := string(SymbolEscape) + string(next)
+	sequence := substr[:width+w]
 
 	nextIndex := width + i
 

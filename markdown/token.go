@@ -31,6 +31,7 @@ const (
 	TypeItalic
 	TypeStrikethrough
 	TypeCodeBlock
+	TypeCodeInline
 	TypeEscapeSequence
 	TypeLinkTextStart
 	TypeLinkTextEnd
@@ -63,30 +64,28 @@ type Symbol rune
 const (
 	SymbolStrikethrough Symbol = '~'
 	SymbolEscape        Symbol = '\\'
+	SymbolCode          Symbol = '`'
 )
-
-var specialSymbolMap = map[Symbol]struct{}{
-	SymbolStrikethrough: {},
-	SymbolEscape:        {},
-	// ...other symbols
-}
 
 // isSpecialSymbolReturns true if the input rune is registerd in the
 // specialSymbolMap.
 func isSpecialSymbol(r rune) bool {
-	s := Symbol(r)
-	_, ok := specialSymbolMap[s]
-	return ok
-}
+	switch Symbol(r) {
+	case
+		SymbolEscape,
+		SymbolStrikethrough,
+		SymbolCode:
+		return true
+	}
 
-// runeToAction is far from complete rune to its action mapper.
-var runeToAction = map[rune]action{
-	'~':  actStrikethrough,
-	'\\': actEscape,
+	return false
 }
 
 // Tokenize processes the input string rune-wise and outputs a slice of Tokens and a slice of Warnings.
-func Tokenize(input string) (tokens []Token, warnigs []Warning) {
+func Tokenize(input string) (tokens []Token, warnings []Warning) {
+
+	// guessing the token number to minimize the number of the slice resizes
+	tokens = make([]Token, 0, len(input)/4)
 
 	n := len(input)
 
@@ -100,23 +99,25 @@ func Tokenize(input string) (tokens []Token, warnigs []Warning) {
 		// making default stride 'w' to equal the current rune's width
 		w = width
 
-		act, ok := runeToAction[runeValue]
-		// if the rune doesn't have corresponding action, then it must be a plain text
-		if !ok {
-			act = actText
+		act := actText
+
+		// TODO: add behaviour docs to each action function
+		switch Symbol(runeValue) {
+		case SymbolStrikethrough:
+			act = actStrikethrough
+		case SymbolEscape:
+			act = actEscape
 		}
 
-		substr := input[i:]
-
 		// checking if the action returned some token.
-		token, warnings, stride, ok := act(substr, runeValue, width, i, isLastRune)
+		token, warns, stride, ok := act(input[i:], runeValue, width, i, isLastRune)
 		if ok {
 			tokens = append(tokens, token)
 		}
 
 		// check for warnings
-		if len(warnings) > 0 {
-			warnigs = append(warnigs, warnings...)
+		if len(warns) > 0 {
+			warnings = append(warnings, warns...)
 		}
 
 		// IMPORTANT: making sure we've accounted for all processed bytes

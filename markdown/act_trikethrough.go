@@ -19,7 +19,7 @@ func actStrikethrough(substr string, _ rune, symLen int, i int, isLastRune bool)
 			Type: TypeText,
 			Pos:  i,
 			Len:  symLen,
-			Val:  string(SymbolStrikethrough),
+			Val:  substr[:symLen],
 		}
 
 		warnings = []Warning{{
@@ -47,7 +47,7 @@ func actStrikethrough(substr string, _ rune, symLen int, i int, isLastRune bool)
 			Type: TypeText,
 			Pos:  i,
 			Len:  symLen,
-			Val:  string(SymbolStrikethrough),
+			Val:  substr[:symLen],
 		}
 
 		warnings = []Warning{{
@@ -60,7 +60,7 @@ func actStrikethrough(substr string, _ rune, symLen int, i int, isLastRune bool)
 				TagStrikethrough,
 				nextRune,
 			),
-			Near: string(nextRune),
+			Near: rest[:nextRuneWidth],
 		}}
 
 		// explicitely signal the main loop that we have proccessed only the original symbol.
@@ -73,7 +73,7 @@ func actStrikethrough(substr string, _ rune, symLen int, i int, isLastRune bool)
 		Type: TypeStrikethrough,
 		Pos:  i,
 		Len:  symLen + nextRuneWidth,
-		Val:  string(SymbolStrikethrough) + string(SymbolStrikethrough),
+		Val:  substr[:symLen+nextRuneWidth],
 	}
 
 	stride = symLen + nextRuneWidth

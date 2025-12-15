@@ -12,6 +12,7 @@ const (
 	NodeItalic NodeType = "ITALIC"
 	NodeLink   NodeType = "LINK"
 	NodeImage  NodeType = "IMAGE"
+	NodeCode   NodeType = "CODE"
 	NodeText   NodeType = "TEXT"
 )
 

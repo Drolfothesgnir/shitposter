@@ -126,3 +126,5 @@ func TestActCode_OnlyBackticks_UnclosedBlock(t *testing.T) {
 	require.Equal(t, IssueUnclosedTag, warns[0].Issue)
 	require.Equal(t, 0, warns[0].Index)
 }
+
+// TODO: add alternative N+1 rule test with longer code sequence than tags

@@ -30,7 +30,7 @@ func actEscape(substr string, cur rune, width int, i int, isLastRune bool) (toke
 		}}
 
 		// signaling the main loop that we haven't processed any new runes
-		stride = 0
+		stride = width
 
 		return
 	}
@@ -44,7 +44,7 @@ func actEscape(substr string, cur rune, width int, i int, isLastRune bool) (toke
 
 	token = Token{
 		Type: TypeEscapeSequence,
-		Pos:  nextIndex,
+		Pos:  i,
 		Len:  width + w,
 		Val:  sequence,
 	}

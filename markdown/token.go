@@ -107,6 +107,8 @@ func Tokenize(input string) (tokens []Token, warnings []Warning) {
 			act = actStrikethrough
 		case SymbolEscape:
 			act = actEscape
+		case SymbolCode:
+			act = actCode
 		}
 
 		// checking if the action returned some token.

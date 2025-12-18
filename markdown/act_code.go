@@ -46,11 +46,14 @@ func actCode(substr string, cur rune, width int, i int, isLastRune bool) (token 
 	// index of the next rune in the substr
 	contentStartIdx := width
 
+	onlyCodeSymbols := true
+
 	for idx, r := range substr[width:] {
 		if Symbol(r) != SymbolCode {
 			// idx is relative to the substr[width:]
 			// so we need to ajust with width
 			contentStartIdx = idx + width
+			onlyCodeSymbols = false
 			break
 		}
 
@@ -58,42 +61,58 @@ func actCode(substr string, cur rune, width int, i int, isLastRune bool) (token 
 	}
 
 	// if all symbols after the initial one are SymbolCode, then the loop above will never break and
-	// assign correct value to the contentStartIdx, os in this case contentStartIdx will still equal to
+	// assign correct value to the contentStartIdx, so in this case contentStartIdx will still equal to
 	// the width. if this is the case, we set it to the length of the substring
-	if contentStartIdx == width {
+	if onlyCodeSymbols {
 		contentStartIdx = n
 	}
 
-	// index of the last SymbolCode in the closing tag
-	lastClosingSymIndex := -1
+	// next we search for the closing tag and consider all SymbolCode
+	// sequences, which lengths are not equal to the starting tag length,
+	// a part of the code block, according to the N+1 tag rule.
 
-	// len of longest sequence of SymbolCodes occured
-	closingTagLen := 0
+	// index of the first code symbol in the possible closing tag
+	seqStartIdx := -1
 
-	// FIXME: wrong N+1 rule implementation
+	// count of SymbolCode chars in the possible closing sequence
+	seqLen := 0
+
 	for idx, r := range substr[contentStartIdx:] {
-		// if the current rune is Symbol, increment the length counter
+		// two cases are possible:
+		// 1) next rune is the SymbolCode
 		if Symbol(r) == SymbolCode {
-			closingTagLen++
-
-			// if the len counter is equal to the openTagLen, then we've found the index
-			// of the last code symbol in the closing tag
-			if closingTagLen == openTagLen {
-				lastClosingSymIndex = idx + contentStartIdx
-				break
+			// then:
+			// if the sequence is not started, that is the symbol is the first in count,
+			// we reset the sequence
+			if seqStartIdx == -1 {
+				seqStartIdx = idx
 			}
-		} else {
-			// else reset the counter
-			closingTagLen = 0
+
+			// we also increment sequence length in any sub-case
+			seqLen++
+
+			// 2) next rune is plain text and we have the sequence started
+		} else if seqStartIdx > -1 {
+			// in this case we first check if the sequence has length equal to the starting tag length
+
+			// if yes, then we've found our closing tag and we stop the loop
+			if seqLen == openTagLen {
+				break
+
+				// else we reset the sequence starting index and length
+			} else {
+				seqStartIdx = -1
+				seqLen = 0
+			}
 		}
 	}
 
 	// if the code block is considered unclosed, that is, we haven't found SymbolCode sequence
 	// with the same length as the starting one before the end of the string, we:
 	//   - we return tag as plain text and continue tokenize the rest of the string
-	//   - or save the substring as a code block if the tag has length >= 3, that is, opens a code block
+	//   - or save the substring as a code block if the starting tag has length >= 3, that is, opens a code block
 
-	if lastClosingSymIndex == -1 {
+	if seqStartIdx == -1 {
 		var nodeType NodeType
 
 		isBlockCode := openTagLen >= 3
@@ -133,7 +152,7 @@ func actCode(substr string, cur rune, width int, i int, isLastRune bool) (token 
 		return
 	}
 
-	// otherwise we choose Type based on the length of the opening sequence
+	// otherwise, when code block is closed, we choose Type based on the length of the opening sequence
 
 	var t Type
 
@@ -143,9 +162,10 @@ func actCode(substr string, cur rune, width int, i int, isLastRune bool) (token 
 		t = TypeCodeInline
 	}
 
-	// assuming all code symbols are the same we won't calculate the width of the last
-	// symbol, but will use the 'width' param instead
-	codeEnd := lastClosingSymIndex + width
+	// assuming all code symbols are the same we will calculate the end of the closing tag by
+	// simply multiplying the width of the SymbolCode by the count of symbols in the tag +
+	// the starting index of the tag
+	codeEnd := contentStartIdx + seqStartIdx + width*seqLen
 
 	token = Token{
 		Type: t,

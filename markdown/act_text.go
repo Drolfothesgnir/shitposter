@@ -1,26 +1,26 @@
 package markdown
 
 // actText finds longest plain text substring in the substr and returns corresponding TypeText Token.
-func actText(substr string, cur rune, symLen int, i int, isLastRune bool) (token Token, warnings []Warning, stride int, ok bool) {
+func actText(input string, cur rune, width, i int) (token Token, warnings []Warning, stride int, ok bool) {
 
 	// since actText returns token anyway we define 'ok' as true immediately.
 	ok = true
 
 	// textEnd is index of either the first special symbol occurance or the EOL,
 	// if the string doesn't contain any special symbols.
-	textEnd := len(substr)
+	textEnd := len(input)
 
 	// looking for the first special symbol in the string
-	for idx, r := range substr {
+	for idx, r := range input[i+width:] {
 		if isSpecialSymbol(r) {
-			textEnd = idx
+			textEnd = idx + i + width
 			break
 		}
 	}
 
 	// otherwise the textEnd remains EOL.
 
-	seq := substr[:textEnd]
+	seq := input[i:textEnd]
 
 	nBytes := len(seq)
 

@@ -4,7 +4,7 @@ import "unicode/utf8"
 
 // actBoldOrItalic parses SymbolItalic case and returns token with type based on if the SymbolItalic is single, in
 // which case the TypeItalic will be returned, or double, in which case TypeBold will be returned.
-func actBoldOrItalic(substr string, cur rune, width int, i int, isLastRune bool) (token Token, warnings []Warning, stride int, ok bool) {
+func actBoldOrItalic(input string, cur rune, width, i int) (token Token, warnings []Warning, stride int, ok bool) {
 
 	// actBoldOrItalic will return token in any case
 	ok = true
@@ -17,8 +17,10 @@ func actBoldOrItalic(substr string, cur rune, width int, i int, isLastRune bool)
 	// symbol in case the symbol is doubled and considered a bold tag
 	finalWidth := width
 
+	isLastRune := i+width == len(input)
+
 	if !isLastRune {
-		next, nextWidth := utf8.DecodeRuneInString(substr[width:])
+		next, nextWidth := utf8.DecodeRuneInString(input[i+width:])
 
 		// case when the next symbol is also SymbolItalic
 		if Symbol(next) == SymbolItalic {
@@ -31,7 +33,7 @@ func actBoldOrItalic(substr string, cur rune, width int, i int, isLastRune bool)
 		Type: t,
 		Pos:  i,
 		Len:  finalWidth,
-		Val:  substr[:finalWidth],
+		Val:  input[i : i+finalWidth],
 	}
 
 	// explicitely telling the number of proccessed bytes

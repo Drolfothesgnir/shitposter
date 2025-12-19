@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"fmt"
 	"testing"
 	"unicode/utf8"
 
@@ -8,12 +9,12 @@ import (
 )
 
 func TestActStrikethrough_LastRune_IsTextWithWarning(t *testing.T) {
-	substr := "~"
-	cur, width := utf8.DecodeRuneInString(substr)
+	input := fmt.Sprintf("% 8s", "~")
+	cur, width := utf8.DecodeLastRuneInString(input)
 	require.Equal(t, '~', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actStrikethrough(substr, cur, width, 7, true)
+	tok, warns, stride, ok := actStrikethrough(input, cur, width, 7)
 
 	require.True(t, ok)
 	require.Equal(t, TypeText, tok.Type)
@@ -34,7 +35,7 @@ func TestActStrikethrough_SingleTilde_BeforeNonTilde_IsTextWithWarning(t *testin
 	require.Equal(t, '~', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actStrikethrough(substr, cur, width, 0, false)
+	tok, warns, stride, ok := actStrikethrough(substr, cur, width, 0)
 
 	require.True(t, ok)
 	require.Equal(t, TypeText, tok.Type)
@@ -51,12 +52,12 @@ func TestActStrikethrough_SingleTilde_BeforeNonTilde_IsTextWithWarning(t *testin
 }
 
 func TestActStrikethrough_DoubleTilde_ProducesStrikethroughToken(t *testing.T) {
-	substr := "~~"
-	cur, width := utf8.DecodeRuneInString(substr)
+	input := fmt.Sprintf("% 5s", "~~")
+	cur, width := utf8.DecodeRuneInString(input[3:])
 	require.Equal(t, '~', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actStrikethrough(substr, cur, width, 3, false)
+	tok, warns, stride, ok := actStrikethrough(input, cur, width, 3)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -77,7 +78,7 @@ func TestActStrikethrough_MoreThanTwoTildes_ConsumesOnlyFirstTwo(t *testing.T) {
 	require.Equal(t, '~', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actStrikethrough(substr, cur, width, 0, false)
+	tok, warns, stride, ok := actStrikethrough(substr, cur, width, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)

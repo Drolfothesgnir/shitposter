@@ -9,12 +9,14 @@ import (
 //
 // Example: if your code block has double backticks inside, "“", then opening tags must contain triple backticks, "```",
 // to differentiate between the content and the tags.
-func actCode(substr string, cur rune, width int, i int, isLastRune bool) (token Token, warnings []Warning, stride int, ok bool) {
+func actCode(input string, cur rune, width, i int) (token Token, warnings []Warning, stride int, ok bool) {
 
 	// actCode returns token in any case so ok = true
 	ok = true
 
-	n := len(substr)
+	n := len(input)
+
+	isLastRune := i+width == n
 
 	// if the code symbol is the last in the string return it as a text token and add a Warning
 	if isLastRune {
@@ -22,7 +24,7 @@ func actCode(substr string, cur rune, width int, i int, isLastRune bool) (token 
 			Type: TypeText,
 			Pos:  i,
 			Len:  width,
-			Val:  substr[:width],
+			Val:  input[i:],
 		}
 
 		warnings = []Warning{{
@@ -48,11 +50,11 @@ func actCode(substr string, cur rune, width int, i int, isLastRune bool) (token 
 
 	onlyCodeSymbols := true
 
-	for idx, r := range substr[width:] {
+	for idx, r := range input[i+width:] {
 		if Symbol(r) != SymbolCode {
-			// idx is relative to the substr[width:]
+			// idx is relative to the input[width:]
 			// so we need to ajust with width
-			contentStartIdx = idx + width
+			contentStartIdx = i + width + idx
 			onlyCodeSymbols = false
 			break
 		}
@@ -77,7 +79,7 @@ func actCode(substr string, cur rune, width int, i int, isLastRune bool) (token 
 	// count of SymbolCode chars in the possible closing sequence
 	seqLen := 0
 
-	for idx, r := range substr[contentStartIdx:] {
+	for idx, r := range input[contentStartIdx:] {
 		// two cases are possible:
 		// 1) next rune is the SymbolCode
 		if Symbol(r) == SymbolCode {
@@ -123,7 +125,7 @@ func actCode(substr string, cur rune, width int, i int, isLastRune bool) (token 
 				Type: TypeText,
 				Pos:  i,
 				Len:  contentStartIdx,
-				Val:  substr[:contentStartIdx],
+				Val:  input[i:contentStartIdx],
 			}
 
 			nodeType = NodeText
@@ -135,7 +137,7 @@ func actCode(substr string, cur rune, width int, i int, isLastRune bool) (token 
 				Type: TypeCodeBlock,
 				Pos:  i,
 				Len:  n,
-				Val:  substr,
+				Val:  input[i:],
 			}
 
 			// signaling to the main loop that we've proccessed all the remaining bytes
@@ -171,7 +173,7 @@ func actCode(substr string, cur rune, width int, i int, isLastRune bool) (token 
 		Type: t,
 		Pos:  i,
 		Len:  codeEnd,
-		Val:  substr[:codeEnd],
+		Val:  input[i:codeEnd],
 	}
 
 	// adjusting main loop pointer offset

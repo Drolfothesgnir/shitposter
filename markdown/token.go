@@ -49,7 +49,6 @@ const (
 	TagBold          Tag = "**"
 	TagStrikethrough Tag = "~~"
 	TagItalic        Tag = "*"
-	TagItalicAlt     Tag = "_"
 	TagCode          Tag = "`"
 	TagLinkTextStart Tag = "["
 	TagLinkTextEnd   Tag = "]"
@@ -66,6 +65,7 @@ const (
 	SymbolEscape        Symbol = '\\'
 	SymbolCode          Symbol = '`'
 	SymbolItalic        Symbol = '*'
+	SymbolUnderline     Symbol = '_'
 )
 
 // isSpecialSymbolReturns true if the input rune is registerd in the
@@ -75,7 +75,9 @@ func isSpecialSymbol(r rune) bool {
 	case
 		SymbolEscape,
 		SymbolStrikethrough,
-		SymbolCode:
+		SymbolCode,
+		SymbolItalic,
+		SymbolUnderline:
 		return true
 	}
 
@@ -95,7 +97,6 @@ func Tokenize(input string) (tokens []Token, warnings []Warning) {
 		// IMPORTANT: we looking at each rune instead of each byte and
 		// incrementing the iterator variable by the actual byte length of the rune.
 		runeValue, width := utf8.DecodeRuneInString(input[i:])
-		isLastRune := i+width == n
 
 		// making default stride 'w' to equal the current rune's width
 		w = width
@@ -115,7 +116,7 @@ func Tokenize(input string) (tokens []Token, warnings []Warning) {
 		}
 
 		// checking if the action returned some token.
-		token, warns, stride, ok := act(input[i:], runeValue, width, i, isLastRune)
+		token, warns, stride, ok := act(input, runeValue, width, i)
 		if ok {
 			tokens = append(tokens, token)
 		}

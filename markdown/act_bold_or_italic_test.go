@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"fmt"
 	"testing"
 	"unicode/utf8"
 
@@ -8,18 +9,18 @@ import (
 )
 
 func TestActBoldOrItalic_LastRune_ReturnsItalic(t *testing.T) {
-	substr := "*"
-	cur, width := utf8.DecodeRuneInString(substr)
+	input := fmt.Sprintf("%12s", "*")
+	cur, width := utf8.DecodeLastRuneInString(input)
 	require.Equal(t, '*', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actBoldOrItalic(substr, cur, width, 12, true)
+	tok, warns, stride, ok := actBoldOrItalic(input, cur, width, 11)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
 
 	require.Equal(t, TypeItalic, tok.Type)
-	require.Equal(t, 12, tok.Pos)
+	require.Equal(t, 11, tok.Pos)
 	require.Equal(t, 1, tok.Len)
 	require.Equal(t, "*", tok.Val)
 
@@ -32,7 +33,7 @@ func TestActBoldOrItalic_SingleAsteriskBeforeNonAsterisk_ReturnsItalic(t *testin
 	require.Equal(t, '*', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actBoldOrItalic(substr, cur, width, 0, false)
+	tok, warns, stride, ok := actBoldOrItalic(substr, cur, width, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -46,12 +47,12 @@ func TestActBoldOrItalic_SingleAsteriskBeforeNonAsterisk_ReturnsItalic(t *testin
 }
 
 func TestActBoldOrItalic_DoubleAsterisk_ReturnsBold(t *testing.T) {
-	substr := "**"
-	cur, width := utf8.DecodeRuneInString(substr)
+	input := fmt.Sprintf("% 5s", "**")
+	cur, width := utf8.DecodeRuneInString(input[3:])
 	require.Equal(t, '*', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actBoldOrItalic(substr, cur, width, 3, false)
+	tok, warns, stride, ok := actBoldOrItalic(input, cur, width, 3)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -73,7 +74,7 @@ func TestActBoldOrItalic_TripleAsterisk_ConsumesTwoAsBold(t *testing.T) {
 	require.Equal(t, '*', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actBoldOrItalic(substr, cur, width, 0, false)
+	tok, warns, stride, ok := actBoldOrItalic(substr, cur, width, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -93,7 +94,7 @@ func TestActBoldOrItalic_UTF8AfterAsterisk_DoesNotAffectWidth(t *testing.T) {
 	require.Equal(t, '*', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actBoldOrItalic(substr, cur, width, 0, false)
+	tok, warns, stride, ok := actBoldOrItalic(substr, cur, width, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)

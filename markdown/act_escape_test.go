@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"fmt"
 	"testing"
 	"unicode/utf8"
 
@@ -8,12 +9,12 @@ import (
 )
 
 func TestActEscape_LastRune_IsTextWithWarning(t *testing.T) {
-	substr := `\`
-	cur, width := utf8.DecodeRuneInString(substr)
+	input := fmt.Sprintf("%11s", `\`)
+	cur, width := utf8.DecodeLastRuneInString(input)
 	require.Equal(t, '\\', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actEscape(substr, cur, width, 10, true)
+	tok, warns, stride, ok := actEscape(input, cur, width, 10)
 
 	require.True(t, ok)
 	require.Equal(t, TypeText, tok.Type)
@@ -34,7 +35,7 @@ func TestActEscape_BeforeSpecialSymbol_NoWarning(t *testing.T) {
 	require.Equal(t, '\\', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actEscape(substr, cur, width, 0, false)
+	tok, warns, stride, ok := actEscape(substr, cur, width, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -48,12 +49,12 @@ func TestActEscape_BeforeSpecialSymbol_NoWarning(t *testing.T) {
 }
 
 func TestActEscape_BeforePlainText_WarnsRedundantEscape(t *testing.T) {
-	substr := `\a`
-	cur, width := utf8.DecodeRuneInString(substr)
+	input := fmt.Sprintf("% 7s", `\a`)
+	cur, width := utf8.DecodeRuneInString(input[5:])
 	require.Equal(t, '\\', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actEscape(substr, cur, width, 5, false)
+	tok, warns, stride, ok := actEscape(input, cur, width, 5)
 
 	require.True(t, ok)
 
@@ -77,7 +78,7 @@ func TestActEscape_BeforeUTF8Rune_WarnsRedundantEscape(t *testing.T) {
 	require.Equal(t, '\\', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actEscape(substr, cur, width, 0, false)
+	tok, warns, stride, ok := actEscape(substr, cur, width, 0)
 
 	require.True(t, ok)
 
@@ -103,7 +104,7 @@ func TestActEscape_BeforeEscape_NoWarning(t *testing.T) {
 	require.Equal(t, '\\', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actEscape(substr, cur, width, 0, false)
+	tok, warns, stride, ok := actEscape(substr, cur, width, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)

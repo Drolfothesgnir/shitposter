@@ -7,35 +7,38 @@ import (
 
 // actStrikethrough processes rest of the string starting from the next rune after first occurance of the
 // Strikethrough rune, '~'.
-func actStrikethrough(substr string, _ rune, symLen int, i int, isLastRune bool) (token Token, warnings []Warning, stride int, ok bool) {
+func actStrikethrough(input string, _ rune, width, i int) (token Token, warnings []Warning, stride int, ok bool) {
 
 	// actStrikethrough returns a token anyway so 'ok' is always true
 	ok = true
 
 	// if the first '~' occured at the very end of the string ->
 	// create a token with plain text and return a warning
+
+	isLastRune := i+width == len(input)
+
 	if isLastRune {
 		token = Token{
 			Type: TypeText,
 			Pos:  i,
-			Len:  symLen,
-			Val:  substr[:symLen],
+			Len:  width,
+			Val:  input[i : i+width],
 		}
 
 		warnings = []Warning{{
 			Node:        NodeText,
-			Index:       i + symLen,
+			Index:       i + width,
 			Issue:       IssueUnexpectedEOL,
 			Description: fmt.Sprintf("Unexpected end of the line: expected to get %q, got EOL instead.", SymbolStrikethrough),
 		}}
 
 		// explicitely signal the main loop that we have proccessed only the original symbol.
-		stride = symLen
+		stride = width
 
 		return
 	}
 
-	rest := substr[symLen:]
+	rest := input[i+width:]
 
 	// checking next rune
 	nextRune, nextRuneWidth := utf8.DecodeRuneInString(rest)
@@ -46,13 +49,13 @@ func actStrikethrough(substr string, _ rune, symLen int, i int, isLastRune bool)
 		token = Token{
 			Type: TypeText,
 			Pos:  i,
-			Len:  symLen,
-			Val:  substr[:symLen],
+			Len:  width,
+			Val:  input[i : i+width],
 		}
 
 		warnings = []Warning{{
 			Node:  NodeText,
-			Index: i + symLen,
+			Index: i + width,
 			Issue: IssueUnexpectedSymbol,
 			Description: fmt.Sprintf(
 				"Unexpected symbol: expected second %q to form %s, got %q",
@@ -64,7 +67,7 @@ func actStrikethrough(substr string, _ rune, symLen int, i int, isLastRune bool)
 		}}
 
 		// explicitely signal the main loop that we have proccessed only the original symbol.
-		stride = symLen
+		stride = width
 
 		return
 	}
@@ -72,11 +75,11 @@ func actStrikethrough(substr string, _ rune, symLen int, i int, isLastRune bool)
 	token = Token{
 		Type: TypeStrikethrough,
 		Pos:  i,
-		Len:  symLen + nextRuneWidth,
-		Val:  substr[:symLen+nextRuneWidth],
+		Len:  width + nextRuneWidth,
+		Val:  input[i : i+width+nextRuneWidth],
 	}
 
-	stride = symLen + nextRuneWidth
+	stride = width + nextRuneWidth
 
 	return
 }

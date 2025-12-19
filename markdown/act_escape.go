@@ -7,10 +7,12 @@ import (
 
 // actEscape proccesses the next rune after the escape symbol '\' and returns either
 // text or escape sequence tokens.
-func actEscape(substr string, cur rune, width int, i int, isLastRune bool) (token Token, warnings []Warning, stride int, ok bool) {
+func actEscape(input string, cur rune, width, i int) (token Token, warnings []Warning, stride int, ok bool) {
 
 	// actEscape returns token anyway so ok = true
 	ok = true
+
+	isLastRune := i+width == len(input)
 
 	// if the escape symbol is the last in line
 	// return it as a plain text and add a Warning.
@@ -19,7 +21,7 @@ func actEscape(substr string, cur rune, width int, i int, isLastRune bool) (toke
 			Type: TypeText,
 			Pos:  i,
 			Len:  width,
-			Val:  string(cur),
+			Val:  input[i:],
 		}
 
 		warnings = []Warning{{
@@ -36,9 +38,9 @@ func actEscape(substr string, cur rune, width int, i int, isLastRune bool) (toke
 	}
 
 	// getting the next rune
-	next, w := utf8.DecodeRuneInString(substr[width:])
+	next, w := utf8.DecodeRuneInString(input[i+width:])
 
-	sequence := substr[:width+w]
+	sequence := input[i : i+width+w]
 
 	nextIndex := width + i
 

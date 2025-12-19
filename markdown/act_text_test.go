@@ -14,7 +14,7 @@ func TestActText_ConsumesUntilFirstSpecialSymbol(t *testing.T) {
 	require.Equal(t, 'h', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actText(substr, cur, width, 0, false)
+	tok, warns, stride, ok := actText(substr, cur, width, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -28,45 +28,22 @@ func TestActText_ConsumesUntilFirstSpecialSymbol(t *testing.T) {
 }
 
 func TestActText_ConsumesEntireString_WhenNoSpecialSymbols(t *testing.T) {
-	substr := "just plain text"
-	cur, width := utf8.DecodeRuneInString(substr)
+	input := "startjust plain text"
+	cur, width := utf8.DecodeRuneInString(input[5:])
 	require.Equal(t, 'j', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actText(substr, cur, width, 5, false)
+	tok, warns, stride, ok := actText(input, cur, width, 5)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
 
 	require.Equal(t, TypeText, tok.Type)
 	require.Equal(t, 5, tok.Pos)
-	require.Equal(t, len(substr), tok.Len)
-	require.Equal(t, substr, tok.Val)
+	require.Equal(t, len(input[5:]), tok.Len)
+	require.Equal(t, input[5:], tok.Val)
 
-	require.Equal(t, len(substr), stride)
-}
-
-func TestActText_WhenFirstRuneIsSpecial_ReturnsEmptyTextToken(t *testing.T) {
-	// This is a bit unusual, but it documents the current behavior:
-	// actText will see the first rune as special and return an empty text token (Len=0, Val="").
-	// In your Tokenize() implementation this shouldn't happen because you switch to actEscape/actCode/actStrikethrough,
-	// but the test captures actText behavior in isolation.
-	substr := "`code`"
-	cur, width := utf8.DecodeRuneInString(substr)
-	require.Equal(t, '`', cur)
-	require.Equal(t, 1, width)
-
-	tok, warns, stride, ok := actText(substr, cur, width, 0, false)
-
-	require.True(t, ok)
-	require.Empty(t, warns)
-
-	require.Equal(t, TypeText, tok.Type)
-	require.Equal(t, 0, tok.Pos)
-	require.Equal(t, 0, tok.Len)
-	require.Equal(t, "", tok.Val)
-
-	require.Equal(t, 0, stride)
+	require.Equal(t, len(input[5:]), stride)
 }
 
 func TestActText_UTF8_ConsumesCorrectByteLength(t *testing.T) {
@@ -76,7 +53,7 @@ func TestActText_UTF8_ConsumesCorrectByteLength(t *testing.T) {
 	require.Equal(t, 'Ж', cur)
 	require.Equal(t, 2, width)
 
-	tok, warns, stride, ok := actText(substr, cur, width, 0, false)
+	tok, warns, stride, ok := actText(substr, cur, width, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -96,7 +73,7 @@ func TestActText_StopsBeforeEscapeSymbol(t *testing.T) {
 	require.Equal(t, 'h', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actText(substr, cur, width, 0, false)
+	tok, warns, stride, ok := actText(substr, cur, width, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)

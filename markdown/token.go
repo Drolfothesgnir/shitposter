@@ -65,6 +65,7 @@ const (
 	SymbolStrikethrough Symbol = '~'
 	SymbolEscape        Symbol = '\\'
 	SymbolCode          Symbol = '`'
+	SymbolItalic        Symbol = '*'
 )
 
 // isSpecialSymbolReturns true if the input rune is registerd in the
@@ -109,6 +110,8 @@ func Tokenize(input string) (tokens []Token, warnings []Warning) {
 			act = actEscape
 		case SymbolCode:
 			act = actCode
+		case SymbolItalic:
+			act = actBoldOrItalic
 		}
 
 		// checking if the action returned some token.

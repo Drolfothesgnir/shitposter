@@ -127,4 +127,69 @@ func TestActCode_OnlyBackticks_UnclosedBlock(t *testing.T) {
 	require.Equal(t, 0, warns[0].Index)
 }
 
+func TestActCode_Block_AllowsLongerBacktickRunsInsideContent(t *testing.T) {
+	// Opening/closing tag length is 3. Inside content we have 5 backticks in a row.
+	// Per your logic, only a sequence with length == openTagLen closes the block,
+	// so the 5-backtick run must be treated as content, not a closing tag.
+	substr := "```print('hello `````')```"
+
+	cur, width := utf8.DecodeRuneInString(substr)
+	require.Equal(t, '`', cur)
+	require.Equal(t, 1, width)
+
+	tok, warns, stride, ok := actCode(substr, cur, width, 0, false)
+
+	require.True(t, ok)
+	require.Empty(t, warns)
+
+	require.Equal(t, TypeCodeBlock, tok.Type)
+	require.Equal(t, 0, tok.Pos)
+	require.Equal(t, len(substr), tok.Len)
+	require.Equal(t, substr, tok.Val)
+
+	require.Equal(t, len(substr), stride)
+}
+
 // TODO: add alternative N+1 rule test with longer code sequence than tags
+func TestActCode_Advanced(t *testing.T) {
+	tests := []struct {
+		name           string
+		input          string
+		expectedType   Type
+		expectedVal    string
+		expectedStride int
+	}{
+		{
+			name:           "N+1 Rule: Inner sequence LONGER than tags",
+			input:          "```print('hello `````')``` rest",
+			expectedType:   TypeCodeBlock,
+			expectedVal:    "```print('hello `````')```",
+			expectedStride: 26,
+		},
+		{
+			name:           "N+1 Rule: Inner sequence SHORTER than tags",
+			input:          "```` code with `` ticks ````",
+			expectedType:   TypeCodeBlock,
+			expectedVal:    "```` code with `` ticks ````",
+			expectedStride: 28,
+		},
+		{
+			name:           "Edge Case: Backticks at the very start of content",
+			input:          "````` ``` ```` `````", // 5 open, 3 content, 4 content, 5 close
+			expectedType:   TypeCodeBlock,
+			expectedVal:    "````` ``` ```` `````",
+			expectedStride: 20,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			token, _, stride, ok := actCode(tt.input, '`', 1, 0, false)
+
+			require.True(t, ok)
+			require.Equal(t, tt.expectedType, token.Type, "Type mismatch")
+			require.Equal(t, tt.expectedVal, token.Val, "Value mismatch")
+			require.Equal(t, tt.expectedStride, stride, "Stride mismatch")
+		})
+	}
+}

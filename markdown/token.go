@@ -33,28 +33,25 @@ const (
 	TypeEscapeSequence
 	TypeUnderline
 	TypeLinkTextStart
-	TypeLinkTextEnd
-	TypeLinkURLStart
-	TypeLinkURLEnd
-	TypeImageMarker
+	TypeURL
+	TypeImageTextStart
 	TypeText
 )
 
 // Tag defines the string representation of markdown tags,
 // e.g. "**" for bold, "*" / "_" for italic.
-type Tag string
 
 const (
-	TagBold          Tag = "**"
-	TagStrikethrough Tag = "~~"
-	TagItalic        Tag = "*"
-	TagCode          Tag = "`"
-	TagLinkTextStart Tag = "["
-	TagLinkTextEnd   Tag = "]"
-	TagLinkURLStart  Tag = "("
-	TagLinkURLEnd    Tag = ")"
-	TagImageMarker   Tag = "!"
-	TagEscape        Tag = "\\"
+	TagBold          = "**"
+	TagStrikethrough = "~~"
+	TagItalic        = "*"
+	TagCode          = "`"
+	TagLinkTextStart = "["
+	TagLinkTextEnd   = "]"
+	TagLinkURLStart  = "("
+	TagLinkURLEnd    = ")"
+	TagImageMarker   = "!"
+	TagEscape        = "\\"
 )
 
 type Symbol byte
@@ -65,12 +62,14 @@ const (
 	SymbolCode          Symbol = '`'
 	SymbolItalic        Symbol = '*'
 	SymbolUnderline     Symbol = '_'
+	SymbolImageMarker   Symbol = '!'
+	SymbolLinkTextStart Symbol = '['
 )
 
 // action defines a function which accepts an input string, an index of a special character in it
-// and a pointer to the Warning slice, to process it and possibly return a token, a number of
-// processed bytes, and a flag, which is true if the token returned is not empty.
-type action func(input string, idx int, warns *[]Warning) (token Token, stride int, ok bool)
+// and a pointer to the Warning slice, to process it and return a token and a number of
+// processed bytes.
+type action func(input string, idx int, warns *[]Warning) (token Token, stride int)
 
 // symToAction maps special characters to their corresponding actions, also effectively serving as
 // a way to check if the byte is special
@@ -90,6 +89,7 @@ func init() {
 	symToAction[SymbolItalic] = actBoldOrItalic
 	symToAction[SymbolStrikethrough] = actStrikethrough
 	symToAction[SymbolUnderline] = actUnderline
+	symToAction[SymbolImageMarker] = actImageMarker
 }
 
 // Tokenize processes the input string rune-wise and outputs a slice of Tokens and a slice of Warnings.
@@ -144,11 +144,9 @@ func Tokenize(input string) (tokens []Token, warnings []Warning) {
 				tokens = append(tokens, text)
 			}
 
-			token, stride, ok := act(input, i, &warnings)
+			token, stride := act(input, i, &warnings)
 
-			if ok {
-				tokens = append(tokens, token)
-			}
+			tokens = append(tokens, token)
 
 			// skipping the bytes processed by the action
 			i += stride

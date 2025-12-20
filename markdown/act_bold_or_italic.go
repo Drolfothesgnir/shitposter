@@ -4,10 +4,7 @@ package markdown
 // which case the TypeItalic will be returned, or double, in which case TypeBold will be returned.
 //
 // WARNING: actBoldOrItalic assumes that SymbolItalic is 1-byte long.
-func actBoldOrItalic(input string, i int, _ *[]Warning) (token Token, stride int, ok bool) {
-
-	// actBoldOrItalic will return token in any case
-	ok = true
+func actBoldOrItalic(input string, i int, _ *[]Warning) (token Token, stride int) {
 
 	// if the rune is last, or the next rune is not SymbolItalic, the token is considered TypeItalic
 	t := TypeItalic

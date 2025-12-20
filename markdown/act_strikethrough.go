@@ -9,10 +9,7 @@ import (
 // Strikethrough rune, '~'.
 //
 // WARNING: actStrikeThrough assumes SymbolStrikethrough is 1-byte long ASCII character.
-func actStrikethrough(input string, i int, warns *[]Warning) (token Token, stride int, ok bool) {
-
-	// actStrikethrough returns a token anyway so 'ok' is always true
-	ok = true
+func actStrikethrough(input string, i int, warns *[]Warning) (token Token, stride int) {
 
 	// if the first '~' occured at the very end of the string ->
 	// create a token with plain text and return a warning

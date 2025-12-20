@@ -9,7 +9,7 @@ import (
 // Strikethrough rune, '~'.
 //
 // WARNING: actStrikeThrough assumes SymbolStrikethrough is 1-byte long ASCII character.
-func actStrikethrough(input string, i int) (token Token, warnings []Warning, stride int, ok bool) {
+func actStrikethrough(input string, i int, warns *[]Warning) (token Token, stride int, ok bool) {
 
 	// actStrikethrough returns a token anyway so 'ok' is always true
 	ok = true
@@ -24,12 +24,12 @@ func actStrikethrough(input string, i int) (token Token, warnings []Warning, str
 			Val:  input[i : i+1],
 		}
 
-		warnings = []Warning{{
+		*warns = append(*warns, Warning{
 			Node:        NodeText,
 			Index:       i + 1,
 			Issue:       IssueUnexpectedEOL,
 			Description: fmt.Sprintf("Unexpected end of the line: expected to get %q, got EOL instead.", SymbolStrikethrough),
-		}}
+		})
 
 		// explicitely signal the main loop that we have proccessed only the original symbol.
 		stride = 1
@@ -52,7 +52,7 @@ func actStrikethrough(input string, i int) (token Token, warnings []Warning, str
 			Val:  input[i : i+1],
 		}
 
-		warnings = []Warning{{
+		*warns = append(*warns, Warning{
 			Node:  NodeText,
 			Index: i + 1,
 			Issue: IssueUnexpectedSymbol,
@@ -63,7 +63,7 @@ func actStrikethrough(input string, i int) (token Token, warnings []Warning, str
 				nextRune,
 			),
 			Near: rest[:nextRuneWidth],
-		}}
+		})
 
 		// explicitely signal the main loop that we have proccessed only the original symbol.
 		stride = 1

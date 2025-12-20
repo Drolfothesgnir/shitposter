@@ -122,7 +122,9 @@ func TestActUnderline_ReturnsUnderlineToken(t *testing.T) {
 	i := 1 // underscore
 	require.Equal(t, byte('_'), input[i])
 
-	tok, warns, stride, ok := actUnderline(input, i)
+	warns := make([]Warning, 0)
+
+	tok, stride, ok := actUnderline(input, i, &warns)
 
 	require.True(t, ok)
 	require.Empty(t, warns)

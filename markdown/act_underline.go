@@ -59,7 +59,7 @@ func isUnderlineTag(input string, i, n int, prevRune rune) bool {
 }
 
 // actUnderline returns current symbol in the input string as a Token TypeUnderline.
-func actUnderline(input string, i int) (token Token, warnings []Warning, stride int, ok bool) {
+func actUnderline(input string, i int, _ *[]Warning) (token Token, stride int, ok bool) {
 	token = Token{
 		Type: TypeUnderline,
 		Pos:  i,

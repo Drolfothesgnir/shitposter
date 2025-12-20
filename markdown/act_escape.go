@@ -9,7 +9,7 @@ import (
 // text or escape sequence tokens.
 //
 // WARNING: actEscape assumes that SymbolEscape is 1-byte long ASCII character.
-func actEscape(input string, i int) (token Token, warnings []Warning, stride int, ok bool) {
+func actEscape(input string, i int, warns *[]Warning) (token Token, stride int, ok bool) {
 
 	// actEscape returns token anyway so ok = true
 	ok = true
@@ -24,12 +24,12 @@ func actEscape(input string, i int) (token Token, warnings []Warning, stride int
 			Val:  input[i:],
 		}
 
-		warnings = []Warning{{
+		*warns = append(*warns, Warning{
 			Node:        NodeText,
 			Index:       i,
 			Issue:       IssueRedundantEscape,
 			Description: fmt.Sprintf("Redundant escape symbol %q at the end of the string.", input[i]),
-		}}
+		})
 
 		// signaling the main loop that we have processed only 1 byte
 		stride = 1
@@ -54,13 +54,13 @@ func actEscape(input string, i int) (token Token, warnings []Warning, stride int
 	// if the next byte is not a special symbol but is a plain text instead
 	// also add warning
 	if symToAction[input[i+1]] == nil {
-		warnings = []Warning{{
+		*warns = append(*warns, Warning{
 			Node:        NodeText,
 			Index:       nextIndex,
 			Near:        sequence,
 			Issue:       IssueRedundantEscape,
 			Description: fmt.Sprintf("Redundant escape before the character %q at byte index %d", next, nextIndex),
-		}}
+		})
 	}
 
 	// signalling the main loop that we've proccessed escape and the next rune

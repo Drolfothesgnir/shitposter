@@ -11,7 +11,7 @@ import (
 // to differentiate between the content and the tags.
 //
 // WARNING: actCode assumes that SymbolCode is 1-byte long ASCII character.
-func actCode(input string, i int) (token Token, warnings []Warning, stride int, ok bool) {
+func actCode(input string, i int, warns *[]Warning) (token Token, stride int, ok bool) {
 
 	// actCode returns token in any case so ok = true
 	ok = true
@@ -27,12 +27,12 @@ func actCode(input string, i int) (token Token, warnings []Warning, stride int, 
 			Val:  input[i:],
 		}
 
-		warnings = []Warning{{
+		*warns = append(*warns, Warning{
 			Node:        NodeText,
 			Index:       i + 1,
 			Issue:       IssueUnexpectedEOL,
 			Description: "Unexpected end of the line: expected to get a character, got EOL instead.",
-		}}
+		})
 
 		// explicitely signal the main loop that we have proccessed only the original symbol.
 		stride = 1
@@ -144,12 +144,12 @@ func actCode(input string, i int) (token Token, warnings []Warning, stride int, 
 			stride = n
 		}
 
-		warnings = []Warning{{
+		*warns = append(*warns, Warning{
 			Node:        nodeType,
 			Index:       i,
 			Issue:       IssueUnclosedTag,
 			Description: fmt.Sprintf("Unclosed code block at index %d", i),
-		}}
+		})
 
 		return
 	}

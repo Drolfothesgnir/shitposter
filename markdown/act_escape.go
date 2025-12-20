@@ -9,10 +9,7 @@ import (
 // text or escape sequence tokens.
 //
 // WARNING: actEscape assumes that SymbolEscape is 1-byte long ASCII character.
-func actEscape(input string, i int, warns *[]Warning) (token Token, stride int, ok bool) {
-
-	// actEscape returns token anyway so ok = true
-	ok = true
+func actEscape(input string, i int, warns *[]Warning) (token Token, stride int) {
 
 	// if the escape symbol is the last in line
 	// return it as a plain text and add a Warning.

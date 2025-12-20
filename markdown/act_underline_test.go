@@ -124,9 +124,8 @@ func TestActUnderline_ReturnsUnderlineToken(t *testing.T) {
 
 	warns := make([]Warning, 0)
 
-	tok, stride, ok := actUnderline(input, i, &warns)
+	tok, stride := actUnderline(input, i, &warns)
 
-	require.True(t, ok)
 	require.Empty(t, warns)
 
 	require.Equal(t, TypeUnderline, tok.Type)

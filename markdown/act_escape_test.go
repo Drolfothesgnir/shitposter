@@ -16,9 +16,8 @@ func TestActEscape_LastRune_IsTextWithWarning(t *testing.T) {
 
 	warns := make([]Warning, 0)
 
-	tok, stride, ok := actEscape(input, 10, &warns)
+	tok, stride := actEscape(input, 10, &warns)
 
-	require.True(t, ok)
 	require.Equal(t, TypeText, tok.Type)
 	require.Equal(t, 10, tok.Pos)
 	require.Equal(t, 1, tok.Len)
@@ -39,9 +38,8 @@ func TestActEscape_BeforeSpecialSymbol_NoWarning(t *testing.T) {
 
 	warns := make([]Warning, 0)
 
-	tok, stride, ok := actEscape(input, 0, &warns)
+	tok, stride := actEscape(input, 0, &warns)
 
-	require.True(t, ok)
 	require.Empty(t, warns)
 
 	require.Equal(t, TypeEscapeSequence, tok.Type)
@@ -60,9 +58,7 @@ func TestActEscape_BeforePlainText_WarnsRedundantEscape(t *testing.T) {
 
 	warns := make([]Warning, 0)
 
-	tok, stride, ok := actEscape(input, 5, &warns)
-
-	require.True(t, ok)
+	tok, stride := actEscape(input, 5, &warns)
 
 	require.Equal(t, TypeEscapeSequence, tok.Type)
 	require.Equal(t, 5, tok.Pos)
@@ -86,9 +82,7 @@ func TestActEscape_BeforeUTF8Rune_WarnsRedundantEscape(t *testing.T) {
 
 	warns := make([]Warning, 0)
 
-	tok, stride, ok := actEscape(input, 0, &warns)
-
-	require.True(t, ok)
+	tok, stride := actEscape(input, 0, &warns)
 
 	_, wNext := utf8.DecodeRuneInString(input[width:])
 	require.Equal(t, 2, wNext)
@@ -114,9 +108,8 @@ func TestActEscape_BeforeEscape_NoWarning(t *testing.T) {
 
 	warns := make([]Warning, 0)
 
-	tok, stride, ok := actEscape(input, 0, &warns)
+	tok, stride := actEscape(input, 0, &warns)
 
-	require.True(t, ok)
 	require.Empty(t, warns)
 
 	require.Equal(t, TypeEscapeSequence, tok.Type)

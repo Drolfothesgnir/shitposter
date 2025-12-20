@@ -11,10 +11,7 @@ import (
 // to differentiate between the content and the tags.
 //
 // WARNING: actCode assumes that SymbolCode is 1-byte long ASCII character.
-func actCode(input string, i int, warns *[]Warning) (token Token, stride int, ok bool) {
-
-	// actCode returns token in any case so ok = true
-	ok = true
+func actCode(input string, i int, warns *[]Warning) (token Token, stride int) {
 
 	n := len(input)
 

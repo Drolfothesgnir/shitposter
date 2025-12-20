@@ -67,10 +67,10 @@ const (
 	SymbolUnderline     Symbol = '_'
 )
 
-// action defines a function which accepts an input string and an index of a special character in it
-// to process it and possibly return a token, a warning, a number of processed bytes, and a flag,
-// which is true if the token returned is not empty.
-type action func(input string, idx int) (token Token, warnings []Warning, stride int, ok bool)
+// action defines a function which accepts an input string, an index of a special character in it
+// and a pointer to the Warning slice, to process it and possibly return a token, a number of
+// processed bytes, and a flag, which is true if the token returned is not empty.
+type action func(input string, idx int, warns *[]Warning) (token Token, stride int, ok bool)
 
 // symToAction maps special characters to their corresponding actions, also effectively serving as
 // a way to check if the byte is special
@@ -144,14 +144,10 @@ func Tokenize(input string) (tokens []Token, warnings []Warning) {
 				tokens = append(tokens, text)
 			}
 
-			token, warns, stride, ok := act(input, i)
+			token, stride, ok := act(input, i, &warnings)
 
 			if ok {
 				tokens = append(tokens, token)
-			}
-
-			if len(warns) > 0 {
-				warnings = append(warnings, warns...)
 			}
 
 			// skipping the bytes processed by the action

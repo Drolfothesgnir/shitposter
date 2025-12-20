@@ -90,6 +90,7 @@ func init() {
 	symToAction[SymbolStrikethrough] = actStrikethrough
 	symToAction[SymbolUnderline] = actUnderline
 	symToAction[SymbolImageMarker] = actImageMarker
+	symToAction[SymbolLinkTextStart] = actLinkTextStart
 }
 
 // Tokenize processes the input string rune-wise and outputs a slice of Tokens and a slice of Warnings.

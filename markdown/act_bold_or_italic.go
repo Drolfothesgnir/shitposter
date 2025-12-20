@@ -3,6 +3,8 @@ package markdown
 // actBoldOrItalic parses SymbolItalic case and returns token with type based on if the SymbolItalic is single, in
 // which case the TypeItalic will be returned, or double, in which case TypeBold will be returned.
 //
+// Designed happy path first.
+//
 // WARNING: actBoldOrItalic assumes that SymbolItalic is 1-byte long.
 func actBoldOrItalic(input string, i int, _ *[]Warning) (token Token, stride int) {
 

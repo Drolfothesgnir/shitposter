@@ -50,7 +50,7 @@ func TestActStrikethrough_SingleTilde_BeforeNonTilde_IsTextWithWarning(t *testin
 	require.Len(t, warns, 1)
 	require.Equal(t, IssueUnexpectedSymbol, warns[0].Issue)
 	require.Equal(t, 1, warns[0].Index) // i + symLen
-	require.Equal(t, "a", warns[0].Near)
+	require.Equal(t, "~a", warns[0].Near)
 }
 
 func TestActStrikethrough_DoubleTilde_ProducesStrikethroughToken(t *testing.T) {
@@ -93,4 +93,27 @@ func TestActStrikethrough_MoreThanTwoTildes_ConsumesOnlyFirstTwo(t *testing.T) {
 	require.Equal(t, "~~", tok.Val)
 
 	require.Equal(t, 2, stride)
+}
+
+func TestActStrikethrough_NextSymbolMultiByte(t *testing.T) {
+	input := "~Ї"
+	cur, width := utf8.DecodeRuneInString(input)
+	require.Equal(t, '~', cur)
+	require.Equal(t, 1, width)
+
+	warns := make([]Warning, 0)
+
+	tok, stride := actStrikethrough(input, 0, &warns)
+
+	require.Len(t, warns, 1)
+	require.Equal(t, IssueUnexpectedSymbol, warns[0].Issue)
+	require.Equal(t, 1, warns[0].Index)
+	require.Equal(t, "~Ї", warns[0].Near)
+
+	require.Equal(t, TypeText, tok.Type)
+	require.Equal(t, 0, tok.Pos)
+	require.Equal(t, 1, tok.Len)
+	require.Equal(t, "~", tok.Val)
+
+	require.Equal(t, 1, stride) // consumed both '~'
 }

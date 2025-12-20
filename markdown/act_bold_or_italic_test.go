@@ -14,7 +14,7 @@ func TestActBoldOrItalic_LastRune_ReturnsItalic(t *testing.T) {
 	require.Equal(t, '*', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actBoldOrItalic(input, cur, width, 11)
+	tok, warns, stride, ok := actBoldOrItalic(input, 11)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -33,7 +33,7 @@ func TestActBoldOrItalic_SingleAsteriskBeforeNonAsterisk_ReturnsItalic(t *testin
 	require.Equal(t, '*', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actBoldOrItalic(substr, cur, width, 0)
+	tok, warns, stride, ok := actBoldOrItalic(substr, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -52,7 +52,7 @@ func TestActBoldOrItalic_DoubleAsterisk_ReturnsBold(t *testing.T) {
 	require.Equal(t, '*', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actBoldOrItalic(input, cur, width, 3)
+	tok, warns, stride, ok := actBoldOrItalic(input, 3)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -74,7 +74,7 @@ func TestActBoldOrItalic_TripleAsterisk_ConsumesTwoAsBold(t *testing.T) {
 	require.Equal(t, '*', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actBoldOrItalic(substr, cur, width, 0)
+	tok, warns, stride, ok := actBoldOrItalic(substr, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -94,7 +94,7 @@ func TestActBoldOrItalic_UTF8AfterAsterisk_DoesNotAffectWidth(t *testing.T) {
 	require.Equal(t, '*', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actBoldOrItalic(substr, cur, width, 0)
+	tok, warns, stride, ok := actBoldOrItalic(substr, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)

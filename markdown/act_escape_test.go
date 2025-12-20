@@ -14,7 +14,7 @@ func TestActEscape_LastRune_IsTextWithWarning(t *testing.T) {
 	require.Equal(t, '\\', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actEscape(input, cur, width, 10)
+	tok, warns, stride, ok := actEscape(input, 10)
 
 	require.True(t, ok)
 	require.Equal(t, TypeText, tok.Type)
@@ -35,7 +35,7 @@ func TestActEscape_BeforeSpecialSymbol_NoWarning(t *testing.T) {
 	require.Equal(t, '\\', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actEscape(substr, cur, width, 0)
+	tok, warns, stride, ok := actEscape(substr, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -54,7 +54,7 @@ func TestActEscape_BeforePlainText_WarnsRedundantEscape(t *testing.T) {
 	require.Equal(t, '\\', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actEscape(input, cur, width, 5)
+	tok, warns, stride, ok := actEscape(input, 5)
 
 	require.True(t, ok)
 
@@ -78,7 +78,7 @@ func TestActEscape_BeforeUTF8Rune_WarnsRedundantEscape(t *testing.T) {
 	require.Equal(t, '\\', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actEscape(substr, cur, width, 0)
+	tok, warns, stride, ok := actEscape(substr, 0)
 
 	require.True(t, ok)
 
@@ -104,7 +104,7 @@ func TestActEscape_BeforeEscape_NoWarning(t *testing.T) {
 	require.Equal(t, '\\', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actEscape(substr, cur, width, 0)
+	tok, warns, stride, ok := actEscape(substr, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)

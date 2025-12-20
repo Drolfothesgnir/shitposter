@@ -14,7 +14,7 @@ func TestActStrikethrough_LastRune_IsTextWithWarning(t *testing.T) {
 	require.Equal(t, '~', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actStrikethrough(input, cur, width, 7)
+	tok, warns, stride, ok := actStrikethrough(input, 7)
 
 	require.True(t, ok)
 	require.Equal(t, TypeText, tok.Type)
@@ -35,7 +35,7 @@ func TestActStrikethrough_SingleTilde_BeforeNonTilde_IsTextWithWarning(t *testin
 	require.Equal(t, '~', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actStrikethrough(substr, cur, width, 0)
+	tok, warns, stride, ok := actStrikethrough(substr, 0)
 
 	require.True(t, ok)
 	require.Equal(t, TypeText, tok.Type)
@@ -57,7 +57,7 @@ func TestActStrikethrough_DoubleTilde_ProducesStrikethroughToken(t *testing.T) {
 	require.Equal(t, '~', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actStrikethrough(input, cur, width, 3)
+	tok, warns, stride, ok := actStrikethrough(input, 3)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -78,7 +78,7 @@ func TestActStrikethrough_MoreThanTwoTildes_ConsumesOnlyFirstTwo(t *testing.T) {
 	require.Equal(t, '~', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actStrikethrough(substr, cur, width, 0)
+	tok, warns, stride, ok := actStrikethrough(substr, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)

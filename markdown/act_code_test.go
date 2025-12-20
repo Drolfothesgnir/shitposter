@@ -13,7 +13,7 @@ func TestActCode_LastRune_IsTextWithWarning(t *testing.T) {
 	require.Equal(t, '`', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actCode(substr, cur, width, 0)
+	tok, warns, stride, ok := actCode(substr, 0)
 
 	require.True(t, ok)
 	require.Equal(t, TypeText, tok.Type)
@@ -29,8 +29,7 @@ func TestActCode_LastRune_IsTextWithWarning(t *testing.T) {
 
 func TestActCode_UnclosedInline_ReturnsOpeningAsText(t *testing.T) {
 	substr := "`code" // no closing `
-	cur, width := utf8.DecodeRuneInString(substr)
-	tok, warns, stride, ok := actCode(substr, cur, width, 0)
+	tok, warns, stride, ok := actCode(substr, 0)
 
 	require.True(t, ok)
 	require.Equal(t, TypeText, tok.Type)
@@ -46,8 +45,7 @@ func TestActCode_UnclosedInline_ReturnsOpeningAsText(t *testing.T) {
 
 func TestActCode_UnclosedBlock_ReturnsWholeRestAsBlock(t *testing.T) {
 	substr := "```code\nmore" // no closing ```
-	cur, width := utf8.DecodeRuneInString(substr)
-	tok, warns, stride, ok := actCode(substr, cur, width, 0)
+	tok, warns, stride, ok := actCode(substr, 0)
 
 	require.True(t, ok)
 	require.Equal(t, TypeCodeBlock, tok.Type)
@@ -63,8 +61,7 @@ func TestActCode_UnclosedBlock_ReturnsWholeRestAsBlock(t *testing.T) {
 
 func TestActCode_ClosedInline_Simple(t *testing.T) {
 	substr := "`code`"
-	cur, width := utf8.DecodeRuneInString(substr)
-	tok, warns, stride, ok := actCode(substr, cur, width, 0)
+	tok, warns, stride, ok := actCode(substr, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -79,8 +76,7 @@ func TestActCode_ClosedInline_Simple(t *testing.T) {
 func TestActCode_Inline_NPlusOneRule_IgnoresShorterBacktickSequenceInside(t *testing.T) {
 	// opening is "``" so a single "`" inside must NOT close it; closing is "``"
 	substr := "``a`b``"
-	cur, width := utf8.DecodeRuneInString(substr)
-	tok, warns, stride, ok := actCode(substr, cur, width, 0)
+	tok, warns, stride, ok := actCode(substr, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -95,8 +91,7 @@ func TestActCode_Inline_NPlusOneRule_IgnoresShorterBacktickSequenceInside(t *tes
 func TestActCode_Block_NPlusOneRule_IgnoresShorterBacktickSequenceInside(t *testing.T) {
 	// opening is "```" so "``" inside must NOT close it; closing is "```"
 	substr := "```a``b```"
-	cur, width := utf8.DecodeRuneInString(substr)
-	tok, warns, stride, ok := actCode(substr, cur, width, 0)
+	tok, warns, stride, ok := actCode(substr, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -111,8 +106,7 @@ func TestActCode_Block_NPlusOneRule_IgnoresShorterBacktickSequenceInside(t *test
 func TestActCode_OnlyBackticks_UnclosedBlock(t *testing.T) {
 	// all symbols are backticks -> openTagLen becomes full length, contentStartIdx==n, no closing tag found
 	substr := "````"
-	cur, width := utf8.DecodeRuneInString(substr)
-	tok, warns, stride, ok := actCode(substr, cur, width, 0)
+	tok, warns, stride, ok := actCode(substr, 0)
 
 	require.True(t, ok)
 
@@ -137,7 +131,7 @@ func TestActCode_Block_AllowsLongerBacktickRunsInsideContent(t *testing.T) {
 	require.Equal(t, '`', cur)
 	require.Equal(t, 1, width)
 
-	tok, warns, stride, ok := actCode(substr, cur, width, 0)
+	tok, warns, stride, ok := actCode(substr, 0)
 
 	require.True(t, ok)
 	require.Empty(t, warns)
@@ -183,7 +177,7 @@ func TestActCode_Advanced(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			token, _, stride, ok := actCode(tt.input, '`', 1, 0)
+			token, _, stride, ok := actCode(tt.input, 0)
 
 			require.True(t, ok)
 			require.Equal(t, tt.expectedType, token.Type, "Type mismatch")

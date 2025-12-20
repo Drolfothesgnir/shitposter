@@ -7,20 +7,20 @@ import (
 
 // actEscape proccesses the next rune after the escape symbol '\' and returns either
 // text or escape sequence tokens.
-func actEscape(input string, cur rune, width, i int) (token Token, warnings []Warning, stride int, ok bool) {
+//
+// WARNING: actEscape assumes that SymbolEscape is 1-byte long ASCII character.
+func actEscape(input string, i int) (token Token, warnings []Warning, stride int, ok bool) {
 
 	// actEscape returns token anyway so ok = true
 	ok = true
 
-	isLastRune := i+width == len(input)
-
 	// if the escape symbol is the last in line
 	// return it as a plain text and add a Warning.
-	if isLastRune {
+	if i+1 == len(input) {
 		token = Token{
 			Type: TypeText,
 			Pos:  i,
-			Len:  width,
+			Len:  1,
 			Val:  input[i:],
 		}
 
@@ -28,32 +28,32 @@ func actEscape(input string, cur rune, width, i int) (token Token, warnings []Wa
 			Node:        NodeText,
 			Index:       i,
 			Issue:       IssueRedundantEscape,
-			Description: fmt.Sprintf("Redundant escape symbol %q at the end of the string.", cur),
+			Description: fmt.Sprintf("Redundant escape symbol %q at the end of the string.", input[i]),
 		}}
 
-		// signaling the main loop that we haven't processed any new runes
-		stride = width
+		// signaling the main loop that we have processed only 1 byte
+		stride = 1
 
 		return
 	}
 
 	// getting the next rune
-	next, w := utf8.DecodeRuneInString(input[i+width:])
+	next, w := utf8.DecodeRuneInString(input[i+1:])
 
-	sequence := input[i : i+width+w]
+	sequence := input[i : i+1+w]
 
-	nextIndex := width + i
+	nextIndex := i + 1
 
 	token = Token{
 		Type: TypeEscapeSequence,
 		Pos:  i,
-		Len:  width + w,
+		Len:  w + 1,
 		Val:  sequence,
 	}
 
-	// if the next rune is not a special symbol but is a plain text instead
+	// if the next byte is not a special symbol but is a plain text instead
 	// also add warning
-	if !isSpecialSymbol(next) {
+	if symToAction[input[i+1]] == nil {
 		warnings = []Warning{{
 			Node:        NodeText,
 			Index:       nextIndex,
@@ -64,7 +64,7 @@ func actEscape(input string, cur rune, width, i int) (token Token, warnings []Wa
 	}
 
 	// signalling the main loop that we've proccessed escape and the next rune
-	stride = width + w
+	stride = w + 1
 
 	return
 }

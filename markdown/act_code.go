@@ -9,33 +9,33 @@ import (
 //
 // Example: if your code block has double backticks inside, "“", then opening tags must contain triple backticks, "```",
 // to differentiate between the content and the tags.
-func actCode(input string, cur rune, width, i int) (token Token, warnings []Warning, stride int, ok bool) {
+//
+// WARNING: actCode assumes that SymbolCode is 1-byte long ASCII character.
+func actCode(input string, i int) (token Token, warnings []Warning, stride int, ok bool) {
 
 	// actCode returns token in any case so ok = true
 	ok = true
 
 	n := len(input)
 
-	isLastRune := i+width == n
-
 	// if the code symbol is the last in the string return it as a text token and add a Warning
-	if isLastRune {
+	if i+1 == n {
 		token = Token{
 			Type: TypeText,
 			Pos:  i,
-			Len:  width,
+			Len:  1,
 			Val:  input[i:],
 		}
 
 		warnings = []Warning{{
 			Node:        NodeText,
-			Index:       i + width,
+			Index:       i + 1,
 			Issue:       IssueUnexpectedEOL,
 			Description: "Unexpected end of the line: expected to get a character, got EOL instead.",
 		}}
 
 		// explicitely signal the main loop that we have proccessed only the original symbol.
-		stride = width
+		stride = 1
 
 		return
 	}
@@ -45,16 +45,14 @@ func actCode(input string, cur rune, width, i int) (token Token, warnings []Warn
 	// account for the inital character
 	openTagLen := 1
 
-	// index of the next rune in the substr
-	contentStartIdx := width
+	// index of the next byte in the input
+	contentStartIdx := i + 1
 
 	onlyCodeSymbols := true
 
-	for idx, r := range input[i+width:] {
-		if Symbol(r) != SymbolCode {
-			// idx is relative to the input[width:]
-			// so we need to ajust with width
-			contentStartIdx = i + width + idx
+	for idx := contentStartIdx; idx < n; idx++ {
+		if Symbol(input[idx]) != SymbolCode {
+			contentStartIdx = idx
 			onlyCodeSymbols = false
 			break
 		}
@@ -79,10 +77,10 @@ func actCode(input string, cur rune, width, i int) (token Token, warnings []Warn
 	// count of SymbolCode chars in the possible closing sequence
 	seqLen := 0
 
-	for idx, r := range input[contentStartIdx:] {
+	for idx := contentStartIdx; idx < n; idx++ {
 		// two cases are possible:
-		// 1) next rune is the SymbolCode
-		if Symbol(r) == SymbolCode {
+		// 1) next byte is the SymbolCode
+		if Symbol(input[idx]) == SymbolCode {
 			// then:
 			// if the sequence is not started, that is the symbol is the first in count,
 			// we reset the sequence
@@ -93,7 +91,7 @@ func actCode(input string, cur rune, width, i int) (token Token, warnings []Warn
 			// we also increment sequence length in any sub-case
 			seqLen++
 
-			// 2) next rune is plain text and we have the sequence started
+			// 2) next byte is plain text and we have the sequence started
 		} else if seqStartIdx > -1 {
 			// in this case we first check if the sequence has length equal to the starting tag length
 
@@ -132,6 +130,8 @@ func actCode(input string, cur rune, width, i int) (token Token, warnings []Warn
 
 			// signaling the main loop that we have processed only the opening tag
 			stride = contentStartIdx
+
+			// returning unclosed CodeBlock
 		} else {
 			token = Token{
 				Type: TypeCodeBlock,
@@ -167,7 +167,7 @@ func actCode(input string, cur rune, width, i int) (token Token, warnings []Warn
 	// assuming all code symbols are the same we will calculate the end of the closing tag by
 	// simply multiplying the width of the SymbolCode by the count of symbols in the tag +
 	// the starting index of the tag
-	codeEnd := contentStartIdx + seqStartIdx + width*seqLen
+	codeEnd := seqStartIdx + seqLen
 
 	token = Token{
 		Type: t,

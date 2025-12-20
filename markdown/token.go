@@ -64,6 +64,9 @@ const (
 	SymbolUnderline     Symbol = '_'
 	SymbolImageMarker   Symbol = '!'
 	SymbolLinkTextStart Symbol = '['
+	SymbolLinkTextEnd   Symbol = ']'
+	SymbolLinkURLStart  Symbol = '('
+	SymbolLinkURLEnd    Symbol = ')'
 )
 
 // action defines a function which accepts an input string, an index of a special character in it

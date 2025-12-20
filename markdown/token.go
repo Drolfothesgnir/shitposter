@@ -1,60 +1,6 @@
 package markdown
 
-import (
-	"strings"
-)
-
-// Type defines the kind of token, e.g. bold, italic, link start, etc.
-type Type int
-
-const (
-	TypeBold Type = iota
-	TypeItalic
-	TypeStrikethrough
-	TypeCode
-	TypeLinkTextStart
-	TypeLinkTextEnd
-	TypeLinkURLStart
-	TypeLinkURLEnd
-	TypeImageMarker
-	TypeText
-	TypeEscape
-)
-
-// Tag defines the string representation of markdown tags,
-// e.g. "**" for bold, "*" / "_" for italic.
-type Tag string
-
-const (
-	TagBold          Tag = "**"
-	TagStrikethrough Tag = "~~"
-	TagItalic        Tag = "*"
-	TagItalicAlt     Tag = "_"
-	TagCode          Tag = "`"
-	TagLinkTextStart Tag = "["
-	TagLinkTextEnd   Tag = "]"
-	TagLinkURLStart  Tag = "("
-	TagLinkURLEnd    Tag = ")"
-	TagImageMarker   Tag = "!"
-	TagEscape        Tag = "\\"
-)
-
-// tagToType maps tag strings to their corresponding token types.
-// This is useful for mapping characters to token types and avoiding
-// large if-else / switch chains.
-var tagToType = map[Tag]Type{
-	TagBold:          TypeBold,
-	TagStrikethrough: TypeStrikethrough,
-	TagItalic:        TypeItalic,
-	TagItalicAlt:     TypeItalic,
-	TagCode:          TypeCode,
-	TagLinkTextStart: TypeLinkTextStart,
-	TagLinkTextEnd:   TypeLinkTextEnd,
-	TagLinkURLStart:  TypeLinkURLStart,
-	TagLinkURLEnd:    TypeLinkURLEnd,
-	TagImageMarker:   TypeImageMarker,
-	TagEscape:        TypeEscape,
-}
+import "unicode/utf8"
 
 // Token represents a single markdown token.
 type Token struct {
@@ -75,140 +21,178 @@ type Token struct {
 	Val string
 }
 
-// multiCharTagList stores tags whose string representation is longer than 1 byte.
-// NOTE: This must be ordered by tag length in descending order if you ever add
-// overlapping tags (e.g. "***" and "**") to ensure correct matching.
-var multiCharTagList = []Tag{
-	TagBold,
-	TagStrikethrough,
-}
+// Type defines the kind of token, e.g. bold, italic, link start, etc.
+type Type int
 
-// extractMultiCharTag checks if the provided string starts with any multi-character tag.
-// It returns the matched tag, its string length, and ok = true if a match is found.
+const (
+	TypeBold Type = iota
+	TypeItalic
+	TypeStrikethrough
+	TypeCodeBlock
+	TypeCodeInline
+	TypeEscapeSequence
+	TypeUnderline
+	TypeLinkTextStart
+	TypeLinkTextEnd
+	TypeLinkURLStart
+	TypeLinkURLEnd
+	TypeImageMarker
+	TypeText
+)
+
+// Tag defines the string representation of markdown tags,
+// e.g. "**" for bold, "*" / "_" for italic.
+type Tag string
+
+const (
+	TagBold          Tag = "**"
+	TagStrikethrough Tag = "~~"
+	TagItalic        Tag = "*"
+	TagCode          Tag = "`"
+	TagLinkTextStart Tag = "["
+	TagLinkTextEnd   Tag = "]"
+	TagLinkURLStart  Tag = "("
+	TagLinkURLEnd    Tag = ")"
+	TagImageMarker   Tag = "!"
+	TagEscape        Tag = "\\"
+)
+
+type Symbol byte
+
+const (
+	SymbolStrikethrough Symbol = '~'
+	SymbolEscape        Symbol = '\\'
+	SymbolCode          Symbol = '`'
+	SymbolItalic        Symbol = '*'
+	SymbolUnderline     Symbol = '_'
+)
+
+// action defines a function which accepts an input string and an index of a special character in it
+// to process it and possibly return a token, a warning, a number of processed bytes, and a flag,
+// which is true if the token returned is not empty.
+type action func(input string, idx int) (token Token, warnings []Warning, stride int, ok bool)
+
+// symToAction maps special characters to their corresponding actions, also effectively serving as
+// a way to check if the byte is special
 //
-// Otherwise it returns zero values and ok = false.
-func extractMultiCharTag(substr string) (tag Tag, length int, ok bool) {
-	for _, t := range multiCharTagList {
-		strTag := string(t)
-		if strings.HasPrefix(substr, strTag) {
-			tag = t
-			length = len(strTag)
-			ok = true
-			break
+// WARNING: The tokenizer works with ONLY 1-byte ASCII characters as special symbols.
+// Using multi-byte special symbols will cause unexpected behaviour.
+var symToAction [256]action
+
+// init helps to assign actions to their corresponding special symbols.
+//
+// Actions cannot be assigned in the literal above because they are using symToAction
+// while being part of it, which causes a circular dependecy and makes compiler throw an
+// error.
+func init() {
+	symToAction[SymbolCode] = actCode
+	symToAction[SymbolEscape] = actEscape
+	symToAction[SymbolItalic] = actBoldOrItalic
+	symToAction[SymbolStrikethrough] = actStrikethrough
+	symToAction[SymbolUnderline] = actUnderline
+}
+
+// Tokenize processes the input string rune-wise and outputs a slice of Tokens and a slice of Warnings.
+func Tokenize(input string) (tokens []Token, warnings []Warning) {
+
+	// guessing the token number to minimize the number of the slice resizes
+	tokens = make([]Token, 0, len(input)/4)
+
+	n := len(input)
+
+	// starting index of the plain text sequence
+	textStart := 0
+
+	prevRune := '\000'
+
+	for i := 0; i < n; {
+
+		// current byte
+		b := input[i]
+
+		act := symToAction[b]
+
+		// isRealTag is true if the current symbol is either a SymbolUnderline considered
+		// special, not a plain text, or other special symbol
+		isRealTag := false
+
+		// because of intra-word rule for underscores, the occurance of the SymbolUnderline
+		// is a special case and is handled explicitely in the main loop
+		if act != nil {
+			if Symbol(b) == SymbolUnderline {
+				// applying action only if the Underline is a tag
+				isRealTag = isUnderlineTag(input, i, n, prevRune)
+			} else {
+				isRealTag = true
+			}
 		}
-	}
-	return
-}
 
-// charIsTag returns true if the character belongs to any known tag.
-func charIsTag(char string) bool {
-	_, found := tagToType[Tag(char)]
-	return found
-}
+		// if we've encountered real special symbol,
+		// we flushing the text and and performing action
+		if isRealTag {
 
-// tagStartRunes contains runes that can start a markdown tag (single- or multi-char).
-var tagStartRunes = map[rune]struct{}{
-	'*':  {},
-	'_':  {},
-	'~':  {},
-	'`':  {},
-	'[':  {},
-	']':  {},
-	'(':  {},
-	')':  {},
-	'!':  {},
-	'\\': {},
-}
+			// only if text is not empty
+			if textStart < i {
 
-func isTagStartRune(r rune) bool {
-	_, ok := tagStartRunes[r]
-	return ok
-}
+				text := Token{
+					Type: TypeText,
+					Pos:  textStart,
+					Len:  i - textStart,
+					Val:  input[textStart:i],
+				}
 
-// findNextTagStart finds the byte offset of the next tag-like character
-// inside substr. It returns the offset relative to substr, or -1 if no tag
-// characters are found.
-func findNextTagStart(substr string) int {
-	for i, r := range substr {
-		if isTagStartRune(r) {
-			return i
-		}
-	}
-	return -1
-}
+				tokens = append(tokens, text)
+			}
 
-// Tokenize transforms a raw markdown string into a slice of tokens.
-func Tokenize(s string) []*Token {
-	result := make([]*Token, 0)
+			token, warns, stride, ok := act(input, i)
 
-	// Current byte position in the input string.
-	var p int
+			if ok {
+				tokens = append(tokens, token)
+			}
 
-	n := len(s)
+			if len(warns) > 0 {
+				warnings = append(warnings, warns...)
+			}
 
-	for p < n {
-		substr := s[p:]
+			// skipping the bytes processed by the action
+			i += stride
 
-		// 1) Check for multi-character tags (e.g. "**", "~~").
-		if t, l, ok := extractMultiCharTag(substr); ok {
-			token := newTag(p, t)
-			result = append(result, token)
+			// resetting text start pointer
+			textStart = i
 
-			// Move past the multi-character tag.
-			p += l
+			// resetting the previous character
+			prevRune = '\000'
+
 			continue
 		}
 
-		// 2) Check for single-character tags.
-		c := string(s[p])
-		if ok := charIsTag(c); ok {
-			token := newTag(p, Tag(c))
-			result = append(result, token)
-			p++
-			continue
-		}
+		// else the symbol is a plain text
 
-		// 3) Otherwise, it's text. Consume as much text as possible
-		// until the next tag-like character.
-
-		var textEnd int
-		nextTagRelativeIndex := findNextTagStart(substr)
-
-		// If no tags are found, consume the rest of the string as text.
-		if nextTagRelativeIndex == -1 {
-			textEnd = n
+		// if the value of the first byte is less than 128, then it's a simple ASCII char and
+		// has width of 1 byte and the prev rune becomes the byte itself
+		if b < 128 {
+			i += 1
+			prevRune = rune(b)
 		} else {
-			textEnd = p + nextTagRelativeIndex
+			// else the char must be multi-byte symbol and we have to decode it
+			r, w := utf8.DecodeRuneInString(input[i:])
+
+			i += w
+			prevRune = r
+		}
+	}
+
+	// final text flushing
+	if textStart < n {
+		token := Token{
+			Type: TypeText,
+			Pos:  textStart,
+			Len:  n - textStart,
+			Val:  input[textStart:],
 		}
 
-		textValue := s[p:textEnd]
-		token := newText(p, textValue)
-		result = append(result, token)
-
-		p = textEnd
+		tokens = append(tokens, token)
 	}
 
-	return result
-}
-
-// newTag creates a new *Token for the given tag at byte position p.
-func newTag(p int, tag Tag) *Token {
-	t := tagToType[tag]
-	s := string(tag)
-	return &Token{
-		Type: t,
-		Pos:  p,
-		Len:  len(s),
-		Val:  s,
-	}
-}
-
-// newText creates a new *Token of type TypeText at byte position p.
-func newText(p int, val string) *Token {
-	return &Token{
-		Type: TypeText,
-		Pos:  p,
-		Len:  len(val),
-		Val:  val,
-	}
+	return
 }

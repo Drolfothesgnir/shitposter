@@ -1,4 +1,4 @@
-package markdown
+package markup
 
 // ImageNode represends a node with image URL and possible caption.
 //

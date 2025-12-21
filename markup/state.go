@@ -1,4 +1,4 @@
-package markdown
+package markup
 
 // state represents NaiveParser states during iterations of the main loop.
 type state struct {

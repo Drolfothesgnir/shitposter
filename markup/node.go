@@ -1,4 +1,4 @@
-package markdown
+package markup
 
 // NodeType identifies the kind of node in the inline AST,
 // e.g. "TEXT", "BOLD", "ITALIC", "LINK", etc.

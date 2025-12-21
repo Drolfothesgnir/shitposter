@@ -1,4 +1,4 @@
-package markdown
+package markup
 
 // FormatNode represents particular node for string formatting, e.g. type BOLD or ITALIC.
 //

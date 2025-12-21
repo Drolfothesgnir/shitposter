@@ -1,4 +1,4 @@
-package markdown
+package markup
 
 // Warning represents details about a non-critical issue that occurred
 // during parsing. Parsing still succeeded and produced an AST/output,

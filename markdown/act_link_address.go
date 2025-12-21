@@ -5,13 +5,10 @@ import (
 	"unicode/utf8"
 )
 
-// actURL checks if there is a symbol sequence forming an URL pattern after the SymbolLinkTextEnd.
+// actLinkAddress checks if there is a symbol sequence forming an URL pattern after the SymbolLinkTextEnd.
 // It is triggered by an occurance of the SymbolLinkTextEnd symbol.
 //
-// Example: in string "abc](https://google.com)", the part "](https://google.com)" will be considered
-// a valid URL pattern.
-//
-// Behaviour:
+// # Behaviour:
 //
 //  1. If the next symbol after the SymbolLinkTextEnd is not a SymbolLinkURLStart or is the EOL,
 //     then the inital SymbolLinkTextEnd is treated as plain text and the corresponding Token and a Warning will be
@@ -25,7 +22,12 @@ import (
 //     the opening tag and, therefore the URL is empty, token TypeURL will be returned with value
 //     of the special symbols sequence of SymbolLinkTextEnd, SymbolLinkURLStart and SymbolLinkURLEnd
 //     and the corresponding Warning will be added.
-func actURL(input string, i int, warns *[]Warning) (token Token, stride int) {
+//
+// # Example:
+//
+// in string "abc](https://google.com)", the part "](https://google.com)" will be considered
+// a valid URL pattern.
+func actLinkAddress(input string, i int, warns *[]Warning) (token Token, stride int) {
 	n := len(input)
 
 	// happy path first
@@ -53,13 +55,40 @@ func actURL(input string, i int, warns *[]Warning) (token Token, stride int) {
 		// starting from the SymbolLinkTextEnd up to and including SymbolLinkURLEnd, as a token TypeUrl
 		if contentLen > 0 {
 			token = Token{
-				Type: TypeURL,
+				Type: TypeLinkAddress,
 				Pos:  i,
 				Len:  closingTagIdx + 1 - i,
 				Val:  input[i : closingTagIdx+1],
 			}
 
 			stride = closingTagIdx + 1 - i
+			return
+		}
+
+		// if the closing tag is found but there are no characters between the URL open and closing tags,
+		// return token TypeURL with effectively empty URL and add a Warning of empty url
+		if contentLen == 0 {
+			token = Token{
+				Type: TypeLinkAddress,
+				Pos:  i,
+				// 1 byte for SymbolLinkTextEnd,
+				// 1 byte for SymbolLinkURLStart and
+				// 1 byte for SymbolLinkURLEnd
+				Len: 3,
+				Val: input[i : i+3],
+			}
+
+			desc := "Empty URL string at index " + strconv.Itoa(i+1) + "."
+
+			*warns = append(*warns, Warning{
+				Node:        NodeLink,
+				Index:       i + 1,
+				Near:        input[i : i+3],
+				Issue:       IssueMalformedLink,
+				Description: desc,
+			})
+
+			stride = 3
 			return
 		}
 
@@ -85,33 +114,6 @@ func actURL(input string, i int, warns *[]Warning) (token Token, stride int) {
 			})
 
 			stride = 2
-			return
-		}
-
-		// if the closing tag is found but there are no characters between the URL open and closing tags,
-		// return token TypeURL with effectively empty URL and add a Warning of empty url
-		if contentLen == 0 {
-			token = Token{
-				Type: TypeURL,
-				Pos:  i,
-				// 1 byte for SymbolLinkTextEnd,
-				// 1 byte for SymbolLinkURLStart and
-				// 1 byte for SymbolLinkURLEnd
-				Len: 3,
-				Val: input[i : i+3],
-			}
-
-			desc := "Empty URL string at index " + strconv.Itoa(i+1) + "."
-
-			*warns = append(*warns, Warning{
-				Node:        NodeLink,
-				Index:       i + 1,
-				Near:        input[i : i+3],
-				Issue:       IssueMalformedLink,
-				Description: desc,
-			})
-
-			stride = 3
 			return
 		}
 	}

@@ -33,7 +33,8 @@ const (
 	TypeEscapeSequence
 	TypeUnderline
 	TypeLinkTextStart
-	TypeURL
+	TypeLinkAddress
+	TypePlainURL
 	TypeImageTextStart
 	TypeText
 )
@@ -94,6 +95,7 @@ func init() {
 	symToAction[SymbolUnderline] = actUnderline
 	symToAction[SymbolImageMarker] = actImageMarker
 	symToAction[SymbolLinkTextStart] = actLinkTextStart
+	symToAction[SymbolLinkTextEnd] = actPlainURL
 }
 
 // Tokenize processes the input string rune-wise and outputs a slice of Tokens and a slice of Warnings.

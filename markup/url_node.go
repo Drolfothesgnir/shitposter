@@ -1,4 +1,4 @@
-package markdown
+package markup
 
 // URLNode represents Node used for storing HTTP links.
 //

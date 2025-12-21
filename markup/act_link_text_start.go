@@ -1,4 +1,4 @@
-package markdown
+package markup
 
 // actLinkTextStart returns token TypeLinkTextStart if the SymbolLinkTextStart is not the last in the string,
 // otherwise returns token TypeText and adds a Warning.

@@ -1,12 +1,14 @@
 package markup
 
-// actBoldOrItalic parses [SymbolItalic] case and returns token with type based on if the [SymbolItalic] is single, in
-// which case the [TypeItalic] will be returned, or double, in which case [TypeBold] will be returned.
+// actBoldOrItalic returns token with type either [TypeItalic] or [TypeBold].
+// It's triggered by a [SymbolItalic].
 //
-// Designed happy path first.
+// Behaviour:
 //
-// WARNING: actBoldOrItalic assumes that [SymbolItalic] is 1-byte long.
-// TODO: add behaviour docs for every action.
+// If the [SymbolItalic] is the last char in the string, or the next symbol is not a [SymbolItalic],
+// actBoldOrItalic will return token [TypeItalic].
+//
+// If the next symbol after the trigger symbol is also a [SymbolItalic], actBoldOrItalic will return token [TypeBold].
 func actBoldOrItalic(input string, i int, _ *[]Warning) (token Token, stride int) {
 
 	// if the rune is last, or the next rune is not [SymbolItalic], the token is considered [TypeItalic]

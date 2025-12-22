@@ -11,4 +11,5 @@ const (
 	IssueMalformedLink
 	IssueUnexpectedEOL
 	IssueUnexpectedSymbol
+	IssueMalformedCodeSequence
 )

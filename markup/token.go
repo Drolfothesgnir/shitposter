@@ -95,9 +95,10 @@ func init() {
 	symToAction[SymbolUnderline] = actUnderline
 	symToAction[SymbolImageMarker] = actImageMarker
 	symToAction[SymbolLinkTextStart] = actLinkTextStart
-	symToAction[SymbolLinkTextEnd] = actPlainURL
+	symToAction[SymbolLinkTextEnd] = actLinkAddress
 }
 
+// TODO: account for [utf8.RuneError]
 // Tokenize processes the input string rune-wise and outputs a slice of Tokens and a slice of Warnings.
 func Tokenize(input string) (tokens []Token, warnings []Warning) {
 
@@ -161,6 +162,7 @@ func Tokenize(input string) (tokens []Token, warnings []Warning) {
 			textStart = i
 
 			// resetting the previous character
+			// FIXME: don't reset to the null, but to the previous plain text
 			prevRune = '\000'
 
 			continue

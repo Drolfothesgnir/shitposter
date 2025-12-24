@@ -115,6 +115,8 @@ import (
 	"unicode/utf8"
 )
 
+const NullByte byte = '\000'
+
 type TokenType int
 
 const (
@@ -126,7 +128,11 @@ const (
 	TokenEscapeSequence
 )
 
-const MaxTagLength = 4
+const (
+	MaxTagLength  int   = 4
+	MaxGreedLevel uint8 = 2
+	MaxRule       uint  = 2
+)
 
 // Token is the result of the first stage processing of a part of the input string.
 // It contains metadata and value of the processed sequence of bytes.
@@ -208,6 +214,66 @@ type Tag struct {
 	GreedyChild byte
 }
 
+// TagDecorator is a function which sets an optional field of the Tag.
+type TagDecorator func(t *Tag) error
+
+// TODO: check for ID uniqueness
+func NewTag(name string, seq []byte, opts ...TagDecorator) (Tag, error) {
+	t := Tag{}
+
+	if name == "" {
+		// I'll do proper errors later
+		return t, fmt.Errorf("invalid tag name: %q", name)
+	}
+
+	n := len(seq)
+
+	if n == 0 {
+		return t, errors.New("tag's byte sequence is empty")
+	}
+
+	if n > MaxTagLength {
+		return t, fmt.Errorf("expected the tag's byte sequence to be at most %d bytes long, got %d bytes", MaxTagLength, n)
+	}
+
+	for i := range n {
+		if !isASCIIPrintable(seq[i]) {
+			return t, fmt.Errorf("unprintable character in the tag's byte sequence: %q at index %d", seq[i], i)
+		}
+	}
+
+	t.ID = seq[0]
+	t.Name = name
+	t.Seq = append([]byte(nil), seq...)
+
+	for _, op := range opts {
+		err := op(&t)
+		if err != nil {
+			return Tag{}, err
+		}
+	}
+
+	return t, nil
+}
+
+func WithGreed(level uint8) TagDecorator {
+	return func(t *Tag) error {
+		if level > MaxGreedLevel {
+			return fmt.Errorf("tag's maximum Greed level is %d, got %d", MaxGreedLevel, level)
+		}
+
+		t.Greed = level
+		return nil
+	}
+}
+
+// other decorators
+
+func isASCIIPrintable(b byte) bool {
+	// Printable ASCII characters are in the range 32 (space) to 126 (~)
+	return b >= 32 && b <= 126
+}
+
 // Action is a function triggered by a special symbol defined in the [Dictionary].
 // It processes the input string strating from the index i and returns a [Token] and,
 // possibly, adds a [Warning].
@@ -217,6 +283,16 @@ type Action func(input string, i int, warns *[]Warning) (token Token, stride int
 type Dictionary struct {
 	Actions [256]Action
 	Tags    [256]Tag
+}
+
+func (d *Dictionary) Tag(id byte) (Tag, bool) {
+	t := d.Tags[id]
+	return t, t.ID != NullByte
+}
+
+func (d *Dictionary) Action(id byte) (Action, bool) {
+	a := d.Actions[id]
+	return a, a != nil
 }
 
 // Use it like d.AddOpenTag("BOLD", '$', '$')

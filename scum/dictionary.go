@@ -57,7 +57,7 @@
 //     5.1 0 Rule - No Rule. Default Rule value. Does nothing.
 //
 //     5.2 1 - Intra-word Rule. Only available for the single-byte "NON-GREEDY" tags. If char, which normally defines a 1-byte long Tag, has alphanumerics, punctuation
-//     symbols, OR THE SAME TAG SYMBOL, on BOTH sides, the it will be considered a plain text and not a Tag trigger.
+//     symbols, OR THE SAME TAG SYMBOL, on BOTH sides, then it will be considered a plain text and not a Tag trigger.
 //
 //     5.2.1.	Example 1: '_' defines a Tag with name "UNDERLINE" and has
 //     Rule 1 on it. In string "image_from_.png" both '_' will be considered a plain text.
@@ -93,19 +93,26 @@
 //     Then you create a single-byte Tag with ID ']', name "LINK_TEXT_END" and OpenID of some reserved or non-printable ASCII character, whatever except '\000'.
 //     Now "LINK_TEXT_END" is compatible with both Tags defined before and can close any of them.
 //
-//  7. GreedyChild. You can set your Tag's field GreedyChild to the ID of some greedy Tag. When the Parser encounters the properly closed Tag with set
-//     GreedyChild field, if the next Tag is a greedy tag with ID equal to the GreedyChild field of the first Tag, the value of latter will be considered
-//     the property of the first tag and will be assigned to the Node of the first Tag.
+// Attributes.
 //
-//     7.1 Example: Imagine that you've defined the non-greedy single-byte Tag with ID '[', name "LINK_TEXT_START", ClosID ']', and GreedyChild
-//     set to '('. You've also defined the closing single Tag for the first one: ID ']', name "LINK_TEXT_END", OpenID '['. Lastly, you've defined
-//     the single-byte greedy Tag with ID '(' and name "LINK_URL_START". You have the input string "[Hello World!](https://hello-world.com)". The Parser
-//     will first create the Node for the link text with inner text "Hello World!". Then it will encounter the "(https://hello-world.com)" part, which
-//     it will interpret as a greed-consumed value of the "LINK_TEXT_START" and assign it to the created Node.
+//   - Each Tag can have valued or flag attributes. You can define a Tag's attribute by creating other special Tags. To do this you need to define a
+//     single-byte symbol which marks the start of the Attribute. You also need to define the opening and closing tags for the Attribute's body.
+//     The valued Attribute definition - <marker>(name)<body start>(content)<body end>.
+//
+//     The flag Attribute definition - <marker><body start>(name)<body end>.
+//
+//     Example: tou have a Tag with name "TAG", ID '[' and a closing Tag for it with ID ']'. You define the Attribute marker as '!' and '{' and '}' as
+//     the body opening and closing tags respectively. You use it by writing "[hello world]!attr1{foo-bar-001}!attr2{goodbye world}". You cam also create flag
+//     Attributes like this: [...]!{flagAttr1}!{flagAttr2}. You can combine valued and flag attributes. All attributes, that are following immediately after a Tag,
+//     will be considered this Tag's attributes.
+//
+// Escape symbol.
+//
+//   - You can define an Escape symbol, which, when encountered during the tokenization, will make the Tokenizer treat next character, whether it's special or
+//     a simple text character, as a plain text.
 //
 // TODO: add preallocated tag strings inside the dictionary
 // TODO: add docs for cases when closing tag does not match the opening and is returned as plain text along with a Warning
-// TODO: add docs for escaping
 package scum
 
 import (
@@ -115,70 +122,37 @@ import (
 	"unicode/utf8"
 )
 
-const NullByte byte = '\000'
+const NullByte byte = 0
 
 type TokenType int
 
 const (
 	TokenText TokenType = iota
-	TokenOpeningTag
-	TokenClosingTag
-	TokenUniversalTag
-	TokenGreedyTag
+	TokenTag
 	TokenEscapeSequence
+)
+
+type Rule uint8
+
+const (
+	RuleNA Rule = iota
+	RuleInfraWord
+	RuleTagVsContent
+)
+
+type Greed uint8
+
+const (
+	NonGreedy Greed = iota
+	Greedy
+	Grasping
 )
 
 const (
 	MaxTagLength  int   = 4
-	MaxGreedLevel uint8 = 2
-	MaxRule       uint  = 2
+	MaxGreedLevel Greed = Grasping
+	MaxRule       Rule  = RuleTagVsContent
 )
-
-// Token is the result of the first stage processing of a part of the input string.
-// It contains metadata and value of the processed sequence of bytes.
-type Token struct {
-	// Name is a User-defined human-readable ID of the tag.
-	Name string
-
-	// Type defines the type of the Token, e.g. opening, closing, or universal tag, or an escape sequence.
-	Type TokenType
-
-	// TagID a unique leading byte of the tag byte sequence, defined by the User.
-	TagID byte
-
-	// OpeningTagID is useful when the token is of type [TokenClosingTag], to help the Parser recognize the next steps,
-	// and to check if the open/close behaviour is consistent.
-	//
-	// Example: current top opening tag in the Parser's Internal State Stack is with ID 0x3c ('<' sign) and
-	// it's corresponding closing tag has ID 0x3e ('>' sign), but the Parser should not know it. Imagine the next token in
-	// the stream has OpeningTagID 0x5b ('[' sign). The Parser will see the inconsistency between PISS's top tag ID and the
-	// next token opening tag ID and will act accordingly.
-	OpeningTagID byte
-
-	// Pos defines the starting byte position of the tag's sequence in the input string.
-	Pos int
-
-	// Width defines count of bytes in the tag's sequence.
-	//
-	// Example: Imagine, you have defined a universal tag with name 'BOLD' and a byte sequence of "$$". The sequence has
-	// 2 bytes in it, 1 per each '$', so the corresponding token will have width of 2.
-	Width int
-
-	// Raw defines the substring associated with the tag's value including both tag strings and the inner plain text.
-	//
-	// Example: Imagine, you have defined a greedy tag with name 'URL' and a pattern like this: "(...)", where
-	// '(' is the opening tag and the ')' is the closing tag. When interpreting string "(https://some-address.com)",
-	// the Raw field will consist of the entire matched string, that is the "(https://some-address.com)".
-	// For Text tokens Raw and Inner fields are the same.
-	Raw string
-
-	// Inner defines the plain text, in case of token with type [TokenText], or the matched string, stripped of tags.
-	//
-	// Example: Imagine, you have defined a greedy tag with name 'URL' and a pattern like this: "(...)", where
-	// '(' is the opening tag and the ')' is the closing tag. When interpreting string "(https://some-address.com)",
-	// the Inner field will consist of only the "https://some-address.com".
-	Inner string
-}
 
 // Issue defines types of problems we might encounter during the tokenizing or the parsing processes.
 type Issue int
@@ -187,32 +161,10 @@ const (
 	IssueUnexpectedEOL Issue = iota
 	IssueUnexpectedSymbol
 	IssueMisplacedClosingTag
+	IssueInvalidGreedLevel
+	IssueInvalidRule
+	IssueAmbiguousTagType
 )
-
-// Warning describes the problem occured during the tokenizing or the parsing processes.
-type Warning struct {
-
-	// Issue defines the type of the problem.
-	Issue Issue
-
-	// Pos defines the byte position in the input string at which the problem occured.
-	Pos int
-
-	// Description is a human-readable story of what went wrong.
-	Description string
-}
-
-// Tag contains all the info about a particular tag, relevant for the tokenizing and parsing.
-type Tag struct {
-	ID          byte
-	Name        string
-	Greed       uint8
-	Seq         []byte
-	Rule        uint8
-	OpenID      byte
-	ClosID      byte
-	GreedyChild byte
-}
 
 // TagDecorator is a function which sets an optional field of the Tag.
 type TagDecorator func(t *Tag) error
@@ -256,7 +208,7 @@ func NewTag(name string, seq []byte, opts ...TagDecorator) (Tag, error) {
 	return t, nil
 }
 
-func WithGreed(level uint8) TagDecorator {
+func WithGreed(level Greed) TagDecorator {
 	return func(t *Tag) error {
 		if level > MaxGreedLevel {
 			return fmt.Errorf("tag's maximum Greed level is %d, got %d", MaxGreedLevel, level)
@@ -274,11 +226,6 @@ func isASCIIPrintable(b byte) bool {
 	return b >= 32 && b <= 126
 }
 
-// Action is a function triggered by a special symbol defined in the [Dictionary].
-// It processes the input string strating from the index i and returns a [Token] and,
-// possibly, adds a [Warning].
-type Action func(input string, i int, warns *[]Warning) (token Token, stride int)
-
 // Dictionary manages creation and deletion of Tags and their corresponding Actions.
 type Dictionary struct {
 	Actions [256]Action
@@ -293,77 +240,6 @@ func (d *Dictionary) Tag(id byte) (Tag, bool) {
 func (d *Dictionary) Action(id byte) (Action, bool) {
 	a := d.Actions[id]
 	return a, a != nil
-}
-
-// Use it like d.AddOpenTag("BOLD", '$', '$')
-func (d *Dictionary) AddOpeningTag(name string, openSeq ...byte) error {
-	l := len(openSeq)
-	if l > MaxTagLength {
-		return fmt.Errorf("Opening tag sequence is too long: expected at most %d symbols, got %d.", MaxTagLength, l)
-	}
-
-	if l == 0 {
-		return errors.New("No bytes provided for the opening tag sequence.")
-	}
-
-	firstByte := openSeq[0]
-
-	if d.Actions[firstByte] != nil {
-		return fmt.Errorf("Action with trigger symbol %q already exist. Remove it manually before setting a new one.", firstByte)
-	}
-
-	if l > 1 {
-		d.Actions[firstByte] = createOpenTagActionMultiple(name, openSeq)
-	} else {
-		d.Actions[firstByte] = createOpenTagActionSingle(name, firstByte)
-	}
-
-	return nil
-}
-
-// createOpenTagActionSingle creates an [Action] for an interpretation of a single, 1-byte long opening tag.
-// It returns a [Token] with type [TokenOpeningTag], if the trigger symbol is not the
-// last in the input string, and a token with type [TokenText], along with adding a [Warning] otherwise.
-func createOpenTagActionSingle(name string, char byte) Action {
-	return func(input string, i int, warns *[]Warning) (token Token, stride int) {
-		// string representation of the opening tag
-		tag := input[i : i+1]
-
-		// default happy params
-		t := TokenOpeningTag
-		inner := ""
-
-		// if the trigger symbol is the last in the input string, return the [TokenText] token and add a
-		// [Warning]
-		if i+1 == len(input) {
-			t = TokenText
-			inner = tag
-
-			desc := "Unexpected end of the line after the opening tag '" +
-				tag + "', while interpreting the opening tag with name '" + name + "'."
-
-			*warns = append(*warns, Warning{
-				Issue:       IssueUnexpectedEOL,
-				Pos:         i + 1,
-				Description: desc,
-			})
-		}
-
-		// happy case
-		token = Token{
-			Name:  name,
-			Type:  t,
-			TagID: char,
-			Pos:   i,
-			Width: 1,
-			Raw:   tag,
-			Inner: inner,
-		}
-
-		// in any case we process exactly 1 byte
-		stride = 1
-		return
-	}
 }
 
 // checkByteDifference compares substr against the beginning of seq.
@@ -425,7 +301,6 @@ func checkMultiByteTagConsistency(name string, seq []byte, tokenType TokenType, 
 		matchedSeq := input[i:absDiffIndex]
 
 		token = Token{
-			Name:  name,
 			Type:  TokenText,
 			TagID: seq[0],
 			Pos:   i,
@@ -445,17 +320,6 @@ func checkMultiByteTagConsistency(name string, seq []byte, tokenType TokenType, 
 		}
 
 		tagDesc := " "
-
-		switch tokenType {
-		case TokenOpeningTag:
-			tagDesc = " opening "
-		case TokenClosingTag:
-			tagDesc = " closing "
-		case TokenUniversalTag:
-			tagDesc = " universal "
-		case TokenGreedyTag:
-			tagDesc = " greedy "
-		}
 
 		desc := "Unexpected symbol at index " +
 			strconv.Itoa(absDiffIndex) +
@@ -485,7 +349,6 @@ func checkMultiByteTagConsistency(name string, seq []byte, tokenType TokenType, 
 		matchedSeqLen := len(matchedSeq)
 
 		token = Token{
-			Name:  name,
 			Type:  TokenText,
 			TagID: seq[0],
 			Pos:   i,
@@ -512,159 +375,4 @@ func checkMultiByteTagConsistency(name string, seq []byte, tokenType TokenType, 
 	}
 
 	return
-}
-
-// createOpenTagMultiple creates an Action for a new opening tag with the provided name, which starts with sequence of bytes - seq.
-func createOpenTagActionMultiple(name string, seq []byte) Action {
-	return func(input string, i int, warns *[]Warning) (token Token, stride int) {
-		// 1. Checking the opening tag consistency
-		t, s, tagInconsistent := checkMultiByteTagConsistency(name, seq, TokenOpeningTag, input, i, warns)
-
-		if tagInconsistent {
-			token = t
-			stride = s
-			return
-		}
-
-		// 2. Happy case
-		seqLen := len(seq)
-
-		token = Token{
-			Name:  name,
-			Type:  TokenOpeningTag,
-			TagID: seq[0],
-			Pos:   i,
-			Width: seqLen,
-			Raw:   input[i : i+seqLen],
-			// Leaving Inner empty since it's not a tag with text inside
-		}
-
-		// we've processed entire opening tag sequence
-		stride = seqLen
-
-		return
-	}
-}
-
-func (d *Dictionary) AddClosingTag(name string, openTagID byte, closeSeq ...byte) error {
-	l := len(closeSeq)
-	if l > MaxTagLength {
-		return fmt.Errorf("Closing tag sequence is too long: expected at most %d symbols, got %d.", MaxTagLength, l)
-	}
-
-	if l == 0 {
-		return errors.New("No bytes provided for the closing tag sequence.")
-	}
-
-	firstByte := closeSeq[0]
-
-	if d.Actions[firstByte] != nil {
-		return fmt.Errorf("Action with trigger symbol %q already exist. Remove it manually before setting a new one.", firstByte)
-	}
-
-	if l > 1 {
-		d.Actions[firstByte] = createCloseTagActionMultiple(name, openTagID, closeSeq)
-	} else {
-		d.Actions[firstByte] = createCloseTagActionSingle(name, openTagID, firstByte)
-	}
-
-	return nil
-}
-
-// createCloseTagActionSingle creates an [Action] for an interpretation of a single, 1-byte long closing tag.
-// It returns a [Token] with type [TokenClosingTag], if the trigger symbol is not the
-// first in the input string, and a token with type [TokenText], along with adding a [Warning] otherwise.
-func createCloseTagActionSingle(name string, openTagID byte, char byte) Action {
-	return func(input string, i int, warns *[]Warning) (token Token, stride int) {
-		// string representation of the tag
-		tag := input[i : i+1]
-
-		// default happy params
-		t := TokenClosingTag
-		inner := ""
-
-		// if the trigger symbol is at the very beginning of the input, return it as token with type [TokenText]
-		// and add a Warning
-		if i == 0 {
-			t = TokenText
-			inner = tag
-
-			desc := "Unescaped closing tag with name '" + name + "' found at the very beginning of the input."
-
-			*warns = append(*warns, Warning{
-				Issue:       IssueMisplacedClosingTag,
-				Pos:         i,
-				Description: desc,
-			})
-		}
-
-		// otherwise return proper closing tag token
-		token = Token{
-			Name:         name,
-			Type:         t,
-			TagID:        char,
-			OpeningTagID: openTagID,
-			Pos:          i,
-			Width:        1,
-			Raw:          tag,
-			Inner:        inner,
-		}
-
-		// in any case we process exactly 1 byte
-		stride = 1
-		return
-	}
-}
-
-// createCloseTagActionMultiple creates new closing tag with the provided name and opening tag ID as openTagID,
-// which starts with sequence of bytes - seq.
-func createCloseTagActionMultiple(name string, openTagID byte, seq []byte) Action {
-	return func(input string, i int, warns *[]Warning) (token Token, stride int) {
-		// 1. Checking the closing tag consistency
-		t, s, tagInconsistent := checkMultiByteTagConsistency(name, seq, TokenClosingTag, input, i, warns)
-
-		if tagInconsistent {
-			token = t
-			stride = s
-			return
-		}
-
-		tokenType := TokenClosingTag
-		inner := ""
-
-		seqLen := len(seq)
-		tag := input[i : i+seqLen]
-
-		// 2. Checking if the closing tag is the very beginning of the string
-
-		// if the string starts with the closing tag sequence return token with type [TokenText] and add a [Warning]
-		if i == 0 {
-			tokenType = TokenText
-			inner = tag
-
-			desc := "Closing tag with name '" + name + "' found at the very beginning of the input."
-
-			*warns = append(*warns, Warning{
-				Issue:       IssueMisplacedClosingTag,
-				Pos:         i,
-				Description: desc,
-			})
-		}
-
-		// 3. Happy case
-		token = Token{
-			Name:         name,
-			Type:         tokenType,
-			TagID:        seq[0],
-			OpeningTagID: openTagID,
-			Pos:          i,
-			Width:        seqLen,
-			Raw:          tag,
-			Inner:        inner,
-		}
-
-		// we've processed only the closing byte sequence at the beginning of the string
-		stride = seqLen
-		return
-	}
 }

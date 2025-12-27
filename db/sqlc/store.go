@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// TODO: refactor folder structure
 type Store interface {
 	// Shutdown shuts down the db connection pool gracefully.
 	Shutdown()

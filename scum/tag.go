@@ -57,6 +57,7 @@ type Tag struct {
 	CloseID byte
 }
 
+// IsUniversal returns true when the Tag's signature is the same as it's closing [Tag].
 func (t *Tag) IsUniversal() bool {
 	return t.CloseID == t.ID && t.OpenID == t.ID
 }

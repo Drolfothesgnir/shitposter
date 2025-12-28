@@ -79,19 +79,13 @@
 //     "here is some code: ```const rawStr = `hello world`;```". Now the "CODE" tag will capture entire "```const rawStr = `hello world`;```" part.
 //
 //  6. Opening/Closing tag IDs. Each Tag has OpenID and ClosID fields. You have to set at least one of them to ensure the Parser will process them correctly. To make
-//     a Tag an opening tag, you have to set its ClosID value to something other than '\000', to inform the Parser that this tag has to be closed with some other Tag.
-//     The same with the closing tags: just set the OpenID value to something. To make a Tag universal you have to set both values to the Tag's ID. You can also
-//     create one-to-many relationships between tags, by setting Open/ClosID to some conventional or reserved byte, like a control character from ASCII.
+//     a Tag an opening tag, you have to set its ClosID value to something other than 0, to inform the Parser that this tag has to be closed with some other Tag.
+//     The same with the closing tags: just set the OpenID value to something. To make a Tag universal you have to set both values to the Tag's ID.
 //
-//     6.1. Example 1 - The Tag expected to be closed with specific other Tag: Imagine you've defined the non-greedy single-byte Tag with name "LINK_TEXT_START",
+//     6.1. Example - The Tag expected to be closed with specific other Tag: Imagine you've defined the non-greedy single-byte Tag with name "LINK_TEXT_START",
 //     ID '[' and ClosID ']'. Then you've defined the non-greedy Tag with name "LINK_TEXT_END", ID ']' and OpenID '['. During the parsing of the tokens, the Parser,
 //     when first encounters the "LINK_TEXT_START", saves its ID to the stack. While the '[' is at the top of the stack and the Parser encounters a closing Tag
 //     it checks if the encountered Tag ID is equal to the "LINK_TEXT_START's" ClosID. What will happen next is a good question.
-//
-//     6.2 Example 2 - one-to-many Tag relationships: Imagine you want to have link URLs and image URLs in your mark up. You create a single-byte Tag with
-//     ID '[', name "LINK_URL_START" and ClosID ']'. Then you create a double-byte Tag with sequence "![", ID '!', name "IMAGE_URL_START" and ClosID again ']'.
-//     Then you create a single-byte Tag with ID ']', name "LINK_TEXT_END" and OpenID of some reserved or non-printable ASCII character, whatever except '\000'.
-//     Now "LINK_TEXT_END" is compatible with both Tags defined before and can close any of them.
 //
 // Attributes.
 //
@@ -116,172 +110,28 @@
 package scum
 
 import (
-	"errors"
-	"fmt"
 	"strconv"
-	"unicode/utf8"
 )
-
-const NullByte byte = 0
-
-type TokenType int
-
-const (
-	TokenText TokenType = iota
-	TokenTag
-	TokenEscapeSequence
-)
-
-type Rule uint8
-
-const (
-	RuleNA Rule = iota
-	RuleInfraWord
-	RuleTagVsContent
-)
-
-type Greed uint8
-
-const (
-	NonGreedy Greed = iota
-	Greedy
-	Grasping
-)
-
-const (
-	MaxTagLength  int   = 4
-	MaxGreedLevel Greed = Grasping
-	MaxRule       Rule  = RuleTagVsContent
-)
-
-// Issue defines types of problems we might encounter during the tokenizing or the parsing processes.
-type Issue int
-
-const (
-	IssueUnexpectedEOL Issue = iota
-	IssueUnexpectedSymbol
-	IssueMisplacedClosingTag
-	IssueInvalidGreedLevel
-	IssueInvalidRule
-	IssueAmbiguousTagType
-)
-
-// TagDecorator is a function which sets an optional field of the Tag.
-type TagDecorator func(t *Tag) error
-
-// TODO: check for ID uniqueness
-func NewTag(name string, seq []byte, opts ...TagDecorator) (Tag, error) {
-	t := Tag{}
-
-	if name == "" {
-		// I'll do proper errors later
-		return t, fmt.Errorf("invalid tag name: %q", name)
-	}
-
-	n := len(seq)
-
-	if n == 0 {
-		return t, errors.New("tag's byte sequence is empty")
-	}
-
-	if n > MaxTagLength {
-		return t, fmt.Errorf("expected the tag's byte sequence to be at most %d bytes long, got %d bytes", MaxTagLength, n)
-	}
-
-	for i := range n {
-		if !isASCIIPrintable(seq[i]) {
-			return t, fmt.Errorf("unprintable character in the tag's byte sequence: %q at index %d", seq[i], i)
-		}
-	}
-
-	t.ID = seq[0]
-	t.Name = name
-	t.Seq = append([]byte(nil), seq...)
-
-	for _, op := range opts {
-		err := op(&t)
-		if err != nil {
-			return Tag{}, err
-		}
-	}
-
-	return t, nil
-}
-
-func WithGreed(level Greed) TagDecorator {
-	return func(t *Tag) error {
-		if level > MaxGreedLevel {
-			return fmt.Errorf("tag's maximum Greed level is %d, got %d", MaxGreedLevel, level)
-		}
-
-		t.Greed = level
-		return nil
-	}
-}
-
-// other decorators
-
-func isASCIIPrintable(b byte) bool {
-	// Printable ASCII characters are in the range 32 (space) to 126 (~)
-	return b >= 32 && b <= 126
-}
 
 // Dictionary manages creation and deletion of Tags and their corresponding Actions.
 type Dictionary struct {
-	Actions [256]Action
-	Tags    [256]Tag
+	// actions maps particular Tag's ID to its corresponding [Action].
+	actions [256]Action
+
+	// tags maps particular Tag's ID to its Tag's info.
+	tags [256]Tag
 }
 
+// Tag allows to get particular Tag's info by providing its ID.
 func (d *Dictionary) Tag(id byte) (Tag, bool) {
-	t := d.Tags[id]
-	return t, t.ID != NullByte
+	t := d.tags[id]
+	return t, t.ID != 0
 }
 
+// Action allows to get particular Tag's [Action] by providing the Tag's ID.
 func (d *Dictionary) Action(id byte) (Action, bool) {
-	a := d.Actions[id]
+	a := d.actions[id]
 	return a, a != nil
-}
-
-// checkByteDifference compares substr against the beginning of seq.
-// It returns the index of the first differing byte, or -1 if no difference is found.
-// substrShorter is true if substr is a prefix of seq but is shorter in length.
-func checkByteDifference(substr string, seq []byte) (diffIndex int, substrShorter bool) {
-
-	lenSubstr := len(substr)
-	lenSeq := len(seq)
-
-	diffIndex = -1
-	substrShorter = lenSubstr < lenSeq
-
-	minLen := min(lenSubstr, lenSeq)
-
-	for i := range minLen {
-		if substr[i] != seq[i] {
-			diffIndex = i
-			return
-		}
-	}
-
-	return
-}
-
-// extractNextRune returns the first value (either simple ASCII or an UTF-8 code point) of the non-empty substr.
-// It also returns the byte count of the found char and a bool flag, which is false in case the char is
-// not a valid UTF-8 code point, but an [utf8.RuneError].
-//
-// WARNING: [utf8.DecodeRuneInString] returns width 0 if the decoded char is erroneous.
-func extractNextRune(substr string) (next rune, width int, ok bool) {
-	b := substr[0]
-
-	// check if the first byte is simple ASCII
-	if b < 128 {
-		return rune(b), 1, true
-	}
-
-	// else we must decode the code point
-	next, width = utf8.DecodeRuneInString(substr)
-	ok = next != utf8.RuneError
-	return
 }
 
 func checkMultiByteTagConsistency(name string, seq []byte, tokenType TokenType, input string, i int, warns *[]Warning) (token Token, stride int, ok bool) {

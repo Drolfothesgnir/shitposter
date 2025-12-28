@@ -54,39 +54,6 @@ func extractNextRune(substr string) (next rune, width int, ok bool) {
 	return
 }
 
-// checkTagBytes checks the provided [Tag.Seq] for being valid string representation
-// and returns [ConfigError] if any issues occur.
-func checkTagBytes(d *Dictionary, seq []byte) error {
-	n := len(seq)
-
-	// checking if the Tag's byte sequence is not empty
-	if n == 0 {
-		return NewConfigError(IssueInvalidTagSeqLen, errors.New("tag's byte sequence is empty"))
-	}
-
-	// checking if the Tag's byte sequence is not longer than [MaxTagLen]
-	if n > MaxTagLen {
-		return NewConfigError(IssueInvalidTagSeqLen,
-			fmt.Errorf("expected the tag's byte sequence to be at most %d bytes long, got %d bytes", MaxTagLen, n))
-	}
-
-	// checking if the Tag is not a duplicate
-	if d.actions[seq[0]] != nil {
-		return NewConfigError(IssueDuplicateTagID,
-			fmt.Errorf("special symbol with id %d already registered.", seq[0]))
-	}
-
-	// checking if the Tag consists of valid characters
-	for i := range n {
-		if !isASCIIPrintable(seq[i]) {
-			return NewConfigError(IssueInvalidTagSeq,
-				fmt.Errorf("unprintable character in the tag's byte sequence: %q at index %d", seq[i], i))
-		}
-	}
-
-	return nil
-}
-
 // checkTagName checks the provided [Tag.Name] for being valid name and returns [ConfigError] if any issues occur.
 func checkTagName(name string) error {
 	// check if the name is not empty
@@ -103,4 +70,62 @@ func checkTagName(name string) error {
 	}
 
 	return nil
+}
+
+// chechTagConsistency checks if rules and greed values are consistent with Tag's other config and
+// returns [ConfigError] if any issues.
+func checkTagConsistency(isSingle, isUniversal bool, rule Rule, greed Greed) error {
+	// validate enums
+	if rule > MaxRule {
+		return NewConfigError(IssueInvalidRule,
+			fmt.Errorf("rule can have values up to %d but got %d instead", MaxRule, rule))
+	}
+	if greed > MaxGreedLevel {
+		return NewConfigError(IssueInvalidGreedLevel,
+			fmt.Errorf("greed level can be at most %d, but got %d instead", MaxGreedLevel, greed))
+	}
+
+	// rules are only for single-char universal tags
+	if rule != RuleNA && !(isSingle && isUniversal) {
+		return NewConfigError(IssueRuleInapplicable,
+			fmt.Errorf("rule %d is applicable only to single-char universal tags", rule))
+	}
+
+	// rule/greed compatibility
+	switch rule {
+	case RuleNA:
+		return nil
+
+	case RuleInfraWord:
+		if greed != NonGreedy {
+			return NewConfigError(IssueInvalidRule,
+				fmt.Errorf("rule %d (intra-word) requires greed=%d (NonGreedy), got %d", rule, NonGreedy, greed))
+		}
+		return nil
+
+	case RuleTagVsContent:
+		if greed == NonGreedy {
+			return NewConfigError(IssueInvalidRule,
+				fmt.Errorf("rule %d (tag-vs-content) requires greedy tag, got greed=%d (NonGreedy)", rule, greed))
+		}
+		return nil
+
+	default:
+		// unreachable because of rule > MaxRule check, but keeps switch future-proof
+		return NewConfigError(IssueInvalidRule,
+			fmt.Errorf("unknown rule %d", rule))
+	}
+}
+
+func singleByteTag(_ string, id byte, i int) (token Token, stride int, skip bool) {
+	token = Token{
+		Type:  TokenTag,
+		TagID: id,
+		Pos:   i,
+		Width: 1,
+		Raw:   Span{i, i + 1},
+	}
+
+	stride = 1
+	return
 }

@@ -21,7 +21,7 @@ type Tag struct {
 	Greed Greed
 
 	// Seq defines the sequence of bytes from which the Tag's string consists.
-	Seq []byte
+	Seq TagSequence
 
 	// Rule defines optional behaviour for the universal single-byte Tags during the tokenization process.
 	//
@@ -70,6 +70,6 @@ func (t *Tag) IsClosing() bool {
 	return t.OpenID != 0 && t.CloseID == 0
 }
 
-func (t *Tag) Len() int {
-	return len(t.Seq)
+func (t *Tag) Len() uint8 {
+	return t.Seq.Len
 }

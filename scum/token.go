@@ -1,5 +1,10 @@
 package scum
 
+// Span defines bounds of the window view of a string.
+type Span struct {
+	Start, End int
+}
+
 // Token is the result of the first stage processing of a part of the input string.
 // It contains metadata and value of the processed sequence of bytes.
 type Token struct {
@@ -10,6 +15,7 @@ type Token struct {
 	TagID byte
 
 	// Pos defines the starting byte position of the tag's sequence in the input string.
+	// Usually is the same as Raw.Start value.
 	Pos int
 
 	// Width defines count of bytes in the tag's sequence.
@@ -18,18 +24,18 @@ type Token struct {
 	// 2 bytes in it, 1 per each '$', so the corresponding token will have width of 2.
 	Width int
 
-	// Raw defines the substring associated with the tag's value including both tag strings and the inner plain text.
+	// Raw defines the [Span] associated with the tag's value including both tag strings and the inner plain text.
 	//
 	// Example: Imagine, you have defined a greedy tag with name 'URL' and a pattern like this: "(...)", where
 	// '(' is the opening tag and the ')' is the closing tag. When interpreting string "(https://some-address.com)",
-	// the Raw field will consist of the entire matched string, that is the "(https://some-address.com)".
-	// For Text tokens Raw and Inner fields are the same.
-	Raw string
+	// the Raw will have [Span.Start] equal to 0 - the index of "(" and [Span.End] equal to 25 - the index of ")" , that is the bounds of
+	// the entire input. For Text tokens Raw and Inner fields are the same.
+	Raw Span
 
-	// Inner defines the plain text, in case of token with type [TokenText], or the matched string, stripped of tags.
+	// Inner defines the bounds of the plain text content, stripped of Tag symbols inside the [Tag].
 	//
 	// Example: Imagine, you have defined a greedy tag with name 'URL' and a pattern like this: "(...)", where
 	// '(' is the opening tag and the ')' is the closing tag. When interpreting string "(https://some-address.com)",
-	// the Inner field will consist of only the "https://some-address.com".
-	Inner string
+	// the Inner field will have [Span.Start] equal to 1 - the index of "h" and [Span.End] - 24, the index of "m".
+	Inner Span
 }

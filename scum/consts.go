@@ -98,4 +98,7 @@ const (
 
 	// IssueInvalidTagSeq occurs when the Tag's string representation contains unprintable chars.
 	IssueInvalidTagSeq
+
+	// IssueRuleInapplicable occurs when the [Rule] is not avaliable due to [Greed] level or the [Tag] being multi-char.
+	IssueRuleInapplicable
 )

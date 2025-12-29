@@ -56,8 +56,8 @@
 //
 //     5.1 0 Rule - No Rule. Default Rule value. Does nothing.
 //
-//     5.2 1 - Intra-word Rule. Only available for the single-byte "NON-GREEDY" tags. If char, which normally defines a 1-byte long Tag, has alphanumerics, punctuation
-//     symbols, OR THE SAME TAG SYMBOL, on BOTH sides, then it will be considered a plain text and not a Tag trigger.
+//     5.2 1 - Intra-word Rule. For single-byte universal non-greedy tags, the rule is evaluated by inspecting the adjacent Unicode runes in the input string.
+//     Tokenization state and previous tokens do not affect this rule.
 //
 //     5.2.1.	Example 1: '_' defines a Tag with name "UNDERLINE" and has
 //     Rule 1 on it. In string "image_from_.png" both '_' will be considered a plain text.

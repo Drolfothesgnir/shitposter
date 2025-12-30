@@ -117,15 +117,26 @@ func checkTagConsistency(isSingle, isUniversal bool, rule Rule, greed Greed) err
 	}
 }
 
-func singleByteTag(_ string, id byte, i int) (token Token, stride int, skip bool) {
-	token = Token{
-		Type:  TokenTag,
-		TagID: id,
-		Pos:   i,
-		Width: 1,
-		Raw:   Span{i, i + 1},
-	}
+// isASCIIPunct return true if b is one of these symbols:
+// !  "  #  $  %  &  '  (  )  *  +  ,  -  .  /
+// :  ;  <  =  >  ?  @
+// [  \  ]  ^  _  `
+// {  |  }  ~
+func isASCIIPunct(b byte) bool {
+	return (33 <= b && b <= 47) ||
+		(58 <= b && b <= 64) ||
+		(91 <= b && b <= 96) ||
+		(123 <= b && b <= 126)
+}
 
-	stride = 1
-	return
+// isASCIIAlphanum return true if b is one of these symbols:
+// 0 1 2 3 4 5 6 7 8 9
+// a b c d e f g h i j k l m
+// n o p q r s t u v w x y z
+// A B C D E F G H I J K L M
+// N O P Q R S T U V W X Y Z
+func isASCIIAlphanum(b byte) bool {
+	return (b >= '0' && b <= '9') ||
+		(b >= 'A' && b <= 'Z') ||
+		(b >= 'a' && b <= 'z')
 }

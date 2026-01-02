@@ -1,5 +1,7 @@
 package scum
 
+import "log"
+
 // ProbeStepCheckCloseTagGreedy checks if the current [Greedy] [Tag] has it's closing counterpart somewhere in the
 // input string, mutates the [ActionContext] accordingly and returns true if this is the case.
 func ProbeStepCheckCloseTagGreedy(ctx *ActionContext) bool {
@@ -9,6 +11,7 @@ func ProbeStepCheckCloseTagGreedy(ctx *ActionContext) bool {
 	closeID := ctx.Tag.CloseID
 
 	closeTag, exists := ctx.Dictionary.Tag(closeID)
+	log.Println(closeID, exists)
 
 	// contentStartIdx is the starting index of the plain text value of the Tag,
 	// just after the opening Tag end

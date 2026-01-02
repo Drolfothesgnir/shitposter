@@ -27,6 +27,18 @@ type Bounds struct {
 	CloseIdx int
 }
 
+// NewBounds creates new [Bounds] based on the index i.
+func NewBounds(i int) Bounds {
+	return Bounds{
+		Raw:        NewSpan(i, 1),
+		Inner:      NewSpan(i, 0),
+		Closed:     false,
+		OpenWidth:  1,
+		CloseWidth: 0,
+		CloseIdx:   -1,
+	}
+}
+
 // ActionContext defines the inter-step state for the Step execution.
 type ActionContext struct {
 	Tag        *Tag
@@ -38,6 +50,28 @@ type ActionContext struct {
 	Skip       bool
 	Warns      *[]Warning
 	Bounds     *Bounds
+}
+
+// NewActionContext creates new [ActionContext] based on provided [Dictionary], warnings slice, input,
+// char/Tag ID and the current tokenizer position i.
+func NewActionContext(d *Dictionary, w *[]Warning, input string, char byte, i int) ActionContext {
+	b := NewBounds(i)
+
+	// since the ActionContext is only called in the actual Action, we assume the required Tag is
+	// available.
+	t := d.tags[char]
+
+	return ActionContext{
+		Tag:        &t,
+		Dictionary: d,
+		Input:      input,
+		Idx:        i,
+		Warns:      w,
+		Token:      Token{},
+		Stride:     0,
+		Skip:       false,
+		Bounds:     &b,
+	}
 }
 
 // Step is a function which is a part of the Action, responsibe for the one single part.

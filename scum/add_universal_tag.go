@@ -11,7 +11,7 @@ func (d *Dictionary) AddUniversalTag(name string, seq []byte, greed Greed, rule 
 		return err
 	}
 
-	ts, err := NewTagSequence(seq...)
+	ts, err := NewTagSequence(seq)
 
 	if err != nil {
 		return err
@@ -20,7 +20,7 @@ func (d *Dictionary) AddUniversalTag(name string, seq []byte, greed Greed, rule 
 	id := ts.ID()
 
 	// check if the Tag is unique
-	if d.tags[id].ID != 0 {
+	if d.tags[id].ID() != 0 {
 		return NewConfigError(IssueDuplicateTagID, fmt.Errorf("Tag with ID %d already registered", id))
 	}
 
@@ -33,7 +33,6 @@ func (d *Dictionary) AddUniversalTag(name string, seq []byte, greed Greed, rule 
 	}
 
 	d.tags[id] = Tag{
-		ID:      id,
 		Name:    name,
 		Greed:   greed,
 		Seq:     ts,

@@ -4,7 +4,7 @@ package scum
 func StepEmitSingleCharUniversalToken(ctx *ActionContext) bool {
 	ctx.Token = Token{
 		Type:  TokenTag,
-		TagID: ctx.Tag.ID,
+		TagID: ctx.Tag.ID(),
 		Pos:   ctx.Idx,
 		Width: 1,
 		Raw:   NewSpan(ctx.Idx, 1),

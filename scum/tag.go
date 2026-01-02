@@ -2,9 +2,6 @@ package scum
 
 // Tag contains all the info about a particular tag, relevant for the tokenizing and parsing.
 type Tag struct {
-	// ID is unique byte value used as opening byte for the Tag's sequence
-	ID byte
-
 	// Name is the name of the Tag. Does not need to be unique.
 	Name string
 
@@ -57,9 +54,14 @@ type Tag struct {
 	CloseID byte
 }
 
+// ID is unique byte value used as opening byte for the Tag's sequence
+func (t *Tag) ID() byte {
+	return t.Seq.ID()
+}
+
 // IsUniversal returns true when the Tag's signature is the same as it's closing [Tag].
 func (t *Tag) IsUniversal() bool {
-	return t.CloseID == t.ID && t.OpenID == t.ID
+	return t.CloseID == t.ID() && t.OpenID == t.ID()
 }
 
 func (t *Tag) IsOpening() bool {
@@ -72,4 +74,42 @@ func (t *Tag) IsClosing() bool {
 
 func (t *Tag) Len() uint8 {
 	return t.Seq.Len
+}
+
+// TagDecorator is a decorator function which allows to fill optional fields of the [Tag].
+type TagDecorator func(t *Tag)
+
+func WithGreed(greed Greed) TagDecorator {
+	return func(t *Tag) {
+		t.Greed = greed
+	}
+}
+
+func WithRule(rule Rule) TagDecorator {
+	return func(t *Tag) {
+		t.Rule = rule
+	}
+}
+
+// NewTag creates new [Tag] from the sequence of bytes, name opening/closing Tag IDs and
+// optional values.
+func NewTag(seq []byte, name string, openID, closeID byte, opts ...TagDecorator) (Tag, error) {
+	s, err := NewTagSequence(seq)
+
+	if err != nil {
+		return Tag{}, err
+	}
+
+	t := Tag{
+		Name:    name,
+		Seq:     s,
+		OpenID:  openID,
+		CloseID: closeID,
+	}
+
+	for _, dec := range opts {
+		dec(&t)
+	}
+
+	return t, nil
 }

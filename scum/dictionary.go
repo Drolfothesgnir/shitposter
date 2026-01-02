@@ -121,7 +121,7 @@ type Dictionary struct {
 // Tag allows to get particular Tag's info by providing its ID.
 func (d *Dictionary) Tag(id byte) (Tag, bool) {
 	t := d.tags[id]
-	return t, t.ID != 0
+	return t, t.Seq.Len != 0
 }
 
 // Action allows to get particular Tag's [Action] by providing the Tag's ID.

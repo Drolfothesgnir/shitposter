@@ -3,6 +3,7 @@ package scum
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -117,15 +118,108 @@ func checkTagConsistency(isSingle, isUniversal bool, rule Rule, greed Greed) err
 	}
 }
 
-func singleByteTag(_ string, id byte, i int) (token Token, stride int, skip bool) {
-	token = Token{
-		Type:  TokenTag,
-		TagID: id,
-		Pos:   i,
-		Width: 1,
-		Raw:   Span{i, i + 1},
+// isASCIIPunct return true if b is one of these symbols:
+// !  "  #  $  %  &  '  (  )  *  +  ,  -  .  /
+// :  ;  <  =  >  ?  @
+// [  \  ]  ^  _  `
+// {  |  }  ~
+func isASCIIPunct(b byte) bool {
+	return (33 <= b && b <= 47) ||
+		(58 <= b && b <= 64) ||
+		(91 <= b && b <= 96) ||
+		(123 <= b && b <= 126)
+}
+
+// isASCIIAlphanum return true if b is one of these symbols:
+// 0 1 2 3 4 5 6 7 8 9
+// a b c d e f g h i j k l m
+// n o p q r s t u v w x y z
+// A B C D E F G H I J K L M
+// N O P Q R S T U V W X Y Z
+func isASCIIAlphanum(b byte) bool {
+	return (b >= '0' && b <= '9') ||
+		(b >= 'A' && b <= 'Z') ||
+		(b >= 'a' && b <= 'z')
+}
+
+// longestCommonSubPrefix checks how much of seq is represented in the src and returns
+// a bool which is true when the entire seq is contained inside the src, index of the start
+// of the longest, similar to seq sequence, and the length of the longest common subsequence.
+// If none of the bytes are contained in the src, or the byte seq is empty, the idx will be -1.
+// The functions returns on the first full match and doesn't necessary check the entire src.
+func longestCommonSubPrefix(src string, seq []byte) (contained bool, idx, length int) {
+	n := len(src)
+
+	m := len(seq)
+
+	// if the search sequence is empty, set index and return zero values
+	if m == 0 {
+		idx = -1
+		return
 	}
 
-	stride = 1
-	return
+	// if the sequence to search is a single char, use std method and
+	// fill the other values accordingly
+	if m == 1 {
+		idx = strings.IndexByte(src, seq[0])
+		contained = idx > -1
+		if idx > -1 {
+			length = 1
+		}
+		return
+	}
+
+	// searchStart will be point from which the main loop will start a search for the similar chars
+	searchStart := 0
+
+	// maxStartIdx is the index of the sequence, which is the most similar to the seq
+	maxStartIdx := -1
+
+	// maxLength is the length of the sequence, which is the most similar to the seq
+	maxLength := 0
+
+	// we don't need to check the last maxLength characters, because they cannot be more similar
+	// to the seq
+	for searchStart < n-maxLength {
+		// IndexByte returns the index relative to the subsequence, starting from the searchStart,
+		// so we have to account for it later
+		relStartIdx := strings.IndexByte(src[searchStart:], seq[0])
+
+		// if no matches found at this point, return false and whatever we've found so far
+		if relStartIdx == -1 {
+			return false, maxStartIdx, maxLength
+		}
+
+		// else process the next available subsequence
+
+		// adjusting the relative start index to make it absolute for the src
+		startIdx := relStartIdx + searchStart
+
+		// deciding minimum available number of bytes to check
+		minLen := min(n-startIdx, m)
+
+		i := 1
+
+		// check the similarities of the current sequence
+		for (i < minLen) && (src[startIdx+i] == seq[i]) {
+			i++
+		}
+
+		// next search start position will be the next after the previous,
+		// to avoid skipping any matches
+		searchStart = startIdx + 1
+
+		// updating the most similar data
+		if i > maxLength {
+			maxLength = i
+			maxStartIdx = startIdx
+		}
+
+		// if the match is exact return
+		if i == m {
+			return i == m, maxStartIdx, maxLength
+		}
+	}
+
+	return false, maxStartIdx, maxLength
 }

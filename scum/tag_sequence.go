@@ -12,10 +12,16 @@ type TagSequence struct {
 }
 
 // ID returns the first byte of the Tag's byte sequence.
-func (ts TagSequence) ID() byte { return ts.Bytes[0] }
+func (seq TagSequence) ID() byte { return seq.Bytes[0] }
+
+// IsContainedIn checks if the src contains TagSequence. It returnes the true if contained,
+// start index of the possible Tag sequence and length of the sequence's part which is found.
+func (seq TagSequence) IsContainedIn(src string) (contained bool, startIdx, length int) {
+	return longestCommonSubPrefix(src, seq.Bytes[:seq.Len])
+}
 
 // NewTagSequence creates a [TagSequence] from the provide series of bytes and possibly returns a [ConfigError].
-func NewTagSequence(src ...byte) (TagSequence, error) {
+func NewTagSequence(src []byte) (TagSequence, error) {
 	n := len(src)
 
 	// check if the series is longer than allowed

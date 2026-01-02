@@ -2,7 +2,17 @@ package scum
 
 // Span defines bounds of the window view of a string.
 type Span struct {
-	Start, End int
+	// Start defines the inclusive start of the view.
+	Start int
+
+	// End defines the exclusive end of the view.
+	End int
+}
+
+// NewSpan creates new Span from the startIdx and the width.
+// End index is calculated as startIdx + width.
+func NewSpan(startIdx int, width int) Span {
+	return Span{startIdx, startIdx + width}
 }
 
 // Token is the result of the first stage processing of a part of the input string.

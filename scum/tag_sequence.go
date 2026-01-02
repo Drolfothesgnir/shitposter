@@ -3,6 +3,7 @@ package scum
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // TagSequence maintains the Tag's string representation and its length.
@@ -12,7 +13,38 @@ type TagSequence struct {
 }
 
 // ID returns the first byte of the Tag's byte sequence.
-func (ts TagSequence) ID() byte { return ts.Bytes[0] }
+func (seq TagSequence) ID() byte { return seq.Bytes[0] }
+
+// IsContainedIn checks if the src contains TagSequence. It returnes the true if contained,
+// start index of the possible Tag sequence and length of the sequence's part which is found.
+// FIXME: it's all wrong. refactor it!
+func (seq TagSequence) IsContainedIn(src string) (contained bool, startIdx, length int) {
+	// looking for the start of the sequence in the src
+	startIdx = strings.IndexByte(src, seq.Bytes[0])
+
+	// if the sequence's start is not found, return immediately
+	if startIdx == -1 {
+		return false, -1, 0
+	}
+
+	seqLen := int(seq.Len)
+
+	i := 1
+
+	// checking if sequence's bytes and bytes after the first similar byte in the src are identical
+	for i < seqLen-1 {
+		if src[startIdx+i] != seq.Bytes[i] {
+			// if there are some differences between two sequences return false, index of the tag-like secuence
+			// start and a number of similar bytes
+			return false, startIdx, i
+		}
+
+		i++
+	}
+
+	// else, the sequence is considered contained in the src, so we return true and stuff
+	return true, startIdx, seqLen
+}
 
 // NewTagSequence creates a [TagSequence] from the provide series of bytes and possibly returns a [ConfigError].
 func NewTagSequence(src ...byte) (TagSequence, error) {

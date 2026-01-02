@@ -1,15 +1,9 @@
 package scum
 
-// ActionContext defines the inter-step state for the Step execution.
-type ActionContext struct {
-	Tag    *Tag
-	Input  string
-	Idx    int
-	Token  Token
-	Stride int
-	Skip   bool
-	Warns  *[]Warning
-
+// Bounds contains the metadata about current Tag's string representation's
+// consistency.
+// Useful for creating Warnings.
+type Bounds struct {
 	// Raw defines the start and exclusive end indexes of the entire Tag's value.
 	// Useful for handling greedy Tags.
 	Raw Span
@@ -17,6 +11,33 @@ type ActionContext struct {
 	// Inner defines the start and exclusive end indexes of the Tag's text value.
 	// Useful for handling greedy Tags.
 	Inner Span
+
+	// Closed is true if the current Tag is properly closed.
+	Closed bool
+
+	// OpenWidth is the length in bytes of the ACTUAL opening Tag sequence,
+	// found in the input.
+	OpenWidth int
+
+	// CloseWidth is the length in bytes of the ACTUAL closing Tag sequence,
+	// found in the input.
+	CloseWidth int
+
+	// CloseIdx is the index of the start of the closing Tag sequence.
+	CloseIdx int
+}
+
+// ActionContext defines the inter-step state for the Step execution.
+type ActionContext struct {
+	Tag        *Tag
+	Dictionary *Dictionary
+	Input      string
+	Idx        int
+	Token      Token
+	Stride     int
+	Skip       bool
+	Warns      *[]Warning
+	Bounds     *Bounds
 }
 
 // Step is a function which is a part of the Action, responsibe for the one single part.

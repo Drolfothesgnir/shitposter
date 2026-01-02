@@ -103,3 +103,20 @@ func (p Plan) Run(ctx *ActionContext) (Token, int, bool) {
 	// if no Steps succeeded, we just move to the next character
 	return Token{}, 1, true
 }
+
+// Mutator is a function which recieves [ActionContext], does some manipulations with it,
+// like checks or preparations, and modifies it's state.
+type Mutator func(*ActionContext)
+
+// MutateWith makes a [Step] out of a [Mutator] function. It's used to allow mutators
+// as legitimate [Plan] steps, which never handle the current case, but only perform
+// some jobs on the [ActionContext].
+func MutateWith(m Mutator) Step {
+	return func(ac *ActionContext) bool {
+		// do the job
+		m(ac)
+
+		// never handle the current case
+		return false
+	}
+}

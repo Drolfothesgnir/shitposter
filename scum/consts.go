@@ -72,6 +72,9 @@ const (
 	// opening or closing sequence.
 	IssueUnexpectedSymbol
 
+	// IssueUnclosedTag means that a Tag needs to be closed, but no closing Tag is found in the input.
+	IssueUnclosedTag
+
 	// IssueMisplacedClosingTag means that the closing [Tag] is placed at the very beginning of the input.
 	IssueMisplacedClosingTag
 

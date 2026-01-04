@@ -74,6 +74,8 @@
 //     type tag with name "CODE" and value "`const rawStr = `", type text with value "hello world" and type tag with name "CODE" and value "`;`". It's likely
 //     not what the User intended. The Tag-VS-Content Rule solves this problem by imposing two conditions: 1) You can repeat symbol in tags how, but the lengths of
 //     the opening and closing tags must be the same. 2) Length of tags must differ ftom the length of the symbol sequence in the plain text.
+//     WARNING: Closing tag is any run of the trigger symbol whose length equals the opening run length k.
+//     To avoid accidental closure, choose k such that no run of length k appears inside the content.
 //
 //     5.3.1. Example 2: The setting from the example 1, but now we make tag length equal 3, by making each tag "```":
 //     "here is some code: ```const rawStr = `hello world`;```". Now the "CODE" tag will capture entire "```const rawStr = `hello world`;```" part.

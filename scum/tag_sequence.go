@@ -1,7 +1,6 @@
 package scum
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -14,7 +13,7 @@ type TagSequence struct {
 // ID returns the first byte of the Tag's byte sequence.
 func (seq TagSequence) ID() byte { return seq.Bytes[0] }
 
-// IsContainedIn checks if the src contains TagSequence. It returnes the true if contained,
+// IsContainedIn checks if the src contains TagSequence. It returnes true if contained,
 // start index of the possible Tag sequence and length of the sequence's part which is found.
 func (seq TagSequence) IsContainedIn(src string) (contained bool, startIdx, length int) {
 	return longestCommonSubPrefix(src, seq.Bytes[:seq.Len])
@@ -33,7 +32,7 @@ func NewTagSequence(src []byte) (TagSequence, error) {
 	// check if the series is empty
 	if n == 0 {
 		return TagSequence{},
-			NewConfigError(IssueInvalidTagSeq, errors.New("provided Tag byte sequence is empty"))
+			newEmptySequenceError()
 	}
 
 	var ts TagSequence

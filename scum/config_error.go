@@ -1,5 +1,7 @@
 package scum
 
+import "errors"
+
 // ConfigError describes an error which occures during the configuration of the [Dictionary], like improper Tags.
 type ConfigError struct {
 	Issue Issue // Issue is a kind or the problem occured.
@@ -19,4 +21,8 @@ func NewConfigError(issue Issue, err error) *ConfigError {
 		Issue: issue,
 		Err:   err,
 	}
+}
+
+func newEmptySequenceError() error {
+	return NewConfigError(IssueInvalidTagSeq, errors.New("provided Tag byte sequence is empty"))
 }

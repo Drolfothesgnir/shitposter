@@ -59,10 +59,10 @@ func NewActionContext(d *Dictionary, w *[]Warning, input string, char byte, i in
 
 	// since the ActionContext is only called in the actual Action, we assume the required Tag is
 	// available.
-	t := d.tags[char]
+	t := &d.tags[char]
 
 	return ActionContext{
-		Tag:        &t,
+		Tag:        t,
 		Dictionary: d,
 		Input:      input,
 		Idx:        i,
@@ -84,6 +84,8 @@ type Plan struct {
 }
 
 // Run executes steps sequentially.
+// WARNING: Steps should not rely on previously set Token, Stride and Skip, since those are
+// reset on every new Step start.
 func (p Plan) Run(ctx *ActionContext) (Token, int, bool) {
 	for _, s := range p.Steps {
 		// cleaning the context at the start of the new Step
@@ -102,6 +104,11 @@ func (p Plan) Run(ctx *ActionContext) (Token, int, bool) {
 
 	// if no Steps succeeded, we just move to the next character
 	return Token{}, 1, true
+}
+
+// AddStep appends new [Step] to the [Plan].
+func (p *Plan) AddStep(s Step) {
+	p.Steps = append(p.Steps, s)
 }
 
 // Mutator is a function which recieves [ActionContext], does some manipulations with it,

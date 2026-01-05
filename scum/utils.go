@@ -51,7 +51,7 @@ func extractNextRune(substr string) (next rune, width int, ok bool) {
 
 	// else we must decode the code point
 	next, width = utf8.DecodeRuneInString(substr)
-	ok = next != utf8.RuneError
+	ok = !(next == utf8.RuneError && width == 1)
 	return
 }
 

@@ -2,11 +2,11 @@ package scum
 
 import "strconv"
 
-// WarnUnclosedTag adds a [Warning] of an unclosed [Tag]. If the Tag is closed,
-// this is no-op.
+// WarnUnclosedTag adds a [Warning] of an unclosed [Tag]. If the Tag is closed or is
+// the closing Tag itself, this is no-op.
 func WarnUnclosedTag(ctx *ActionContext) {
 	// if the Tag is closed, do nothing
-	if ctx.Bounds.Closed || !ctx.Tag.IsOpening() {
+	if ctx.Bounds.Closed || ctx.Tag.IsClosing() {
 		return
 	}
 

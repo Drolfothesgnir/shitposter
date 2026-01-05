@@ -1,7 +1,5 @@
 package scum
 
-import "fmt"
-
 // AddTag registers new [Tag] in the [Dictionary] and return [ConfigError] if the provided values are
 // inconsistent or invalid.
 func (d *Dictionary) AddTag(name string, seq []byte, greed Greed, rule Rule, openID, closeID byte) error {
@@ -21,7 +19,7 @@ func (d *Dictionary) AddTag(name string, seq []byte, greed Greed, rule Rule, ope
 
 	// check if the Tag is unique
 	if d.tags[id].ID() != 0 {
-		return NewConfigError(IssueDuplicateTagID, fmt.Errorf("Tag with ID %d already registered", id))
+		return newDuplicateTagIDError(id)
 	}
 
 	isSingleChar := ts.Len == 1

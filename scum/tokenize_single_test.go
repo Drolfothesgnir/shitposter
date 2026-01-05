@@ -3,15 +3,16 @@ package scum
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // ---------- dictionary fixture ----------
 
 func mustAddTag(t *testing.T, d *Dictionary, name string, seq string, greed Greed, rule Rule, openID, closeID byte) {
 	t.Helper()
-	if err := d.AddTag(name, []byte(seq), greed, rule, openID, closeID); err != nil {
-		t.Fatalf("AddTag(%q,%q) failed: %v", name, seq, err)
-	}
+	err := d.AddTag(name, []byte(seq), greed, rule, openID, closeID)
+	require.NoError(t, err, "AddTag(%q,%q) failed", name, seq)
 }
 
 // initSingleDict registers a small, intentional set of single-char tags used by tests.
@@ -57,15 +58,10 @@ func assertWarningInvariants(t *testing.T, in string, warns []Warning) {
 	n := len(in)
 
 	// Pos is a byte index "at which the problem occurred".
-	// For EOL-like issues, it's reasonable to allow Pos == len(input).
+	// For EOL-like issues, allowing Pos == len(input) is reasonable.
 	for i, w := range warns {
-		if w.Pos < 0 || w.Pos > n {
-			t.Fatalf("warning[%d] pos out of bounds: pos=%d n=%d warning=%#v input=%q", i, w.Pos, n, w, in)
-		}
-		// Optional: description should not be empty (depends on your style)
-		// if strings.TrimSpace(w.Description) == "" {
-		// 	t.Fatalf("warning[%d] empty description: %#v", i, w)
-		// }
+		require.GreaterOrEqualf(t, w.Pos, 0, "warning[%d] pos < 0: %#v input=%q", i, w, in)
+		require.LessOrEqualf(t, w.Pos, n, "warning[%d] pos > len(input): %#v input=%q", i, w, in)
 	}
 }
 
@@ -78,38 +74,32 @@ func assertTokenInvariants(t *testing.T, in string, toks []Token) {
 
 	for i, tok := range toks {
 		// Raw bounds
-		if tok.Raw.Start < 0 || tok.Raw.End < 0 || tok.Raw.Start > tok.Raw.End || tok.Raw.End > n {
-			t.Fatalf("token[%d] raw out of bounds: %#v n=%d input=%q", i, tok, n, in)
-		}
-		// Inner bounds
-		if tok.Inner.Start < 0 || tok.Inner.End < 0 || tok.Inner.Start > tok.Inner.End || tok.Inner.End > n {
-			t.Fatalf("token[%d] inner out of bounds: %#v n=%d input=%q", i, tok, n, in)
-		}
-		// Consistency
-		if tok.Pos != tok.Raw.Start {
-			t.Fatalf("token[%d] pos mismatch: pos=%d raw.start=%d token=%#v input=%q", i, tok.Pos, tok.Raw.Start, tok, in)
-		}
-		if tok.Width != (tok.Raw.End - tok.Raw.Start) {
-			t.Fatalf("token[%d] width mismatch: width=%d rawWidth=%d token=%#v input=%q",
-				i, tok.Width, tok.Raw.End-tok.Raw.Start, tok, in)
-		}
+		require.GreaterOrEqualf(t, tok.Raw.Start, 0, "token[%d] raw.start < 0: %#v input=%q", i, tok, in)
+		require.GreaterOrEqualf(t, tok.Raw.End, 0, "token[%d] raw.end < 0: %#v input=%q", i, tok, in)
+		require.LessOrEqualf(t, tok.Raw.Start, tok.Raw.End, "token[%d] raw.start > raw.end: %#v input=%q", i, tok, in)
+		require.LessOrEqualf(t, tok.Raw.End, n, "token[%d] raw.end > len(input): %#v input=%q", i, tok, in)
 
-		// Tokenize() produces contiguous coverage (it flushes text between tags and appends tag tokens).
-		if tok.Raw.Start != prevEnd {
-			t.Fatalf("token[%d] non-contiguous: prevEnd=%d start=%d token=%#v input=%q",
-				i, prevEnd, tok.Raw.Start, tok, in)
-		}
+		// Inner bounds
+		require.GreaterOrEqualf(t, tok.Inner.Start, 0, "token[%d] inner.start < 0: %#v input=%q", i, tok, in)
+		require.GreaterOrEqualf(t, tok.Inner.End, 0, "token[%d] inner.end < 0: %#v input=%q", i, tok, in)
+		require.LessOrEqualf(t, tok.Inner.Start, tok.Inner.End, "token[%d] inner.start > inner.end: %#v input=%q", i, tok, in)
+		require.LessOrEqualf(t, tok.Inner.End, n, "token[%d] inner.end > len(input): %#v input=%q", i, tok, in)
+
+		// Consistency
+		require.Equalf(t, tok.Raw.Start, tok.Pos, "token[%d] pos mismatch: token=%#v input=%q", i, tok, in)
+		require.Equalf(t, tok.Raw.End-tok.Raw.Start, tok.Width, "token[%d] width mismatch: token=%#v input=%q", i, tok, in)
+
+		// Tokenize() produces contiguous coverage
+		require.Equalf(t, prevEnd, tok.Raw.Start, "token[%d] non-contiguous: prevEnd=%d token=%#v input=%q", i, prevEnd, tok, in)
 		prevEnd = tok.Raw.End
 
-		// Text token convention in your Tokenize(): Raw == Inner
-		if tok.Type == TokenText && tok.Raw != tok.Inner {
-			t.Fatalf("token[%d] text token raw!=inner: %#v input=%q", i, tok, in)
+		// Text token convention: Raw == Inner
+		if tok.Type == TokenText {
+			require.Equalf(t, tok.Raw, tok.Inner, "token[%d] text token raw!=inner: %#v input=%q", i, tok, in)
 		}
 	}
 
-	if prevEnd != n {
-		t.Fatalf("tokens do not cover input: covered=%d n=%d input=%q toks=%#v", prevEnd, n, in, toks)
-	}
+	require.Equalf(t, n, prevEnd, "tokens do not cover input: covered=%d n=%d input=%q toks=%#v", prevEnd, n, in, toks)
 }
 
 func sliceByRaw(in string, toks []Token) string {
@@ -130,16 +120,10 @@ func TestTokenizeSingle_InfraWord_UnderscoreInsideWordIsText(t *testing.T) {
 	assertTokenInvariants(t, in, toks)
 	assertWarningInvariants(t, in, warns)
 
-	// Lossless round-trip
-	if out := sliceByRaw(in, toks); out != in {
-		t.Fatalf("round-trip mismatch: in=%q out=%q", in, out)
-	}
+	require.Equal(t, in, sliceByRaw(in, toks), "round-trip mismatch")
 
-	// Typically no warns here.
-	// If you decide to warn on "ignored tag", adjust accordingly.
-	if len(warns) != 0 {
-		t.Fatalf("expected no warnings, got: %#v", warns)
-	}
+	// Usually no warnings here.
+	require.Len(t, warns, 0, "expected no warnings")
 }
 
 func TestTokenizeSingle_Greedy_TagVsContent_TripleBackticksCapture(t *testing.T) {
@@ -150,7 +134,6 @@ func TestTokenizeSingle_Greedy_TagVsContent_TripleBackticksCapture(t *testing.T)
 	assertTokenInvariants(t, in, toks)
 	assertWarningInvariants(t, in, warns)
 
-	// We expect a Tag token that spans triple backticks
 	found := false
 	for _, tok := range toks {
 		if tok.Type != TokenTag || tok.TagID != '`' {
@@ -162,13 +145,8 @@ func TestTokenizeSingle_Greedy_TagVsContent_TripleBackticksCapture(t *testing.T)
 			break
 		}
 	}
-	if !found {
-		t.Fatalf("expected a CODE Tag token spanning triple backticks; toks=%#v", toks)
-	}
-
-	if len(warns) != 0 {
-		t.Fatalf("expected no warnings, got: %#v", warns)
-	}
+	require.True(t, found, "expected a CODE Tag token spanning triple backticks; toks=%#v", toks)
+	require.Len(t, warns, 0, "expected no warnings")
 }
 
 func TestTokenizeSingle_Greedy_UnclosedBecomesTextAndWarns(t *testing.T) {
@@ -179,15 +157,9 @@ func TestTokenizeSingle_Greedy_UnclosedBecomesTextAndWarns(t *testing.T) {
 	assertTokenInvariants(t, in, toks)
 	assertWarningInvariants(t, in, warns)
 
-	// Unclosed greedy should degrade to plain text (per your docs and singleCharGreedyPlan behavior)
-	if out := sliceByRaw(in, toks); out != in {
-		t.Fatalf("round-trip mismatch: in=%q out=%q", in, out)
-	}
+	require.Equal(t, in, sliceByRaw(in, toks), "round-trip mismatch")
 
-	// This one should warn
-	if !hasIssue(warns, IssueUnclosedTag) {
-		t.Fatalf("expected IssueUnclosedTag, got warnings: %#v", warns)
-	}
+	require.True(t, hasIssue(warns, IssueUnclosedTag), "expected IssueUnclosedTag, got warnings=%#v", warns)
 }
 
 func TestTokenizeSingle_OpeningBeforeEOL_WarnsUnexpectedEOL(t *testing.T) {
@@ -198,16 +170,10 @@ func TestTokenizeSingle_OpeningBeforeEOL_WarnsUnexpectedEOL(t *testing.T) {
 	assertTokenInvariants(t, in, toks)
 	assertWarningInvariants(t, in, warns)
 
-	// Behavior: should not panic; should still round-trip
-	if out := sliceByRaw(in, toks); out != in {
-		t.Fatalf("round-trip mismatch: in=%q out=%q", in, out)
-	}
+	require.Equal(t, in, sliceByRaw(in, toks), "round-trip mismatch")
 
-	// Based on your Issue docs and step name step_open_tag_before_eol.go,
-	// the most sensible warning is UnexpectedEOL
-	if !hasIssue(warns, IssueUnexpectedEOL) {
-		t.Fatalf("expected IssueUnexpectedEOL, got warnings: %#v", warns)
-	}
+	// If your engine uses a different Issue for this case, change it here.
+	require.True(t, hasIssue(warns, IssueUnexpectedEOL), "expected IssueUnexpectedEOL, got warnings=%#v", warns)
 }
 
 func TestTokenizeSingle_ClosingAtStart_WarnsMisplacedClosingTag(t *testing.T) {
@@ -218,13 +184,10 @@ func TestTokenizeSingle_ClosingAtStart_WarnsMisplacedClosingTag(t *testing.T) {
 	assertTokenInvariants(t, in, toks)
 	assertWarningInvariants(t, in, warns)
 
-	if out := sliceByRaw(in, toks); out != in {
-		t.Fatalf("round-trip mismatch: in=%q out=%q", in, out)
-	}
+	require.Equal(t, in, sliceByRaw(in, toks), "round-trip mismatch")
 
-	if !hasIssue(warns, IssueMisplacedClosingTag) {
-		t.Fatalf("expected IssueMisplacedClosingTag, got warnings: %#v", warns)
-	}
+	// If your engine uses a different Issue for this case, change it here.
+	require.True(t, hasIssue(warns, IssueMisplacedClosingTag), "expected IssueMisplacedClosingTag, got warnings=%#v", warns)
 }
 
 // ---------- fuzz ----------
@@ -253,19 +216,12 @@ func FuzzTokenizeSingle_NoPanic_ValidSpans(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, in string) {
 		d := initSingleDict(t)
-
 		toks, warns := tokenize(t, d, in)
 
-		// Must not panic; tokens must be well-formed and cover the entire input.
 		assertTokenInvariants(t, in, toks)
-
-		// Warnings (if any) must have reasonable positions.
 		assertWarningInvariants(t, in, warns)
 
-		// Tokenize() is designed to be lossless at the tokenization stage.
-		// If you later add normalization, relax this.
-		if out := sliceByRaw(in, toks); out != in {
-			t.Fatalf("round-trip mismatch: in=%q out=%q toks=%#v warns=%#v", in, out, toks, warns)
-		}
+		// Tokenize is designed to be lossless.
+		require.Equal(t, in, sliceByRaw(in, toks), "round-trip mismatch; toks=%#v warns=%#v", toks, warns)
 	})
 }

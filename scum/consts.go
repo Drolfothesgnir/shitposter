@@ -104,4 +104,11 @@ const (
 
 	// IssueRuleInapplicable occurs when the [Rule] is not avaliable due to [Greed] level or the [Tag] being multi-char.
 	IssueRuleInapplicable
+
+	// IssueRedundantEscape occurs when the next byte after the escape symbol does not trigger any [Action], and
+	// considered a plain text.
+	IssueRedundantEscape
+
+	// IssueUnprintableChar occurs when the symbol is not printable ASCII character
+	IssueUnprintableChar
 )

@@ -6,12 +6,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func actNoop(d *Dictionary, id byte, input string, i int, warns *[]Warning) (token Token, stride int, skip bool) {
+	stride = 1
+	skip = true
+	return
+}
+
 func dictStub(tags ...Tag) Dictionary {
 	state := [256]Tag{}
+
+	acts := [256]Action{}
+
 	for _, t := range tags {
-		state[t.Seq.ID()] = t
+		id := t.Seq.ID()
+		state[id] = t
+		acts[id] = actNoop
 	}
-	return Dictionary{tags: state}
+	return Dictionary{tags: state, actions: acts}
 }
 
 // Optional but VERY useful: catches most future “relative vs absolute” regressions.

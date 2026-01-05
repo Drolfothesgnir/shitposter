@@ -9,13 +9,12 @@
 // # Notes and Policies.
 //
 //  1. This is My Toy and it was created for fun.
-//  2. You can use only 1-byte long ASCII symbols for tags.
-//  3. A tag can consist of at most [MaxTagLength] characters.
+//  2. Tags can contain at most [MaxTagLen] symbols. Escape and Attribute signature tags can contain only 1 symbol.
+//  3. ALL special symbols must be 1-byte long printable ASCII characters.
 //  4. Nested tags with the same ID will have no effect. Children of the repeated descendants will become
 //     children of the "oldest" original tag and the duplicates will not end up in the final AST.
 //  5. A universal Tag is one, which has both the opening and the closing tags the same.
-//  6. Escape tag ID will be reserved, likely to some ASCII control character.
-//  7. The parser will try to make sense out of the User's gibberish and will not return any errors but only a slice of [Warning].
+//  6. The parser will try to make sense out of the User's gibberish and will not return any errors but only a slice of [Warning].
 //
 // # Behaviour. This will likely change in the future.
 //
@@ -105,7 +104,7 @@
 // Escape symbol.
 //
 //   - You can define an Escape symbol, which, when encountered during the tokenization, will make the Tokenizer treat next character, whether it's special or
-//     a simple text character, as a plain text.
+//     a simple text character, as a plain text. Escape symbol can be only 1-byte long ASCII char.
 //
 // TODO: add preallocated tag strings inside the dictionary
 // TODO: add docs for cases when closing tag does not match the opening and is returned as plain text along with a Warning
@@ -130,4 +129,10 @@ func (d *Dictionary) Tag(id byte) (Tag, bool) {
 func (d *Dictionary) Action(id byte) (Action, bool) {
 	a := d.actions[id]
 	return a, a != nil
+}
+
+// IsSpecial returns true if the provided char has it's corresponging [Action],
+// therefore is a special symbol.
+func (d *Dictionary) IsSpecial(char byte) bool {
+	return d.actions[char] != nil
 }

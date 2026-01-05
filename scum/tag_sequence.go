@@ -40,7 +40,7 @@ func NewTagSequence(src []byte) (TagSequence, error) {
 	for i, b := range src {
 		// check if the series contains unprintable chracters
 		if !isASCIIPrintable(b) {
-			return TagSequence{}, NewConfigError(IssueInvalidTagSeq,
+			return TagSequence{}, NewConfigError(IssueUnprintableChar,
 				fmt.Errorf("provided Tag byte sequence has unprintable character %q at index %d.", b, i))
 		}
 

@@ -92,7 +92,7 @@ func WithRule(rule Rule) TagDecorator {
 }
 
 // NewTag creates new [Tag] from the sequence of bytes, name opening/closing Tag IDs and
-// optional values.
+// optional values. Returns [ConfigError] if the seq is invalid.
 func NewTag(seq []byte, name string, openID, closeID byte, opts ...TagDecorator) (Tag, error) {
 	s, err := NewTagSequence(seq)
 

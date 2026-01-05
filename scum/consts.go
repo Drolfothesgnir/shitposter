@@ -111,4 +111,10 @@ const (
 
 	// IssueUnprintableChar occurs when the symbol is not printable ASCII character
 	IssueUnprintableChar
+
+	// IssueWarningsTruncated occurs when there are too many Warnings recorded.
+	IssueWarningsTruncated
+
+	// IssueNegativeWarningsCap reports an invalid (negative) warnings capacity.
+	IssueNegativeWarningsCap
 )

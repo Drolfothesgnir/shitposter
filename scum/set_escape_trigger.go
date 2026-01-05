@@ -25,7 +25,7 @@ func (d *Dictionary) SetEscapeTrigger(char byte) error {
 	return nil
 }
 
-func ActEscape(d *Dictionary, id byte, input string, i int, warns *[]Warning) (token Token, stride int, skip bool) {
+func ActEscape(d *Dictionary, id byte, input string, i int, warns *Warnings) (token Token, stride int, skip bool) {
 	n := len(input)
 
 	stride = 1
@@ -36,7 +36,7 @@ func ActEscape(d *Dictionary, id byte, input string, i int, warns *[]Warning) (t
 
 	// in this case add a Warning and skip current symbol
 	if i+1 == n {
-		*warns = append(*warns, Warning{
+		warns.Add(Warning{
 			Issue:       IssueUnexpectedEOL,
 			Pos:         i,
 			Description: "redundant escape symbol found at the very end of the input.",
@@ -73,7 +73,7 @@ func ActEscape(d *Dictionary, id byte, input string, i int, warns *[]Warning) (t
 			got = "unknown symbol"
 		}
 
-		*warns = append(*warns, Warning{
+		warns.Add(Warning{
 			Issue: IssueRedundantEscape,
 			Pos:   i + 1,
 			Description: "expected any special symbol after the escape, at index " +

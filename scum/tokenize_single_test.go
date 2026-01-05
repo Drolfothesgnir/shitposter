@@ -35,17 +35,20 @@ func initSingleDict(t *testing.T) *Dictionary {
 	return d
 }
 
-func tokenize(t *testing.T, d *Dictionary, in string) ([]Token, []Warning) {
+func tokenize(t *testing.T, d *Dictionary, in string) ([]Token, Warnings) {
 	t.Helper()
-	var warns []Warning
+
+	warns, err := NewWarnings(WarnOverflowNoCap, 1)
+	require.NoError(t, err)
+
 	toks := Tokenize(d, in, &warns)
 	return toks, warns
 }
 
 // ---------- warning helpers ----------
 
-func hasIssue(warns []Warning, issue Issue) bool {
-	for _, w := range warns {
+func hasIssue(warns *Warnings, issue Issue) bool {
+	for _, w := range warns.List() {
 		if w.Issue == issue {
 			return true
 		}
@@ -53,13 +56,13 @@ func hasIssue(warns []Warning, issue Issue) bool {
 	return false
 }
 
-func assertWarningInvariants(t *testing.T, in string, warns []Warning) {
+func assertWarningInvariants(t *testing.T, in string, warns *Warnings) {
 	t.Helper()
 	n := len(in)
 
 	// Pos is a byte index "at which the problem occurred".
 	// For EOL-like issues, allowing Pos == len(input) is reasonable.
-	for i, w := range warns {
+	for i, w := range warns.List() {
 		require.GreaterOrEqualf(t, w.Pos, 0, "warning[%d] pos < 0: %#v input=%q", i, w, in)
 		require.LessOrEqualf(t, w.Pos, n, "warning[%d] pos > len(input): %#v input=%q", i, w, in)
 	}
@@ -118,12 +121,12 @@ func TestTokenizeSingle_InfraWord_UnderscoreInsideWordIsText(t *testing.T) {
 
 	toks, warns := tokenize(t, d, in)
 	assertTokenInvariants(t, in, toks)
-	assertWarningInvariants(t, in, warns)
+	assertWarningInvariants(t, in, &warns)
 
 	require.Equal(t, in, sliceByRaw(in, toks), "round-trip mismatch")
 
 	// Usually no warnings here.
-	require.Len(t, warns, 0, "expected no warnings")
+	require.Len(t, warns.List(), 0, "expected no warnings")
 }
 
 func TestTokenizeSingle_Greedy_TagVsContent_TripleBackticksCapture(t *testing.T) {
@@ -132,7 +135,7 @@ func TestTokenizeSingle_Greedy_TagVsContent_TripleBackticksCapture(t *testing.T)
 
 	toks, warns := tokenize(t, d, in)
 	assertTokenInvariants(t, in, toks)
-	assertWarningInvariants(t, in, warns)
+	assertWarningInvariants(t, in, &warns)
 
 	found := false
 	for _, tok := range toks {
@@ -146,7 +149,7 @@ func TestTokenizeSingle_Greedy_TagVsContent_TripleBackticksCapture(t *testing.T)
 		}
 	}
 	require.True(t, found, "expected a CODE Tag token spanning triple backticks; toks=%#v", toks)
-	require.Len(t, warns, 0, "expected no warnings")
+	require.Len(t, warns.List(), 0, "expected no warnings")
 }
 
 func TestTokenizeSingle_Greedy_UnclosedBecomesTextAndWarns(t *testing.T) {
@@ -155,11 +158,11 @@ func TestTokenizeSingle_Greedy_UnclosedBecomesTextAndWarns(t *testing.T) {
 
 	toks, warns := tokenize(t, d, in)
 	assertTokenInvariants(t, in, toks)
-	assertWarningInvariants(t, in, warns)
+	assertWarningInvariants(t, in, &warns)
 
 	require.Equal(t, in, sliceByRaw(in, toks), "round-trip mismatch")
 
-	require.True(t, hasIssue(warns, IssueUnclosedTag), "expected IssueUnclosedTag, got warnings=%#v", warns)
+	require.True(t, hasIssue(&warns, IssueUnclosedTag), "expected IssueUnclosedTag, got warnings=%#v", warns)
 }
 
 func TestTokenizeSingle_OpeningBeforeEOL_WarnsUnexpectedEOL(t *testing.T) {
@@ -168,12 +171,12 @@ func TestTokenizeSingle_OpeningBeforeEOL_WarnsUnexpectedEOL(t *testing.T) {
 
 	toks, warns := tokenize(t, d, in)
 	assertTokenInvariants(t, in, toks)
-	assertWarningInvariants(t, in, warns)
+	assertWarningInvariants(t, in, &warns)
 
 	require.Equal(t, in, sliceByRaw(in, toks), "round-trip mismatch")
 
 	// If your engine uses a different Issue for this case, change it here.
-	require.True(t, hasIssue(warns, IssueUnexpectedEOL), "expected IssueUnexpectedEOL, got warnings=%#v", warns)
+	require.True(t, hasIssue(&warns, IssueUnexpectedEOL), "expected IssueUnexpectedEOL, got warnings=%#v", warns)
 }
 
 func TestTokenizeSingle_ClosingAtStart_WarnsMisplacedClosingTag(t *testing.T) {
@@ -182,12 +185,12 @@ func TestTokenizeSingle_ClosingAtStart_WarnsMisplacedClosingTag(t *testing.T) {
 
 	toks, warns := tokenize(t, d, in)
 	assertTokenInvariants(t, in, toks)
-	assertWarningInvariants(t, in, warns)
+	assertWarningInvariants(t, in, &warns)
 
 	require.Equal(t, in, sliceByRaw(in, toks), "round-trip mismatch")
 
 	// If your engine uses a different Issue for this case, change it here.
-	require.True(t, hasIssue(warns, IssueMisplacedClosingTag), "expected IssueMisplacedClosingTag, got warnings=%#v", warns)
+	require.True(t, hasIssue(&warns, IssueMisplacedClosingTag), "expected IssueMisplacedClosingTag, got warnings=%#v", warns)
 }
 
 // ---------- fuzz ----------
@@ -219,7 +222,7 @@ func FuzzTokenizeSingle_NoPanic_ValidSpans(f *testing.F) {
 		toks, warns := tokenize(t, d, in)
 
 		assertTokenInvariants(t, in, toks)
-		assertWarningInvariants(t, in, warns)
+		assertWarningInvariants(t, in, &warns)
 
 		// Tokenize is designed to be lossless.
 		require.Equal(t, in, sliceByRaw(in, toks), "round-trip mismatch; toks=%#v warns=%#v", toks, warns)

@@ -9,7 +9,7 @@ func WarnCloseTagAfterStart(ctx *ActionContext) {
 		return
 	}
 
-	*ctx.Warns = append(*ctx.Warns, Warning{
+	ctx.Warns.Add(Warning{
 		Issue: IssueMisplacedClosingTag,
 		Pos:   ctx.Idx,
 		Description: "closing Tag with name " +

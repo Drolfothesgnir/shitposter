@@ -15,7 +15,7 @@ func WarnUnclosedTag(ctx *ActionContext) {
 		": expected closing tag with ID " +
 		strconv.Itoa(int(ctx.Tag.CloseID))
 
-	*ctx.Warns = append(*ctx.Warns, Warning{
+	ctx.Warns.Add(Warning{
 		Issue:       IssueUnclosedTag,
 		Pos:         ctx.Idx,
 		Description: desc,

@@ -3,7 +3,7 @@ package scum
 // Tokenize transforms the input string into the sequence of Tokens.
 // It can emit Warnings during the process.
 // NOTE: i will likely reuse the warns slice during the parsing, so it's passed as reference instead of being created here.
-func Tokenize(d *Dictionary, input string, warns *[]Warning) (tokens []Token) {
+func Tokenize(d *Dictionary, input string, warns *Warnings) (tokens []Token) {
 	n := len(input)
 
 	// the place where current plain string started

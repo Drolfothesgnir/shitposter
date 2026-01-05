@@ -14,7 +14,7 @@ func WarnOpenTagBeforeEOL(ctx *ActionContext) {
 	}
 
 	// else add a Warning and skip the Tag as a plain text
-	*ctx.Warns = append(*ctx.Warns, Warning{
+	ctx.Warns.Add(Warning{
 		Issue: IssueUnexpectedEOL,
 		Pos:   n,
 		Description: "opening Tag with name " +

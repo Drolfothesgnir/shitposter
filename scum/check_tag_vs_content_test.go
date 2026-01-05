@@ -11,7 +11,8 @@ func newTagVsContentCtx(t *testing.T, input string, idx int, ch byte) ActionCont
 	t.Helper()
 
 	var d Dictionary
-	warns := make([]Warning, 0, 8)
+	warns, err := NewWarnings(WarnOverflowNoCap, 8)
+	require.NoError(t, err)
 
 	// Universal single-byte greedy tag using RuleTagVsContent.
 	tag, err := NewTag([]byte{ch}, "CODE", ch, ch, WithGreed(Greedy), WithRule(RuleTagVsContent))

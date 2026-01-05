@@ -7,6 +7,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func newWarns(t *testing.T) Warnings {
+	warns, err := NewWarnings(WarnOverflowNoCap, 1)
+	require.NoError(t, err)
+	return warns
+}
+
 func TestSetEscapeTrigger_SetsAction(t *testing.T) {
 	var d Dictionary
 
@@ -19,7 +25,7 @@ func TestSetEscapeTrigger_SetsAction(t *testing.T) {
 
 	// Smoke-check the action does what we expect.
 	in := `\a`
-	var warns []Warning
+	warns := newWarns(t)
 	tok, stride, skip := a(&d, '\\', in, 0, &warns)
 
 	require.False(t, skip)
@@ -75,16 +81,18 @@ func TestActEscape_EscapeAtEnd_WarnsUnexpectedEOLAndSkips(t *testing.T) {
 	require.NoError(t, d.SetEscapeTrigger('\\'))
 
 	in := `\`
-	var warns []Warning
+	warns := newWarns(t)
 	tok, stride, skip := ActEscape(&d, '\\', in, 0, &warns)
+
+	list := warns.List()
 
 	require.True(t, skip)
 	require.Equal(t, 1, stride)
-	require.Len(t, warns, 1)
+	require.Len(t, list, 1)
 
-	require.Equal(t, IssueUnexpectedEOL, warns[0].Issue)
-	require.Equal(t, 0, warns[0].Pos) // you said you changed this to i
-	require.NotEmpty(t, warns[0].Description)
+	require.Equal(t, IssueUnexpectedEOL, list[0].Issue)
+	require.Equal(t, 0, list[0].Pos) // you said you changed this to i
+	require.NotEmpty(t, list[0].Description)
 
 	// token is expected to be empty when skip == true (zero-value is fine)
 	require.Equal(t, TokenType(0), tok.Type)
@@ -95,7 +103,7 @@ func TestActEscape_RedundantEscape_WhenNextIsNotSpecial_Warns(t *testing.T) {
 	require.NoError(t, d.SetEscapeTrigger('\\'))
 
 	in := `\a`
-	var warns []Warning
+	warns := newWarns(t)
 	tok, stride, skip := ActEscape(&d, '\\', in, 0, &warns)
 
 	require.False(t, skip)
@@ -105,11 +113,11 @@ func TestActEscape_RedundantEscape_WhenNextIsNotSpecial_Warns(t *testing.T) {
 	require.Equal(t, 2, tok.Width)
 	require.Equal(t, NewSpan(0, 2), tok.Raw)
 	require.Equal(t, NewSpan(1, 1), tok.Inner)
-
-	require.Len(t, warns, 1)
-	require.Equal(t, IssueRedundantEscape, warns[0].Issue)
-	require.Equal(t, 1, warns[0].Pos)
-	require.NotEmpty(t, warns[0].Description)
+	list := warns.List()
+	require.Len(t, list, 1)
+	require.Equal(t, IssueRedundantEscape, list[0].Issue)
+	require.Equal(t, 1, list[0].Pos)
+	require.NotEmpty(t, list[0].Description)
 }
 
 func TestActEscape_InvalidUTF8Rune(t *testing.T) {
@@ -119,7 +127,7 @@ func TestActEscape_InvalidUTF8Rune(t *testing.T) {
 	// invalid UTF-8 byte sequence
 	in := string([]byte{'\\', 0xff})
 
-	var warns []Warning
+	warns := newWarns(t)
 	tok, stride, skip := ActEscape(&d, '\\', in, 0, &warns)
 
 	require.False(t, skip)
@@ -127,9 +135,9 @@ func TestActEscape_InvalidUTF8Rune(t *testing.T) {
 	require.Equal(t, TokenEscapeSequence, tok.Type)
 	require.Equal(t, NewSpan(0, 2), tok.Raw)
 	require.Equal(t, NewSpan(1, 1), tok.Inner)
-
-	require.Len(t, warns, 1)
-	require.Equal(t, IssueRedundantEscape, warns[0].Issue)
+	list := warns.List()
+	require.Len(t, list, 1)
+	require.Equal(t, IssueRedundantEscape, list[0].Issue)
 }
 
 func TestActEscape_NextIsSpecial_NoRedundantWarning(t *testing.T) {
@@ -140,7 +148,7 @@ func TestActEscape_NextIsSpecial_NoRedundantWarning(t *testing.T) {
 	require.NoError(t, d.AddTag("STAR", []byte{'*'}, NonGreedy, RuleNA, '*', '*'))
 
 	in := `\*`
-	var warns []Warning
+	warns := newWarns(t)
 	tok, stride, skip := ActEscape(&d, '\\', in, 0, &warns)
 
 	require.False(t, skip)
@@ -148,8 +156,8 @@ func TestActEscape_NextIsSpecial_NoRedundantWarning(t *testing.T) {
 	require.Equal(t, TokenEscapeSequence, tok.Type)
 	require.Equal(t, NewSpan(0, 2), tok.Raw)
 	require.Equal(t, NewSpan(1, 1), tok.Inner)
-
-	require.Len(t, warns, 0)
+	list := warns.List()
+	require.Len(t, list, 0)
 }
 
 func TestActEscape_MultiByteRune_ConsumesWholeRuneAndWarnsIfNotSpecial(t *testing.T) {
@@ -158,7 +166,7 @@ func TestActEscape_MultiByteRune_ConsumesWholeRuneAndWarnsIfNotSpecial(t *testin
 
 	// "ß" is 2 bytes in UTF-8.
 	in := "\\ß"
-	var warns []Warning
+	warns := newWarns(t)
 	tok, stride, skip := ActEscape(&d, '\\', in, 0, &warns)
 
 	require.False(t, skip)
@@ -167,8 +175,8 @@ func TestActEscape_MultiByteRune_ConsumesWholeRuneAndWarnsIfNotSpecial(t *testin
 	require.Equal(t, TokenEscapeSequence, tok.Type)
 	require.Equal(t, NewSpan(0, 3), tok.Raw)
 	require.Equal(t, NewSpan(1, 2), tok.Inner)
-
-	require.Len(t, warns, 1)
-	require.Equal(t, IssueRedundantEscape, warns[0].Issue)
-	require.Equal(t, 1, warns[0].Pos)
+	list := warns.List()
+	require.Len(t, list, 1)
+	require.Equal(t, IssueRedundantEscape, list[0].Issue)
+	require.Equal(t, 1, list[0].Pos)
 }

@@ -38,11 +38,11 @@ func Tokenize(d *Dictionary, input string, warns *Warnings) (tokens []Token) {
 		// but only if the text string is not empty
 		if textLen > 0 {
 			tokens = append(tokens, Token{
-				Type:  TokenText,
-				Pos:   textStart,
-				Width: textLen,
-				Raw:   Span{textStart, i},
-				Inner: Span{textStart, i},
+				Type:    TokenText,
+				Pos:     textStart,
+				Width:   textLen,
+				Raw:     Span{textStart, i},
+				Payload: Span{textStart, i},
 			})
 		}
 
@@ -61,11 +61,11 @@ func Tokenize(d *Dictionary, input string, warns *Warnings) (tokens []Token) {
 	// we flush the text as a Token
 	if textStart < n {
 		tokens = append(tokens, Token{
-			Type:  TokenText,
-			Pos:   textStart,
-			Width: n - textStart,
-			Raw:   Span{textStart, n},
-			Inner: Span{textStart, n},
+			Type:    TokenText,
+			Pos:     textStart,
+			Width:   n - textStart,
+			Raw:     Span{textStart, n},
+			Payload: Span{textStart, n},
 		})
 	}
 

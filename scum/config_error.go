@@ -33,3 +33,10 @@ func newEmptySequenceError() error {
 func newDuplicateTagIDError(id byte) error {
 	return NewConfigError(IssueDuplicateTagID, fmt.Errorf("Tag with ID %d already registered", id))
 }
+
+func newUnprintableError(ent string, char byte) error {
+	return NewConfigError(
+		IssueUnprintableChar,
+		fmt.Errorf("%s expected to be 1-byte long ASCII printable character, got %q", ent, char),
+	)
+}

@@ -15,9 +15,11 @@ const (
 	// after it.
 	TokenEscapeSequence
 
-	// TokenAttribute means the [Token] contains the optional data for the [Tag], which occured before
-	// the Attribute.
-	TokenAttribute
+	// TokenAttributeKV means an Attribute of kind key-value.
+	TokenAttributeKV
+
+	// TokenAttributeFlag means a named Attribute without a value (a boolean flag).
+	TokenAttributeFlag
 )
 
 // Rule defines the optional check, available only for single-char universal tags.
@@ -54,10 +56,12 @@ const (
 )
 
 const (
-	MaxTagLen     int   = 4 // Max length in bytes of the Tag's string representation.
-	MaxGreedLevel Greed = Grasping
-	MaxRule       Rule  = RuleTagVsContent
-	MaxTagNameLen int   = 20 // Max count of UTF-8 chars, not bytes, that the Tag's name can contain.
+	MaxTagLen                int   = 4 // Max length in bytes of the Tag's string representation.
+	MaxGreedLevel            Greed = Grasping
+	MaxRule                  Rule  = RuleTagVsContent
+	MaxTagNameLen            int   = 20  // Max count of UTF-8 chars, not bytes, that the Tag's name can contain.
+	DefaultMaxAttrKeyLen     int   = 128 // Default max number of bytes in the attribute's name.
+	DefaultMaxAttrPayloadLen int   = 512 // Default max number of bytes in the attribute's payload.
 )
 
 // Issue defines types of problems we might encounter during the tokenizing or the parsing processes.
@@ -117,4 +121,23 @@ const (
 
 	// IssueNegativeWarningsCap reports an invalid (negative) warnings capacity.
 	IssueNegativeWarningsCap
+
+	// IssueEmptyAttrPayload occurs when an attribute payload is present but empty, e.g. "!k{}" or "!{}".
+	IssueEmptyAttrPayload
+
+	// IssueUnclosedAttrPayload occurs when the attribute payload start is found, but the payload end symbol is missing.
+	IssueUnclosedAttrPayload
+
+	// IssueAttrKeyTooLong occurs when the attribute payload start symbol is not found within [Limits.MaxAttrKeyLen].
+	IssueAttrKeyTooLong
+
+	// IssueAttrPayloadTooLong occurs when the attribute payload end symbol is not found within [Limits.MaxAttrPayloadLen].
+	IssueAttrPayloadTooLong
+
+	// IssueInvalidAttrSymbol occurs during configuration when attribute symbols form an invalid signature
+	// (e.g. trigger equals payload start/end).
+	IssueInvalidAttrSymbol
+
+	// IssueNegativeLimit occurs during configuration when any value in [Limits] is negative.
+	IssueNegativeLimit
 )

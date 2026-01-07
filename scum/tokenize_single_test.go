@@ -83,10 +83,10 @@ func assertTokenInvariants(t *testing.T, in string, toks []Token) {
 		require.LessOrEqualf(t, tok.Raw.End, n, "token[%d] raw.end > len(input): %#v input=%q", i, tok, in)
 
 		// Inner bounds
-		require.GreaterOrEqualf(t, tok.Inner.Start, 0, "token[%d] inner.start < 0: %#v input=%q", i, tok, in)
-		require.GreaterOrEqualf(t, tok.Inner.End, 0, "token[%d] inner.end < 0: %#v input=%q", i, tok, in)
-		require.LessOrEqualf(t, tok.Inner.Start, tok.Inner.End, "token[%d] inner.start > inner.end: %#v input=%q", i, tok, in)
-		require.LessOrEqualf(t, tok.Inner.End, n, "token[%d] inner.end > len(input): %#v input=%q", i, tok, in)
+		require.GreaterOrEqualf(t, tok.Payload.Start, 0, "token[%d] inner.start < 0: %#v input=%q", i, tok, in)
+		require.GreaterOrEqualf(t, tok.Payload.End, 0, "token[%d] inner.end < 0: %#v input=%q", i, tok, in)
+		require.LessOrEqualf(t, tok.Payload.Start, tok.Payload.End, "token[%d] inner.start > inner.end: %#v input=%q", i, tok, in)
+		require.LessOrEqualf(t, tok.Payload.End, n, "token[%d] inner.end > len(input): %#v input=%q", i, tok, in)
 
 		// Consistency
 		require.Equalf(t, tok.Raw.Start, tok.Pos, "token[%d] pos mismatch: token=%#v input=%q", i, tok, in)
@@ -98,7 +98,7 @@ func assertTokenInvariants(t *testing.T, in string, toks []Token) {
 
 		// Text token convention: Raw == Inner
 		if tok.Type == TokenText {
-			require.Equalf(t, tok.Raw, tok.Inner, "token[%d] text token raw!=inner: %#v input=%q", i, tok, in)
+			require.Equalf(t, tok.Raw, tok.Payload, "token[%d] text token raw!=inner: %#v input=%q", i, tok, in)
 		}
 	}
 
@@ -139,7 +139,7 @@ func TestTokenizeSingle_Greedy_TagVsContent_TripleBackticksCapture(t *testing.T)
 
 	found := false
 	for _, tok := range toks {
-		if tok.Type != TokenTag || tok.TagID != '`' {
+		if tok.Type != TokenTag || tok.Trigger != '`' {
 			continue
 		}
 		raw := in[tok.Raw.Start:tok.Raw.End]

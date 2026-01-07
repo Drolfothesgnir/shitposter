@@ -21,8 +21,14 @@ type Token struct {
 	// Type defines the type of the Token, e.g. opening, closing, or universal tag, or an escape sequence.
 	Type TokenType
 
-	// TagID a unique leading byte of the tag byte sequence, defined by the User.
-	TagID byte
+	// Trigger is the leading special byte that started this Token.
+	// It is always a 1-byte printable ASCII character from the input that matched a registered Action.
+	//
+	// Examples:
+	//   - for a Tag token, Trigger is the first byte of the tag sequence (its ID).
+	//   - for an EscapeSequence token, Trigger is the escape symbol.
+	//   - for an Attribute token, Trigger is the attribute signature symbol.
+	Trigger byte
 
 	// Pos defines the starting byte position of the tag's sequence in the input string.
 	// Usually is the same as Raw.Start value.
@@ -42,10 +48,17 @@ type Token struct {
 	// the entire input. For Text tokens Raw and Inner fields are the same.
 	Raw Span
 
-	// Inner defines the bounds of the plain text content, stripped of Tag symbols inside the [Tag].
+	// Payload defines the bounds of the Token's main semantic content within the input string.
 	//
-	// Example: Imagine, you have defined a greedy tag with name 'URL' and a pattern like this: "(...)", where
-	// '(' is the opening tag and the ')' is the closing tag. When interpreting string "(https://some-address.com)",
-	// the Inner field will have [Span.Start] equal to 1 - the index of "h" and [Span.End] - 24, the index of "m".
-	Inner Span
+	// The meaning depends on Token type:
+	//   - Tag tokens: Payload spans the plain text content inside the tag (without opening/closing symbols).
+	//   - Text tokens: Payload is equal to Raw.
+	//   - EscapeSequence tokens: Payload spans the escaped UTF-8 code point.
+	//   - AttributeKV tokens: Payload spans the attribute value.
+	//   - AttributeFlag tokens: Payload is empty.
+	Payload Span
+
+	// AttrKey defines the bounds of the attribute name when Token type is AttributeKV or AttributeFlag.
+	// For non-attribute tokens AttrKey is empty.
+	AttrKey Span
 }

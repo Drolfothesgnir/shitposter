@@ -112,11 +112,22 @@ package scum
 
 // Dictionary manages creation and deletion of Tags and their corresponding Actions.
 type Dictionary struct {
+	Limits Limits
+
 	// actions maps particular Tag's ID to its corresponding [Action].
 	actions [256]Action
 
 	// tags maps particular Tag's ID to its Tag's info.
 	tags [256]Tag
+
+	// attrTrigger is a special symbol, which starts Attribute Action.
+	attrTrigger byte
+
+	// attrPayloadStart is special symbol, which marks the start of the Attribute's payload.
+	attrPayloadStart byte
+
+	// attrPayloadEnd is a special symbol, which masrks the end of the Attribute's payload.
+	attrPayloadEnd byte
 }
 
 // Tag allows to get particular Tag's info by providing its ID.
@@ -135,4 +146,23 @@ func (d *Dictionary) Action(id byte) (Action, bool) {
 // therefore is a special symbol.
 func (d *Dictionary) IsSpecial(char byte) bool {
 	return d.actions[char] != nil
+}
+
+// NewDictionary creates new [Dictionary] with provided optional limits.
+// [Limits] struct must be provided, but You can fill relevant fields only.
+// All zero fields will be populated with default values.
+// Negative limits will cause [ConfigError].
+func NewDictionary(limits Limits) (Dictionary, error) {
+	if err := limits.Validate(); err != nil {
+		return Dictionary{}, err
+	}
+
+	if limits.MaxAttrKeyLen == 0 {
+		limits.MaxAttrKeyLen = DefaultMaxAttrKeyLen
+	}
+	if limits.MaxAttrPayloadLen == 0 {
+		limits.MaxAttrPayloadLen = DefaultMaxAttrPayloadLen
+	}
+
+	return Dictionary{Limits: limits}, nil
 }

@@ -5,7 +5,7 @@ import "strconv"
 // WarnOpenTagBeforeEOL adds a [Warning] of the opening Tag before the very end of the input.
 func WarnOpenTagBeforeEOL(ctx *ActionContext) {
 	n := len(ctx.Input)
-	w := ctx.Bounds.OpenWidth
+	w := ctx.Bounds.Width
 
 	// if the Tag is not opening, or is not the last sequence in the input, do
 	// nothing

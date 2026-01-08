@@ -1,11 +1,11 @@
 package scum
 
-// StepOpenTagBeforeEOL checks if the opening Tag is the last Tag in the
+// StepSkipOpenTagBeforeEOL checks if the opening Tag is the last Tag in the
 // input. If the Tag is the last one, the step handle the
 // opening Tag, by skipping it.
-func StepOpenTagBeforeEOL(ctx *ActionContext) bool {
+func StepSkipOpenTagBeforeEOL(ctx *ActionContext) bool {
 	n := len(ctx.Input)
-	w := ctx.Bounds.OpenWidth
+	w := ctx.Bounds.Width
 	// if the opening Tag is not the last sequence in the input
 	// don't handle and continue to the next handler
 	if ctx.Idx+w < n {

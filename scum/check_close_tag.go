@@ -12,7 +12,7 @@ func CheckCloseTag(ctx *ActionContext) {
 
 	// contentStartIdx is the starting index of the plain text value of the Tag,
 	// just after the opening Tag end
-	contentStartIdx := ctx.Idx + ctx.Bounds.OpenWidth
+	contentStartIdx := ctx.Idx + ctx.Bounds.Width
 
 	// if there is no valid closing Tag in the Dictionary, then we consider
 	// the Tag unclosed and mutate the context accordingly

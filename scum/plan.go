@@ -15,16 +15,24 @@ type Bounds struct {
 	// Closed is true if the current Tag is properly closed.
 	Closed bool
 
-	// OpenWidth is the length in bytes of the ACTUAL opening Tag sequence,
+	// Width is the length in bytes of the ACTUAL trigger Tag sequence,
 	// found in the input.
-	OpenWidth int
+	Width int
 
 	// CloseWidth is the length in bytes of the ACTUAL closing Tag sequence,
-	// found in the input.
+	// found in the input. It's only relevant for the greedy opening and
+	// universal Tags, since a closing Tag can't have its own closing Tag.
+	//
+	// WARNING: use it only for get the complementary closing Tag's width.
+	// For the trigger Tag's width use Width.
 	CloseWidth int
 
 	// CloseIdx is the index of the start of the closing Tag sequence.
 	CloseIdx int
+
+	// SeqValid is true when the found Tag's byte sequence is completed.
+	// Useful for multi-char Tags.
+	SeqValid bool
 }
 
 // NewBounds creates new [Bounds] based on the index i.
@@ -33,9 +41,10 @@ func NewBounds(i int) Bounds {
 		Raw:        NewSpan(i, 1),
 		Inner:      NewSpan(i, 0),
 		Closed:     false,
-		OpenWidth:  1,
+		Width:      1,
 		CloseWidth: 0,
 		CloseIdx:   -1,
+		SeqValid:   false,
 	}
 }
 

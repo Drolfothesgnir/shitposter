@@ -1,6 +1,7 @@
 package scum
 
 // CreateAction creates the specific action which is based on the Tag's features.
+// TODO: try to reuse some of the functions in other functions
 func CreateAction(t *Tag) Action {
 	// allocating the new Plan on the heap
 	p := new(Plan)
@@ -31,12 +32,23 @@ func singleCharPlan(t *Tag, p *Plan) {
 	case t.IsOpening():
 		singleCharOpeningPlan(t, p)
 	case t.IsClosing():
-		singleCharClosingPlan(t, p)
+		closingPlan(t, p)
 	}
 }
 
 func multiCharPlan(t *Tag, p *Plan) {
-	// do stuff
+	p.AddStep(MutateWith(CheckMultiCharTagSeq))
+	p.AddStep(MutateWith(WarnInvalidSequence))
+	p.AddStep(StepSkipInvalidTriggerTag)
+
+	switch {
+	case t.IsUniversal():
+		multiCharUniversalPlan(t, p)
+	case t.IsOpening():
+		multiCharOpeningPlan(t, p)
+	case t.IsClosing():
+		closingPlan(t, p)
+	}
 }
 
 func singleCharUniversalPlan(t *Tag, p *Plan) {
@@ -52,7 +64,7 @@ func singleCharUniversalPlan(t *Tag, p *Plan) {
 
 func singleCharOpeningPlan(t *Tag, p *Plan) {
 	p.AddStep(MutateWith(WarnOpenTagBeforeEOL))
-	p.AddStep(StepOpenTagBeforeEOL)
+	p.AddStep(StepSkipOpenTagBeforeEOL)
 
 	switch t.Greed {
 	case NonGreedy:
@@ -64,9 +76,9 @@ func singleCharOpeningPlan(t *Tag, p *Plan) {
 	}
 }
 
-func singleCharClosingPlan(_ *Tag, p *Plan) {
+func closingPlan(_ *Tag, p *Plan) {
 	p.AddStep(MutateWith(WarnCloseTagAfterStart))
-	p.AddStep(StepCloseTagAfterStart)
+	p.AddStep(StepSkipCloseTagAfterStart)
 	p.AddStep(StepEmitEntireTagToken)
 }
 
@@ -115,4 +127,28 @@ func singleCharGraspingPlan(t *Tag, p *Plan) {
 	p.AddStep(MutateWith(WarnUnclosedTag))
 
 	p.AddStep(StepEmitEntireTagToken)
+}
+
+func multiCharUniversalPlan(t *Tag, p *Plan) {
+	// if the Tag is greedy add closing tag check and an optional Warning
+	if t.Greed > NonGreedy {
+		p.AddStep(MutateWith(CheckCloseTag))
+		p.AddStep(MutateWith(WarnUnclosedTag))
+
+		// only if the Tag is Greedy, add skip-if-unclosed
+		if t.Greed == Greedy {
+			p.AddStep(StepSkipUnclosedOpenTag)
+		}
+	}
+
+	p.AddStep(StepEmitEntireTagToken)
+}
+
+func multiCharOpeningPlan(t *Tag, p *Plan) {
+	p.AddStep(MutateWith(WarnOpenTagBeforeEOL))
+	p.AddStep(StepSkipOpenTagBeforeEOL)
+
+	// except checking the opening-before-EOL case,
+	// the opening plan is the same as universal
+	multiCharUniversalPlan(t, p)
 }

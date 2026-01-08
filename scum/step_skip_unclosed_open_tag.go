@@ -10,7 +10,7 @@ func StepSkipUnclosedOpenTag(ctx *ActionContext) bool {
 	ctx.Token = Token{}
 
 	// we also tell that we only processed the available opening sequence
-	ctx.Stride = ctx.Bounds.OpenWidth
+	ctx.Stride = ctx.Bounds.Width
 
 	ctx.Skip = true
 	return true

@@ -35,7 +35,7 @@ func requireCloseTagBoundsInvariants(t *testing.T, ctx *ActionContext) {
 	require.NotNil(t, ctx.Dictionary)
 
 	n := len(ctx.Input)
-	contentStartIdx := ctx.Idx + ctx.Bounds.OpenWidth
+	contentStartIdx := ctx.Idx + ctx.Bounds.Width
 
 	require.Equal(t, ctx.Idx, ctx.Bounds.Raw.Start)
 	require.Equal(t, contentStartIdx, ctx.Bounds.Inner.Start)
@@ -72,7 +72,7 @@ func TestCheckCloseTag_NoClosingTagRegistered(t *testing.T) {
 		Idx:        0,
 		Tag:        &tag,
 		Dictionary: &d,
-		Bounds:     &Bounds{OpenWidth: 2},
+		Bounds:     &Bounds{Width: 2},
 	}
 
 	CheckCloseTag(ctx)
@@ -107,7 +107,7 @@ func TestCheckCloseTag_ClosingTagContained_SingleByteClose(t *testing.T) {
 		Idx:        0,
 		Tag:        &openTag,
 		Dictionary: &d,
-		Bounds:     &Bounds{OpenWidth: 2},
+		Bounds:     &Bounds{Width: 2},
 	}
 
 	CheckCloseTag(ctx)
@@ -147,7 +147,7 @@ func TestCheckCloseTag_ClosingTagContained_MultiByteClose(t *testing.T) {
 		Idx:        0,
 		Tag:        &openTag,
 		Dictionary: &d,
-		Bounds:     &Bounds{OpenWidth: 2},
+		Bounds:     &Bounds{Width: 2},
 	}
 
 	CheckCloseTag(ctx)
@@ -187,7 +187,7 @@ func TestCheckCloseTag_ClosingTagNotContained_ClosestPrefixReported(t *testing.T
 		Idx:        0,
 		Tag:        &openTag,
 		Dictionary: &d,
-		Bounds:     &Bounds{OpenWidth: 2},
+		Bounds:     &Bounds{Width: 2},
 	}
 
 	CheckCloseTag(ctx)
@@ -224,7 +224,7 @@ func TestCheckCloseTag_ClosingTagNotContained_NoFirstByteFound(t *testing.T) {
 		Idx:        0,
 		Tag:        &openTag,
 		Dictionary: &d,
-		Bounds:     &Bounds{OpenWidth: 2},
+		Bounds:     &Bounds{Width: 2},
 	}
 
 	CheckCloseTag(ctx)

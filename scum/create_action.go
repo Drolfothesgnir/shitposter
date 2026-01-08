@@ -91,20 +91,14 @@ func singleCharGreedyPlan(t *Tag, p *Plan) {
 		p.AddStep(MutateWith(CheckCloseTag))
 	}
 
-	// next add decision based on wheter the Tag is properly closed,
-	// with or without Tag-Vs-Content rule
-	p.AddStep(StepProbeAndDecide(
-		func(ac *ActionContext) bool {
-			return ac.Bounds.Closed
-		},
-		// if the Tag is closed, simply emit it as a Token and return
-		StepEmitEntireTagToken,
-		// otherwise, add a Warning and delegate handling to the skipping step
-		MutateWith(WarnUnclosedTag),
-	))
+	// if the Tag is unclosed, add a Warning and skip it as text
 
-	// if the Tag is unclosed and not emitted, skip it as text
-	p.AddStep(StepSkipOpenTag)
+	p.AddStep(MutateWith(WarnUnclosedTag))
+
+	p.AddStep(StepSkipUnclosedOpenTag)
+
+	// otherwise emit the tag
+	p.AddStep(StepEmitEntireTagToken)
 }
 
 func singleCharGraspingPlan(t *Tag, p *Plan) {

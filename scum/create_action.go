@@ -51,21 +51,14 @@ func multiCharPlan(t *Tag, p *Plan) {
 	}
 }
 
-func singleCharUniversalPlan(t *Tag, p *Plan) {
-	switch t.Greed {
-	case NonGreedy:
-		singleCharNonGreedyPlan(t, p)
-	case Greedy:
-		singleCharGreedyPlan(t, p)
-	case Grasping:
-		singleCharGraspingPlan(t, p)
-	}
-}
-
 func singleCharOpeningPlan(t *Tag, p *Plan) {
 	p.AddStep(MutateWith(WarnOpenTagBeforeEOL))
 	p.AddStep(StepSkipOpenTagBeforeEOL)
 
+	singleCharUniversalPlan(t, p)
+}
+
+func singleCharUniversalPlan(t *Tag, p *Plan) {
 	switch t.Greed {
 	case NonGreedy:
 		singleCharNonGreedyPlan(t, p)
@@ -95,38 +88,25 @@ func singleCharNonGreedyPlan(t *Tag, p *Plan) {
 }
 
 func singleCharGreedyPlan(t *Tag, p *Plan) {
-	// if the Tag-Vs-Content rule applies check it
-	if t.Rule == RuleTagVsContent {
-		p.AddStep(MutateWith(CheckTagVsContent))
-	} else {
-		// else simply check if the Tag is closed
-		p.AddStep(MutateWith(CheckCloseTag))
-	}
-
-	// if the Tag is unclosed, add a Warning and skip it as text
-
+	addCloseTagCheck(t, p)
 	p.AddStep(MutateWith(WarnUnclosedTag))
-
 	p.AddStep(StepSkipUnclosedOpenTag)
-
-	// otherwise emit the tag
 	p.AddStep(StepEmitEntireTagToken)
 }
 
 func singleCharGraspingPlan(t *Tag, p *Plan) {
-	// if the Tag-Vs-Content rule applies check it
+	addCloseTagCheck(t, p)
+	p.AddStep(MutateWith(WarnUnclosedTag))
+	p.AddStep(StepEmitEntireTagToken)
+}
+
+// addCloseTagCheck adds the appropriate close tag check based on the Tag's rule.
+func addCloseTagCheck(t *Tag, p *Plan) {
 	if t.Rule == RuleTagVsContent {
 		p.AddStep(MutateWith(CheckTagVsContent))
 	} else {
-		// else simply check if the Tag is closed
 		p.AddStep(MutateWith(CheckCloseTag))
 	}
-
-	// Warning will appear if the Tag is unclosed, but the entire Tag
-	// will be emitted anyway
-	p.AddStep(MutateWith(WarnUnclosedTag))
-
-	p.AddStep(StepEmitEntireTagToken)
 }
 
 func multiCharUniversalPlan(t *Tag, p *Plan) {

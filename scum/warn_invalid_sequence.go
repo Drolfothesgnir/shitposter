@@ -11,7 +11,8 @@ func WarnInvalidSequence(ctx *ActionContext) {
 	}
 
 	expected := ctx.Tag.Seq.Bytes[w]
-	got := ctx.Input[i+w]
+	// have to decrement w by 1 to account for the first symbol already being counted
+	got := ctx.Input[i+w-1]
 
 	desc := "unexpected symbol while processing the Tag with name " +
 		strconv.Quote(ctx.Tag.Name) +

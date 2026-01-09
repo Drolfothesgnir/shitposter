@@ -15,6 +15,8 @@
 //     children of the "oldest" original tag and the duplicates will not end up in the final AST.
 //  5. A universal Tag is one, which has both the opening and the closing tags the same.
 //  6. The parser will try to make sense out of the User's gibberish and will not return any errors but only a slice of [Warning].
+//  7. The trigger Tag is one which starts the Action.
+//  8. The complementary Tag is one which closes the greedy Tag's body.
 //
 // # Behaviour. This will likely change in the future.
 //

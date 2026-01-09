@@ -31,7 +31,7 @@ func TestCheckTagVsContent_Closed_MatchingWidth(t *testing.T) {
 	CheckTagVsContent(&ctx)
 
 	require.True(t, ctx.Bounds.Closed)
-	require.Equal(t, 3, ctx.Bounds.OpenWidth)
+	require.Equal(t, 3, ctx.Bounds.Width)
 	require.Equal(t, 3, ctx.Bounds.CloseWidth)
 
 	// closing run starts at the last "&&&"
@@ -50,7 +50,7 @@ func TestCheckTagVsContent_IgnoresWrongWidthRuns(t *testing.T) {
 	CheckTagVsContent(&ctx)
 
 	require.True(t, ctx.Bounds.Closed)
-	require.Equal(t, 3, ctx.Bounds.OpenWidth)
+	require.Equal(t, 3, ctx.Bounds.Width)
 	require.Equal(t, 3, ctx.Bounds.CloseWidth)
 
 	wantCloseIdx := strings.LastIndex(input, "&&&")
@@ -67,7 +67,7 @@ func TestCheckTagVsContent_Unclosed_WhenOpeningSpansRest(t *testing.T) {
 	CheckTagVsContent(&ctx)
 
 	require.False(t, ctx.Bounds.Closed)
-	require.Equal(t, 3, ctx.Bounds.OpenWidth)
+	require.Equal(t, 3, ctx.Bounds.Width)
 	require.Equal(t, -1, ctx.Bounds.CloseIdx)
 	require.Equal(t, 0, ctx.Bounds.CloseWidth)
 
@@ -82,7 +82,7 @@ func TestCheckTagVsContent_Unclosed_WhenNoMatchingCloseRun(t *testing.T) {
 	CheckTagVsContent(&ctx)
 
 	require.False(t, ctx.Bounds.Closed)
-	require.Equal(t, 3, ctx.Bounds.OpenWidth)
+	require.Equal(t, 3, ctx.Bounds.Width)
 	require.Equal(t, -1, ctx.Bounds.CloseIdx)
 	require.Equal(t, 0, ctx.Bounds.CloseWidth)
 
@@ -98,7 +98,7 @@ func TestCheckTagVsContent_OpeningNotAtStart(t *testing.T) {
 	CheckTagVsContent(&ctx)
 
 	require.True(t, ctx.Bounds.Closed)
-	require.Equal(t, 3, ctx.Bounds.OpenWidth)
+	require.Equal(t, 3, ctx.Bounds.Width)
 	require.Equal(t, 3, ctx.Bounds.CloseWidth)
 
 	// Find the close after the opening.
@@ -119,7 +119,7 @@ func TestCheckTagVsContent_AllSameChar_Unclosed(t *testing.T) {
 	CheckTagVsContent(&ctx)
 
 	require.False(t, ctx.Bounds.Closed)
-	require.Equal(t, len(input), ctx.Bounds.OpenWidth)
+	require.Equal(t, len(input), ctx.Bounds.Width)
 	require.Equal(t, -1, ctx.Bounds.CloseIdx)
 	require.Equal(t, Span{0, len(input)}, ctx.Bounds.Raw)
 	require.Equal(t, Span{len(input), len(input)}, ctx.Bounds.Inner)

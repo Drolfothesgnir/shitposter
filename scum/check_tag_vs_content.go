@@ -53,7 +53,7 @@ func CheckTagVsContent(ctx *ActionContext) {
 		// if width of the current sequence matches the opening width,
 		// mutate the context and return
 		if closeWidth == openWidth {
-			ctx.Bounds.OpenWidth = openWidth
+			ctx.Bounds.Width = openWidth
 			ctx.Bounds.CloseIdx = idx
 			ctx.Bounds.CloseWidth = closeWidth
 			ctx.Bounds.Closed = true
@@ -79,7 +79,7 @@ func mutateWithOnlyOpeningTag(ctx *ActionContext, w int) {
 	ctx.Bounds.CloseIdx = -1
 	ctx.Bounds.CloseWidth = 0
 	ctx.Bounds.Closed = false
-	ctx.Bounds.OpenWidth = w
+	ctx.Bounds.Width = w
 	ctx.Bounds.Inner = Span{i + w, n}
 	ctx.Bounds.Raw = Span{i, n}
 }

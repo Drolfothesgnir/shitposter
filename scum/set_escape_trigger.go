@@ -20,7 +20,9 @@ func (d *Dictionary) SetEscapeTrigger(char byte) error {
 		return newDuplicateTagIDError(char)
 	}
 
-	// otherwise set the escape action
+	// otherwise set the escape trigger and action
+	d.escapeTrigger = char
+
 	d.actions[char] = ActEscape
 	return nil
 }

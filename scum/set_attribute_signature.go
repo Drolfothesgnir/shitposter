@@ -91,11 +91,18 @@ func ActAttribute(d *Dictionary, id byte, input string, i int, warns *Warnings) 
 	}
 
 	// 5. Find payload end
-	scanEnd = min(payloadStartIdx+1+d.Limits.MaxAttrPayloadLen+1, n)
-	relIdx = strings.IndexByte(input[payloadStartIdx+1:scanEnd], d.attrPayloadEnd)
+	payloadEndIdx := -1
+	startIdx := payloadStartIdx + 1
+	scanEnd = min(startIdx+d.Limits.MaxAttrPayloadLen+1, n)
+
+	if d.escapeTrigger != 0 {
+		payloadEndIdx = findPayloadEndWithEscape(input, startIdx, scanEnd, d.attrPayloadEnd, d.escapeTrigger)
+	} else {
+		payloadEndIdx = findPayloadEnd(input, startIdx, scanEnd, d.attrPayloadEnd)
+	}
 
 	// 6. No payload end
-	if relIdx == -1 {
+	if payloadEndIdx == -1 {
 		// same logic as with payload start idx
 		if scanEnd < n {
 			desc := "attribute payload length limit reached."
@@ -110,19 +117,17 @@ func ActAttribute(d *Dictionary, id byte, input string, i int, warns *Warnings) 
 	}
 
 	// 7. Empty attribute payload
-	if relIdx == 0 {
+	if payloadEndIdx == startIdx {
 		desc := "attribute payload is empty."
-		return skipWithWarn(warns, 1, payloadStartIdx+1, IssueEmptyAttrPayload, desc)
+		return skipWithWarn(warns, 1, startIdx, IssueEmptyAttrPayload, desc)
 	}
-
-	payloadEndIdx := payloadStartIdx + 1 + relIdx
 
 	width := payloadEndIdx - i + 1
 
 	stride = width
 	skip = false
 
-	payload := NewSpan(payloadStartIdx+1, payloadEndIdx-payloadStartIdx-1)
+	payload := NewSpan(startIdx, payloadEndIdx-startIdx)
 
 	token = Token{
 		Trigger: id,
@@ -142,4 +147,40 @@ func ActAttribute(d *Dictionary, id byte, input string, i int, warns *Warnings) 
 	token.Type = TokenAttributeKV
 	token.AttrKey = NewSpan(i+1, payloadStartIdx-i-1)
 	return
+}
+
+// findPayloadEndWithEscape returns the index of the payload end symbol, with an account of it possibly
+// being escaped.
+// Returns -1 if the unescaped symbol was not found.
+func findPayloadEndWithEscape(input string, start, scanEnd int, payloadEnd, esc byte) int {
+	escaped := false
+	for j := start; j < scanEnd; j++ {
+		c := input[j]
+
+		if escaped {
+			escaped = false
+			continue
+		}
+
+		if c == esc {
+			escaped = true
+			continue
+		}
+
+		if c == payloadEnd {
+			return j
+		}
+	}
+
+	return -1
+}
+
+// findPayloadEnd returns the index of the payload end symbol.
+func findPayloadEnd(input string, start, scanEnd int, payloadEnd byte) int {
+	relIdx := strings.IndexByte(input[start:scanEnd], payloadEnd)
+	if relIdx != -1 {
+		return start + relIdx
+	}
+
+	return -1
 }

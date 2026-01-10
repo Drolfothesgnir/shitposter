@@ -295,3 +295,155 @@ func TestActAttribute_Boundaries_ExactLimits_OK(t *testing.T) {
 
 	require.Empty(t, warns.List())
 }
+
+func TestActAttribute_KV_EscapedPayloadEnd_IsNotClosing(t *testing.T) {
+	d, err := NewDictionary(Limits{MaxAttrKeyLen: 10, MaxAttrPayloadLen: 64})
+	require.NoError(t, err)
+	require.NoError(t, d.SetAttributeSignature('!', '{', '}'))
+
+	// enable escaping inside payload
+	d.escapeTrigger = '\\'
+
+	// payload contains an escaped '}' (\}) and then a real closing '}'.
+	input := `!k{a\}}`
+	warns := newWarnings(t)
+
+	tok, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+
+	require.False(t, skip)
+	require.Equal(t, tok.Width, stride)
+	require.Equal(t, TokenAttributeKV, tok.Type)
+
+	require.Equal(t, "k", spanStr(input, tok.AttrKey))
+	require.Equal(t, `a\}`, spanStr(input, tok.Payload)) // raw payload includes the backslash
+
+	require.Empty(t, warns.List())
+}
+
+func TestActAttribute_KV_EscapedPayloadEnd_Only_UnclosedAtEOF(t *testing.T) {
+	d, err := NewDictionary(Limits{MaxAttrKeyLen: 10, MaxAttrPayloadLen: 64})
+	require.NoError(t, err)
+	require.NoError(t, d.SetAttributeSignature('!', '{', '}'))
+
+	d.escapeTrigger = '\\'
+
+	// The only '}' is escaped -> no real payload end -> unclosed at EOF.
+	input := `!k{a\}`
+	warns := newWarnings(t)
+
+	_, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+
+	require.True(t, skip)
+	require.Equal(t, 1, stride)
+
+	ws := warns.List()
+	require.Len(t, ws, 1)
+	require.Equal(t, IssueUnclosedAttrPayload, ws[0].Issue)
+	require.Equal(t, len(input), ws[0].Pos)
+}
+
+func TestActAttribute_KV_DoubleEscapeBeforeEnd_ClosesNormally(t *testing.T) {
+	d, err := NewDictionary(Limits{MaxAttrKeyLen: 10, MaxAttrPayloadLen: 64})
+	require.NoError(t, err)
+	require.NoError(t, d.SetAttributeSignature('!', '{', '}'))
+
+	d.escapeTrigger = '\\'
+
+	// payload is two backslashes, then '}' closes.
+	// "\\\\" inside raw string is literally two backslashes.
+	input := `!k{\\}`
+	warns := newWarnings(t)
+
+	tok, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+
+	require.False(t, skip)
+	require.Equal(t, tok.Width, stride)
+	require.Equal(t, TokenAttributeKV, tok.Type)
+
+	require.Equal(t, "k", spanStr(input, tok.AttrKey))
+	require.Equal(t, `\\`, spanStr(input, tok.Payload)) // raw payload == two backslashes
+
+	require.Empty(t, warns.List())
+}
+
+func TestActAttribute_KV_TripleEscapeThenBrace_BraceEscaped_NeedsNextBraceToClose(t *testing.T) {
+	d, err := NewDictionary(Limits{MaxAttrKeyLen: 10, MaxAttrPayloadLen: 64})
+	require.NoError(t, err)
+	require.NoError(t, d.SetAttributeSignature('!', '{', '}'))
+
+	d.escapeTrigger = '\\'
+
+	// payload: "\\\}" (three slashes, then an escaped brace), then a real closing brace.
+	input := `!k{\\\}}`
+	warns := newWarnings(t)
+
+	tok, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+
+	require.False(t, skip)
+	require.Equal(t, tok.Width, stride)
+	require.Equal(t, TokenAttributeKV, tok.Type)
+
+	require.Equal(t, "k", spanStr(input, tok.AttrKey))
+	require.Equal(t, `\\\}`, spanStr(input, tok.Payload))
+
+	require.Empty(t, warns.List())
+}
+
+func TestActAttribute_Flag_EscapedPayloadEnd_IsNotClosing(t *testing.T) {
+	d, err := NewDictionary(Limits{MaxAttrKeyLen: 10, MaxAttrPayloadLen: 64})
+	require.NoError(t, err)
+	require.NoError(t, d.SetAttributeSignature('!', '{', '}'))
+
+	d.escapeTrigger = '\\'
+
+	// flag attribute: trigger immediately followed by payloadStart
+	input := `!{A\}B}`
+	warns := newWarnings(t)
+
+	tok, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+
+	require.False(t, skip)
+	require.Equal(t, tok.Width, stride)
+	require.Equal(t, TokenAttributeFlag, tok.Type)
+
+	require.Equal(t, `A\}B`, spanStr(input, tok.Payload))
+	require.Empty(t, warns.List())
+}
+
+func TestActAttribute_KV_EscapeCharAtEndOfPayloadBeforeRealClose(t *testing.T) {
+	d, err := NewDictionary(Limits{MaxAttrKeyLen: 10, MaxAttrPayloadLen: 64})
+	require.NoError(t, err)
+	require.NoError(t, d.SetAttributeSignature('!', '{', '}'))
+
+	d.escapeTrigger = '\\'
+
+	// payload ends with a literal backslash before the real closing brace:
+	// first '\' escapes the second '\' => payload contains one '\' and then '}' closes.
+	input := `!k{\\}`
+	warns := newWarnings(t)
+
+	tok, _, skip := ActAttribute(&d, '!', input, 0, warns)
+	require.False(t, skip)
+	require.Equal(t, TokenAttributeKV, tok.Type)
+	require.Equal(t, `\\`, spanStr(input, tok.Payload))
+	require.Empty(t, warns.List())
+}
+
+func TestActAttribute_KV_NoEscapeTrigger_FallsBackToPlainSearch(t *testing.T) {
+	d, err := NewDictionary(Limits{MaxAttrKeyLen: 10, MaxAttrPayloadLen: 64})
+	require.NoError(t, err)
+	require.NoError(t, d.SetAttributeSignature('!', '{', '}'))
+
+	// escapeTrigger is 0 -> uses findPayloadEnd (IndexByte)
+	// payload contains "\}" but without escape semantics it SHOULD close at the first '}'.
+	input := `!k{a\}}`
+	warns := newWarnings(t)
+
+	tok, _, skip := ActAttribute(&d, '!', input, 0, warns)
+	require.False(t, skip)
+	require.Equal(t, TokenAttributeKV, tok.Type)
+
+	// closes at the first '}' (right after "\")
+	require.Equal(t, `a\`, spanStr(input, tok.Payload))
+	require.Empty(t, warns.List())
+}

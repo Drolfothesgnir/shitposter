@@ -8,7 +8,7 @@ func StepSkipCloseTagAfterStart(ctx *ActionContext) bool {
 	}
 
 	ctx.Token = Token{}
-	ctx.Stride = ctx.Bounds.Width // <- error
+	ctx.Stride = ctx.Bounds.Width
 	ctx.Skip = true
 	return true
 }

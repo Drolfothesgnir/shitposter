@@ -8,7 +8,6 @@ func StepEmitEntireTagToken(ctx *ActionContext) bool {
 		Trigger: ctx.Tag.ID(),
 		Pos:     ctx.Idx,
 		Width:   w,
-		Raw:     ctx.Bounds.Raw,
 		Payload: ctx.Bounds.Inner,
 	}
 

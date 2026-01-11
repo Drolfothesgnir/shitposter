@@ -133,7 +133,6 @@ func ActAttribute(d *Dictionary, id byte, input string, i int, warns *Warnings) 
 		Trigger: id,
 		Pos:     i,
 		Width:   width,
-		Raw:     NewSpan(i, width),
 		Payload: payload,
 	}
 

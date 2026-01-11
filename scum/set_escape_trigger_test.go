@@ -34,7 +34,6 @@ func TestSetEscapeTrigger_SetsAction(t *testing.T) {
 	require.Equal(t, byte('\\'), tok.Trigger)
 	require.Equal(t, 0, tok.Pos)
 	require.Equal(t, 2, tok.Width)
-	require.Equal(t, NewSpan(0, 2), tok.Raw)
 	require.Equal(t, NewSpan(1, 1), tok.Payload)
 }
 
@@ -111,7 +110,6 @@ func TestActEscape_RedundantEscape_WhenNextIsNotSpecial_Warns(t *testing.T) {
 	require.Equal(t, TokenEscapeSequence, tok.Type)
 	require.Equal(t, byte('\\'), tok.Trigger)
 	require.Equal(t, 2, tok.Width)
-	require.Equal(t, NewSpan(0, 2), tok.Raw)
 	require.Equal(t, NewSpan(1, 1), tok.Payload)
 	list := warns.List()
 	require.Len(t, list, 1)
@@ -133,7 +131,6 @@ func TestActEscape_InvalidUTF8Rune(t *testing.T) {
 	require.False(t, skip)
 	require.Equal(t, 2, stride)
 	require.Equal(t, TokenEscapeSequence, tok.Type)
-	require.Equal(t, NewSpan(0, 2), tok.Raw)
 	require.Equal(t, NewSpan(1, 1), tok.Payload)
 	list := warns.List()
 	require.Len(t, list, 1)
@@ -154,7 +151,6 @@ func TestActEscape_NextIsSpecial_NoRedundantWarning(t *testing.T) {
 	require.False(t, skip)
 	require.Equal(t, 2, stride)
 	require.Equal(t, TokenEscapeSequence, tok.Type)
-	require.Equal(t, NewSpan(0, 2), tok.Raw)
 	require.Equal(t, NewSpan(1, 1), tok.Payload)
 	list := warns.List()
 	require.Len(t, list, 0)
@@ -173,7 +169,6 @@ func TestActEscape_MultiByteRune_ConsumesWholeRuneAndWarnsIfNotSpecial(t *testin
 	require.Equal(t, 3, stride) // '\' + 2 bytes
 	require.Equal(t, 3, tok.Width)
 	require.Equal(t, TokenEscapeSequence, tok.Type)
-	require.Equal(t, NewSpan(0, 3), tok.Raw)
 	require.Equal(t, NewSpan(1, 2), tok.Payload)
 	list := warns.List()
 	require.Len(t, list, 1)

@@ -112,6 +112,8 @@
 //
 // TODO: add preallocated tag strings inside the dictionary
 // TODO: add docs for cases when closing tag does not match the opening and is returned as plain text along with a Warning
+// TODO: add limits for char search in the greedy Tags.
+// TODO: add remove [Token.Raw] field.
 package scum
 
 // Dictionary manages creation and deletion of Tags and their corresponding Actions.

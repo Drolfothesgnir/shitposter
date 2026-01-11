@@ -34,19 +34,11 @@ type Token struct {
 	// Usually is the same as Raw.Start value.
 	Pos int
 
-	// Width defines count of bytes in the Tag's sequence.
+	// Width defines count of bytes in the Tag's sequence, including the Tag itself and the payload.
 	//
 	// Example: Imagine, you have defined a universal tag with name 'BOLD' and a byte sequence of "$$". The sequence has
 	// 2 bytes in it, 1 per each '$', so the corresponding token will have width of 2.
 	Width int
-
-	// Raw defines the [Span] associated with the tag's value including both tag strings and the inner plain text.
-	//
-	// Example: Imagine, you have defined a greedy tag with name 'URL' and a pattern like this: "(...)", where
-	// '(' is the opening tag and the ')' is the closing tag. When interpreting string "(https://some-address.com)",
-	// the Raw will have [Span.Start] equal to 0 - the index of "(" and [Span.End] equal to 25 - the index of ")" , that is the bounds of
-	// the entire input. For Text tokens Raw and Inner fields are the same.
-	Raw Span
 
 	// Payload defines the bounds of the Token's main semantic content within the input string.
 	//

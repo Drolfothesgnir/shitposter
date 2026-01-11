@@ -89,7 +89,6 @@ func ActEscape(d *Dictionary, id byte, input string, i int, warns *Warnings) (to
 		Trigger: id,
 		Pos:     i,
 		Width:   1 + nextWidth,
-		Raw:     NewSpan(i, 1+nextWidth),
 		Payload: NewSpan(i+1, nextWidth),
 	}
 

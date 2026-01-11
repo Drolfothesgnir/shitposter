@@ -24,7 +24,7 @@ func mustAddTag(t *testing.T, d *Dictionary, name string, seq string, greed Gree
 func initSingleDict(t *testing.T) *Dictionary {
 	t.Helper()
 
-	d := &Dictionary{}
+	d := initEmptyDict(t)
 
 	mustAddTag(t, d, "UNDERLINE", "_", NonGreedy, RuleInfraWord, '_', '_')
 	mustAddTag(t, d, "CODE", "`", Greedy, RuleTagVsContent, '`', '`')
@@ -33,6 +33,12 @@ func initSingleDict(t *testing.T) *Dictionary {
 	mustAddTag(t, d, "LINK_TEXT_END", "]", NonGreedy, RuleNA, '[', 0)
 
 	return d
+}
+
+func initEmptyDict(t *testing.T) *Dictionary {
+	d, err := NewDictionary(Limits{})
+	require.NoError(t, err)
+	return &d
 }
 
 func tokenize(t *testing.T, d *Dictionary, in string) ([]Token, Warnings) {
@@ -106,7 +112,7 @@ func sliceByRaw(in string, toks []Token) string {
 // ---------- single-char grasping tests ----------
 
 func TestTokenizeSingle_Grasping_CapturesEvenWhenUnclosed(t *testing.T) {
-	d := &Dictionary{}
+	d := initEmptyDict(t)
 	// Single-char grasping tag with RuleNA (tests addCloseTagCheck else branch)
 	mustAddTag(t, d, "EMPHASIS", "*", Grasping, RuleNA, '*', '*')
 
@@ -134,7 +140,7 @@ func TestTokenizeSingle_Grasping_CapturesEvenWhenUnclosed(t *testing.T) {
 }
 
 func TestTokenizeSingle_Grasping_ClosedNormally(t *testing.T) {
-	d := &Dictionary{}
+	d := initEmptyDict(t)
 	mustAddTag(t, d, "EMPHASIS", "*", Grasping, RuleNA, '*', '*')
 
 	in := "*bold* rest"
@@ -161,7 +167,7 @@ func TestTokenizeSingle_Grasping_ClosedNormally(t *testing.T) {
 // ---------- single-char greedy with RuleNA (else branch of addCloseTagCheck) ----------
 
 func TestTokenizeSingle_Greedy_RuleNA_ClosedNormally(t *testing.T) {
-	d := &Dictionary{}
+	d := initEmptyDict(t)
 	// Greedy tag with RuleNA tests the else branch in addCloseTagCheck
 	mustAddTag(t, d, "STAR", "*", Greedy, RuleNA, '*', '*')
 
@@ -186,7 +192,7 @@ func TestTokenizeSingle_Greedy_RuleNA_ClosedNormally(t *testing.T) {
 }
 
 func TestTokenizeSingle_Greedy_RuleNA_UnclosedBecomesText(t *testing.T) {
-	d := &Dictionary{}
+	d := initEmptyDict(t)
 	mustAddTag(t, d, "STAR", "*", Greedy, RuleNA, '*', '*')
 
 	in := "*unclosed"

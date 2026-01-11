@@ -23,20 +23,25 @@ type Limits struct {
 	//
 	// Measured in bytes, not UTF-8 runes.
 	MaxAttrPayloadLen int
+
+	// MaxGreedyPayloadLen defines the maximum number of bytes the Greedy Tag's body can have.
+	MaxGreedyPayloadLen int
 }
 
 // Validate checks if the limits are not negative.
 // Return [ConfigError] if at least on of the values is negative.
 func (l Limits) Validate() error {
 
-	values := [2]int{
+	values := [3]int{
 		l.MaxAttrKeyLen,
 		l.MaxAttrPayloadLen,
+		l.MaxGreedyPayloadLen,
 	}
 
-	names := [2]string{
+	names := [3]string{
 		"MaxAttrKeyLen",
 		"MaxAttrPayloadLen",
+		"MaxGreedyPayloadLen",
 	}
 
 	for i := range values {

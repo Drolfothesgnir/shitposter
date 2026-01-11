@@ -17,16 +17,18 @@ import (
 func initMultiDict(t *testing.T) *Dictionary {
 	t.Helper()
 
-	d := &Dictionary{}
+	d, err := NewDictionary(Limits{})
+	require.NoError(t, err)
+	dp := &d
 
-	mustAddTag(t, d, "BOLD", "**", NonGreedy, RuleNA, '*', '*')
-	mustAddTag(t, d, "STRIKE", "~~", Greedy, RuleNA, '~', '~')
-	mustAddTag(t, d, "CODE_BLOCK", "```", Grasping, RuleNA, '`', '`')
+	mustAddTag(t, dp, "BOLD", "**", NonGreedy, RuleNA, '*', '*')
+	mustAddTag(t, dp, "STRIKE", "~~", Greedy, RuleNA, '~', '~')
+	mustAddTag(t, dp, "CODE_BLOCK", "```", Grasping, RuleNA, '`', '`')
 
-	mustAddTag(t, d, "WIKILINK_START", "[[", NonGreedy, RuleNA, 0, ']')
-	mustAddTag(t, d, "WIKILINK_END", "]]", NonGreedy, RuleNA, '[', 0)
+	mustAddTag(t, dp, "WIKILINK_START", "[[", NonGreedy, RuleNA, 0, ']')
+	mustAddTag(t, dp, "WIKILINK_END", "]]", NonGreedy, RuleNA, '[', 0)
 
-	return d
+	return dp
 }
 
 // ---------- multi-char universal non-greedy tests ----------

@@ -1,7 +1,6 @@
 package scum
 
 // CreateAction creates the specific action which is based on the Tag's features.
-// TODO: try to reuse some of the functions in other functions
 func CreateAction(t *Tag) Action {
 	// allocating the new Plan on the heap
 	p := new(Plan)

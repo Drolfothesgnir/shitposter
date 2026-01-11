@@ -34,7 +34,7 @@ type Token struct {
 	// Usually is the same as Raw.Start value.
 	Pos int
 
-	// Width defines count of bytes in the tag's sequence.
+	// Width defines count of bytes in the Tag's sequence.
 	//
 	// Example: Imagine, you have defined a universal tag with name 'BOLD' and a byte sequence of "$$". The sequence has
 	// 2 bytes in it, 1 per each '$', so the corresponding token will have width of 2.

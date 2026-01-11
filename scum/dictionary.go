@@ -93,15 +93,17 @@
 // Attributes.
 //
 //   - Each Tag can have valued or flag attributes. You can define a Tag's attribute by creating other special Tags. To do this you need to define a
-//     single-byte symbol which marks the start of the Attribute. You also need to define the opening and closing tags for the Attribute's body.
-//     The valued Attribute definition - <marker>(name)<body start>(content)<body end>.
+//     single-byte symbol which marks the start of the Attribute. You also need to define the opening and closing tags for the Attribute's payload.
+//     The valued Attribute definition - <marker>(name)<payload start>(content)<payload end>.
 //
-//     The flag Attribute definition - <marker><body start>(name)<body end>.
+//     The flag Attribute definition - <marker><payload start>(name)<payload end>.
 //
 //     Example: tou have a Tag with name "TAG", ID '[' and a closing Tag for it with ID ']'. You define the Attribute marker as '!' and '{' and '}' as
-//     the body opening and closing tags respectively. You use it by writing "[hello world]!attr1{foo-bar-001}!attr2{goodbye world}". You cam also create flag
+//     the payload opening and closing tags respectively. You use it by writing "[hello world]!attr1{foo-bar-001}!attr2{goodbye world}". You cam also create flag
 //     Attributes like this: [...]!{flagAttr1}!{flagAttr2}. You can combine valued and flag attributes. All attributes, that are following immediately after a Tag,
 //     will be considered this Tag's attributes.
+//
+//     You also can have escaping inside the attribute's payload. For this you need to define an escape symbol via [Dictionary.SetEscapeTrigger].
 //
 // Escape symbol.
 //
@@ -130,6 +132,9 @@ type Dictionary struct {
 
 	// attrPayloadEnd is a special symbol, which masrks the end of the Attribute's payload.
 	attrPayloadEnd byte
+
+	// escapeTrigger is a symbol which make the tokenizer treat the next symbol after it as non-special.
+	escapeTrigger byte
 }
 
 // Tag allows to get particular Tag's info by providing its ID.

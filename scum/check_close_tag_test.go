@@ -22,7 +22,13 @@ func dictStub(tags ...Tag) Dictionary {
 		state[id] = t
 		acts[id] = actNoop
 	}
-	return Dictionary{tags: state, actions: acts}
+
+	d, _ := NewDictionary(Limits{})
+
+	d.tags = state
+	d.actions = acts
+
+	return d
 }
 
 // Optional but VERY useful: catches most future “relative vs absolute” regressions.

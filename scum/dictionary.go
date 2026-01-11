@@ -104,16 +104,18 @@
 //     will be considered this Tag's attributes.
 //
 //     You also can have escaping inside the attribute's payload. For this you need to define an escape symbol via [Dictionary.SetEscapeTrigger].
+//     Also escaping the Attribute trigger will result in not starting the Attribute processing.
 //
 // Escape symbol.
 //
 //   - You can define an Escape symbol, which, when encountered during the tokenization, will make the Tokenizer treat next character, whether it's special or
 //     a simple text character, as a plain text. Escape symbol can be only 1-byte long ASCII char.
+//     In case of the escape symbol being before non-special character, or being the last symbol in the input, it will be treated as a plain text,
+//     and a Warning will be returned.
 //
 // TODO: add preallocated tag strings inside the dictionary
 // TODO: add docs for cases when closing tag does not match the opening and is returned as plain text along with a Warning
-// TODO: add limits for char search in the greedy Tags.
-// TODO: add remove [Token.Raw] field.
+// TODO: add limits for Tag-Vs-Content rule.
 package scum
 
 // Dictionary manages creation and deletion of Tags and their corresponding Actions.
@@ -171,6 +173,9 @@ func NewDictionary(limits Limits) (Dictionary, error) {
 	}
 	if limits.MaxAttrPayloadLen == 0 {
 		limits.MaxAttrPayloadLen = DefaultMaxAttrPayloadLen
+	}
+	if limits.MaxGreedyPayloadLen == 0 {
+		limits.MaxGreedyPayloadLen = DefaultMaxGreedyPayloadLen
 	}
 
 	return Dictionary{Limits: limits}, nil

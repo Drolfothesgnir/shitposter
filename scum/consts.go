@@ -56,12 +56,13 @@ const (
 )
 
 const (
-	MaxTagLen                int   = 4 // Max length in bytes of the Tag's string representation.
-	MaxGreedLevel            Greed = Grasping
-	MaxRule                  Rule  = RuleTagVsContent
-	MaxTagNameLen            int   = 20  // Max count of UTF-8 chars, not bytes, that the Tag's name can contain.
-	DefaultMaxAttrKeyLen     int   = 128 // Default max number of bytes in the attribute's name.
-	DefaultMaxAttrPayloadLen int   = 512 // Default max number of bytes in the attribute's payload.
+	MaxTagLen                  int   = 4 // Max length in bytes of the Tag's string representation.
+	MaxGreedLevel              Greed = Grasping
+	MaxRule                    Rule  = RuleTagVsContent
+	MaxTagNameLen              int   = 20   // Max count of UTF-8 chars, not bytes, that the Tag's name can contain.
+	DefaultMaxAttrKeyLen       int   = 128  // Default max number of bytes in the attribute's name.
+	DefaultMaxAttrPayloadLen   int   = 512  // Default max number of bytes in the attribute's payload.
+	DefaultMaxGreedyPayloadLen int   = 1024 // Default max number of bytes in the Greedy Tag's payload.
 )
 
 // Issue defines types of problems we might encounter during the tokenizing or the parsing processes.

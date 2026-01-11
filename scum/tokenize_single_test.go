@@ -76,29 +76,19 @@ func assertTokenInvariants(t *testing.T, in string, toks []Token) {
 	prevEnd := 0
 
 	for i, tok := range toks {
-		// Raw bounds
-		require.GreaterOrEqualf(t, tok.Raw.Start, 0, "token[%d] raw.start < 0: %#v input=%q", i, tok, in)
-		require.GreaterOrEqualf(t, tok.Raw.End, 0, "token[%d] raw.end < 0: %#v input=%q", i, tok, in)
-		require.LessOrEqualf(t, tok.Raw.Start, tok.Raw.End, "token[%d] raw.start > raw.end: %#v input=%q", i, tok, in)
-		require.LessOrEqualf(t, tok.Raw.End, n, "token[%d] raw.end > len(input): %#v input=%q", i, tok, in)
-
 		// Inner bounds
 		require.GreaterOrEqualf(t, tok.Payload.Start, 0, "token[%d] inner.start < 0: %#v input=%q", i, tok, in)
 		require.GreaterOrEqualf(t, tok.Payload.End, 0, "token[%d] inner.end < 0: %#v input=%q", i, tok, in)
 		require.LessOrEqualf(t, tok.Payload.Start, tok.Payload.End, "token[%d] inner.start > inner.end: %#v input=%q", i, tok, in)
 		require.LessOrEqualf(t, tok.Payload.End, n, "token[%d] inner.end > len(input): %#v input=%q", i, tok, in)
 
-		// Consistency
-		require.Equalf(t, tok.Raw.Start, tok.Pos, "token[%d] pos mismatch: token=%#v input=%q", i, tok, in)
-		require.Equalf(t, tok.Raw.End-tok.Raw.Start, tok.Width, "token[%d] width mismatch: token=%#v input=%q", i, tok, in)
-
 		// Tokenize() produces contiguous coverage
-		require.Equalf(t, prevEnd, tok.Raw.Start, "token[%d] non-contiguous: prevEnd=%d token=%#v input=%q", i, prevEnd, tok, in)
-		prevEnd = tok.Raw.End
+		require.Equalf(t, prevEnd, tok.Pos, "token[%d] non-contiguous: prevEnd=%d token=%#v input=%q", i, prevEnd, tok, in)
+		prevEnd = tok.Pos + tok.Width
 
 		// Text token convention: Raw == Inner
 		if tok.Type == TokenText {
-			require.Equalf(t, tok.Raw, tok.Payload, "token[%d] text token raw!=inner: %#v input=%q", i, tok, in)
+			require.Equalf(t, NewSpan(tok.Pos, tok.Width), tok.Payload, "token[%d] text token raw!=inner: %#v input=%q", i, tok, in)
 		}
 	}
 
@@ -108,7 +98,7 @@ func assertTokenInvariants(t *testing.T, in string, toks []Token) {
 func sliceByRaw(in string, toks []Token) string {
 	var b strings.Builder
 	for _, tok := range toks {
-		b.WriteString(in[tok.Raw.Start:tok.Raw.End])
+		b.WriteString(in[tok.Pos : tok.Pos+tok.Width])
 	}
 	return b.String()
 }
@@ -135,7 +125,7 @@ func TestTokenizeSingle_Grasping_CapturesEvenWhenUnclosed(t *testing.T) {
 	found := false
 	for _, tok := range toks {
 		if tok.Type == TokenTag && tok.Trigger == '*' {
-			raw := in[tok.Raw.Start:tok.Raw.End]
+			raw := in[tok.Pos : tok.Pos+tok.Width]
 			require.Equal(t, "*unclosed text", raw, "grasping should capture to end")
 			found = true
 		}
@@ -160,7 +150,7 @@ func TestTokenizeSingle_Grasping_ClosedNormally(t *testing.T) {
 	found := false
 	for _, tok := range toks {
 		if tok.Type == TokenTag && tok.Trigger == '*' {
-			raw := in[tok.Raw.Start:tok.Raw.End]
+			raw := in[tok.Pos : tok.Pos+tok.Width]
 			require.Equal(t, "*bold*", raw, "should capture closed tag")
 			found = true
 		}
@@ -187,7 +177,7 @@ func TestTokenizeSingle_Greedy_RuleNA_ClosedNormally(t *testing.T) {
 	found := false
 	for _, tok := range toks {
 		if tok.Type == TokenTag && tok.Trigger == '*' {
-			raw := in[tok.Raw.Start:tok.Raw.End]
+			raw := in[tok.Pos : tok.Pos+tok.Width]
 			require.Equal(t, "*content*", raw, "should capture closed tag")
 			found = true
 		}
@@ -213,7 +203,7 @@ func TestTokenizeSingle_Greedy_RuleNA_UnclosedBecomesText(t *testing.T) {
 	// The * should be treated as text since greedy unclosed tags skip
 	for _, tok := range toks {
 		if tok.Type == TokenTag && tok.Trigger == '*' {
-			raw := in[tok.Raw.Start:tok.Raw.End]
+			raw := in[tok.Pos : tok.Pos+tok.Width]
 			// If any tag is emitted, it must be properly closed
 			require.True(t, strings.HasSuffix(raw, "*") && len(raw) > 1,
 				"greedy unclosed should not emit partial tag")
@@ -250,7 +240,7 @@ func TestTokenizeSingle_Greedy_TagVsContent_TripleBackticksCapture(t *testing.T)
 		if tok.Type != TokenTag || tok.Trigger != '`' {
 			continue
 		}
-		raw := in[tok.Raw.Start:tok.Raw.End]
+		raw := in[tok.Pos : tok.Pos+tok.Width]
 		if strings.HasPrefix(raw, "```") && strings.HasSuffix(raw, "```") && len(raw) >= 6 {
 			found = true
 			break

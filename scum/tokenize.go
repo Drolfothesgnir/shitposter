@@ -41,7 +41,6 @@ func Tokenize(d *Dictionary, input string, warns *Warnings) (tokens []Token) {
 				Type:    TokenText,
 				Pos:     textStart,
 				Width:   textLen,
-				Raw:     Span{textStart, i},
 				Payload: Span{textStart, i},
 			})
 		}
@@ -64,7 +63,6 @@ func Tokenize(d *Dictionary, input string, warns *Warnings) (tokens []Token) {
 			Type:    TokenText,
 			Pos:     textStart,
 			Width:   n - textStart,
-			Raw:     Span{textStart, n},
 			Payload: Span{textStart, n},
 		})
 	}

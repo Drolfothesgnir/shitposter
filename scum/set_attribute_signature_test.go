@@ -245,7 +245,6 @@ func TestActAttribute_Flag_OK(t *testing.T) {
 	require.Equal(t, byte('!'), tok.Trigger)
 	require.Equal(t, 0, tok.Pos)
 	require.Equal(t, len(input), tok.Width)
-	require.Equal(t, Span{Start: 0, End: len(input)}, tok.Raw)
 
 	// For flags, your implementation stores the name in Payload.
 	require.Equal(t, "IS_FLAG", spanStr(input, tok.Payload))
@@ -268,7 +267,6 @@ func TestActAttribute_KV_OK(t *testing.T) {
 	require.Equal(t, TokenAttributeKV, tok.Type)
 	require.Equal(t, byte('!'), tok.Trigger)
 	require.Equal(t, 0, tok.Pos)
-	require.Equal(t, Span{Start: 0, End: len(input)}, tok.Raw)
 
 	require.Equal(t, "url", spanStr(input, tok.AttrKey))
 	require.Equal(t, "https://google.com", spanStr(input, tok.Payload))

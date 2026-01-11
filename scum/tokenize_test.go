@@ -53,7 +53,6 @@ func TestBoldItalic(t *testing.T) {
 			Trigger: '$',
 			Pos:     0,
 			Width:   2,
-			Raw:     NewSpan(0, 2),
 			Payload: NewSpan(2, 0),
 		},
 		{
@@ -61,14 +60,12 @@ func TestBoldItalic(t *testing.T) {
 			Trigger: '*',
 			Pos:     2,
 			Width:   1,
-			Raw:     NewSpan(2, 1),
 			Payload: NewSpan(3, 0),
 		},
 		{
 			Type:    TokenText,
 			Pos:     3,
 			Width:   4,
-			Raw:     NewSpan(3, 4),
 			Payload: NewSpan(3, 4),
 		},
 		{
@@ -76,7 +73,6 @@ func TestBoldItalic(t *testing.T) {
 			Trigger: '*',
 			Pos:     7,
 			Width:   1,
-			Raw:     NewSpan(7, 1),
 			Payload: NewSpan(8, 0),
 		},
 		{
@@ -84,7 +80,6 @@ func TestBoldItalic(t *testing.T) {
 			Trigger: '$',
 			Pos:     8,
 			Width:   2,
-			Raw:     NewSpan(8, 2),
 			Payload: NewSpan(10, 0),
 		},
 	}
@@ -108,7 +103,6 @@ func TestLink(t *testing.T) {
 			Trigger: '[',
 			Pos:     0,
 			Width:   1,
-			Raw:     NewSpan(0, 1),
 			Payload: NewSpan(1, 0),
 		},
 		{
@@ -116,14 +110,12 @@ func TestLink(t *testing.T) {
 			Trigger: '$',
 			Pos:     1,
 			Width:   2,
-			Raw:     NewSpan(1, 2),
 			Payload: NewSpan(3, 0),
 		},
 		{
 			Type:    TokenText,
 			Pos:     3,
 			Width:   21,
-			Raw:     NewSpan(3, 21),
 			Payload: NewSpan(3, 21),
 		},
 		{
@@ -131,7 +123,6 @@ func TestLink(t *testing.T) {
 			Trigger: '$',
 			Pos:     24,
 			Width:   2,
-			Raw:     NewSpan(24, 2),
 			Payload: NewSpan(26, 0),
 		},
 		{
@@ -139,7 +130,6 @@ func TestLink(t *testing.T) {
 			Trigger: ']',
 			Pos:     26,
 			Width:   1,
-			Raw:     NewSpan(26, 1),
 			Payload: NewSpan(27, 0),
 		},
 		{
@@ -147,7 +137,6 @@ func TestLink(t *testing.T) {
 			Trigger: '!',
 			Pos:     27,
 			Width:   24,
-			Raw:     NewSpan(27, 24),
 			Payload: NewSpan(32, 18),
 			AttrKey: NewSpan(28, 3),
 		},

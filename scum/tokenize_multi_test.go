@@ -45,7 +45,7 @@ func TestTokenizeMulti_UniversalNonGreedy_ValidSequence(t *testing.T) {
 	tagCount := 0
 	for _, tok := range toks {
 		if tok.Type == TokenTag && tok.Trigger == '*' {
-			raw := in[tok.Raw.Start:tok.Raw.End]
+			raw := in[tok.Pos : tok.Pos+tok.Width]
 			require.Equal(t, "**", raw, "expected ** tag")
 			tagCount++
 		}
@@ -70,7 +70,7 @@ func TestTokenizeMulti_UniversalNonGreedy_InvalidSeqWarnsAndEmitsPartial(t *test
 	// Should have single-char tag tokens since ** sequence is broken
 	for _, tok := range toks {
 		if tok.Type == TokenTag && tok.Trigger == '*' {
-			raw := in[tok.Raw.Start:tok.Raw.End]
+			raw := in[tok.Pos : tok.Pos+tok.Width]
 			require.Equal(t, "*", raw, "expected single * when sequence is invalid")
 		}
 	}
@@ -89,7 +89,7 @@ func TestTokenizeMulti_UniversalNonGreedy_SingleCharBecomesText(t *testing.T) {
 	// Single * should become text, not a tag
 	for _, tok := range toks {
 		if tok.Type == TokenTag {
-			raw := in[tok.Raw.Start:tok.Raw.End]
+			raw := in[tok.Pos : tok.Pos+tok.Width]
 			require.NotEqual(t, "*", raw, "single * should be text, not tag")
 		}
 	}
@@ -126,7 +126,7 @@ func TestTokenizeMulti_UniversalGreedy_StrikethroughCapture(t *testing.T) {
 	found := false
 	for _, tok := range toks {
 		if tok.Type == TokenTag && tok.Trigger == '~' {
-			raw := in[tok.Raw.Start:tok.Raw.End]
+			raw := in[tok.Pos : tok.Pos+tok.Width]
 			if strings.HasPrefix(raw, "~~") && strings.HasSuffix(raw, "~~") {
 				found = true
 				require.Equal(t, "~~deleted~~", raw, "expected full strikethrough capture")
@@ -152,7 +152,7 @@ func TestTokenizeMulti_UniversalGreedy_UnclosedBecomesText(t *testing.T) {
 	// The ~~ should be treated as text since unclosed greedy tags skip
 	for _, tok := range toks {
 		if tok.Type == TokenTag && tok.Trigger == '~' {
-			raw := in[tok.Raw.Start:tok.Raw.End]
+			raw := in[tok.Pos : tok.Pos+tok.Width]
 			// If it's a tag, it should be a proper closed one
 			require.True(t, strings.HasSuffix(raw, "~~"), "greedy unclosed should not emit partial tag")
 		}
@@ -175,7 +175,7 @@ func TestTokenizeMulti_UniversalGrasping_CodeBlockCapture(t *testing.T) {
 	found := false
 	for _, tok := range toks {
 		if tok.Type == TokenTag && tok.Trigger == '`' {
-			raw := in[tok.Raw.Start:tok.Raw.End]
+			raw := in[tok.Pos : tok.Pos+tok.Width]
 			if strings.HasPrefix(raw, "```") && strings.HasSuffix(raw, "```") {
 				found = true
 				require.Equal(t, "```code here```", raw, "expected full code block capture")
@@ -202,7 +202,7 @@ func TestTokenizeMulti_UniversalGrasping_UnclosedGraspsTillEnd(t *testing.T) {
 	found := false
 	for _, tok := range toks {
 		if tok.Type == TokenTag && tok.Trigger == '`' {
-			raw := in[tok.Raw.Start:tok.Raw.End]
+			raw := in[tok.Pos : tok.Pos+tok.Width]
 			if strings.HasPrefix(raw, "```") {
 				found = true
 				require.Equal(t, "```unclosed code", raw, "grasping should capture to end")
@@ -230,7 +230,7 @@ func TestTokenizeMulti_Opening_WikilinkStart(t *testing.T) {
 		if tok.Type != TokenTag {
 			continue
 		}
-		raw := in[tok.Raw.Start:tok.Raw.End]
+		raw := in[tok.Pos : tok.Pos+tok.Width]
 		if raw == "[[" {
 			openFound = true
 		}

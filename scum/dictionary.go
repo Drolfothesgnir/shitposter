@@ -111,15 +111,105 @@
 //   - You can define an Escape symbol, which, when encountered during the tokenization, will make the Tokenizer treat next character, whether it's special or
 //     a simple text character, as a plain text. Escape symbol can be only 1-byte long ASCII char.
 //     In case of the escape symbol being before non-special character, or being the last symbol in the input, it will be treated as a plain text,
-//     and a Warning will be returned.
+//     and a Warning will be returned. Escaping also available inside the attribute payload bodies. As for now, escape inside the payload body
+//     will not cause any Warnings even if it's placed before a non-special character. Live with it. As for now, escaping is not available inside greedy Tag's
+//     body. Live with it, too.
+//
+// Scanning limits.
+//
+//   - Greedy Tags have limited length of the payload, defined by [Limits.MaxPayloadLen]. If after the reaching the maximum payload length,
+//     the complementary Tag was not found, the trigger Tag will be skipped as a plain text and a Warning of unclosed Greedy Tag will be added.
+//     If the provided limit is 0, then the actual limit value will be [DefaultMaxPayloadLen].
+//
+//   - Tag-Vs-Content-rule-based Tags have length limits for opening and closing sequences and for the payload. [Limits.MaxKeyLen] defines
+//     the sequences limit and [Limits.MaxPayloadLen] defines the payload limit. If the opening Tag sequence is larger than the provided
+//     limit, the opening sequence will be trated as a plain text and a Warning will be added. The payload limit logic is the same as for
+//     the greedy Tags. If either the [Limits.MaxKeyLen] or the [Limits.MaxPayloadLen] are provided as 0, they will be replaced with
+//     [DefaultMaxKeyLen] and [DefaultMaxPayloadLen] respectively.
+//
+//   - Attributes have limits for the key and the payload. [Limits.MaxAttrKeyLen] defines the limit for the key and [Limits.MaxAttrPayloadLen]
+//     defines the limit for the payload. If the attribute key length exceeds the limit without finding the payload start symbol, the attribute
+//     trigger is treated as plain text and a Warning with [IssueAttrKeyTooLong] is added. If the attribute payload length exceeds the limit
+//     without finding the payload end symbol, the attribute trigger is treated as plain text and a Warning with [IssueAttrPayloadTooLong] is added.
+//
+// # Config errors.
+//
+// A [ConfigError] is returned during configuration when invalid parameters are provided. Each ConfigError contains an [Issue] describing
+// the kind of problem encountered.
+//
+//   - [NewDictionary]: Returns [IssueNegativeLimit] if any field in [Limits] is negative.
+//
+//   - [NewWarnings]: Returns [IssueNegativeWarningsCap] if the provided capacity is negative.
+//
+//   - [Dictionary.SetEscapeTrigger]: Returns [IssueUnprintableChar] if the escape symbol is not a printable ASCII character.
+//     Returns [IssueDuplicateTagID] if the symbol is already registered as a Tag or other special symbol.
+//
+//   - [Dictionary.SetAttributeSignature]: Returns [IssueDuplicateTagID] if the trigger symbol is already registered.
+//     Returns [IssueInvalidAttrSymbol] if the trigger symbol equals the payload start or payload end symbol.
+//     Returns [IssueUnprintableChar] if any of the three symbols (trigger, payload start, payload end) is not a printable ASCII character.
+//
+//   - [NewTagSequence]: Returns [IssueInvalidTagSeqLen] if the byte sequence is empty or longer than [MaxTagLen].
+//     Returns [IssueUnprintableChar] if any byte in the sequence is not a printable ASCII character.
+//
+//   - Tag name validation: Returns [IssueInvalidTagNameLen] if the tag name is empty or longer than [MaxTagNameLen] UTF-8 characters.
+//
+//   - Tag consistency validation: Returns [IssueInvalidRule] if the rule value exceeds [MaxRule], or if the rule is incompatible with
+//     the tag's greed level (e.g., [RuleInfraWord] requires [NonGreedy], [RuleTagVsContent] requires greedy tag).
+//     Returns [IssueInvalidGreedLevel] if the greed level exceeds [MaxGreedLevel].
+//     Returns [IssueRuleInapplicable] if a rule other than [RuleNA] is applied to a non-single-char or non-universal tag.
+//
+//   - Tag registration ([Dictionary.AddTag], [Dictionary.AddUniversalTag]): Returns [IssueDuplicateTagID] if the tag ID is already registered.
+//
+// # Warnings.
+//
+// A [Warning] is added during tokenization when the input contains problematic but recoverable patterns. Warnings do not stop processing;
+// instead, the tokenizer attempts to make sense of the input. Each Warning contains an [Issue] and a position in the input.
+//
+//   - [IssueUnexpectedEOL]: Added when a special symbol is found at the very end of the input where more content is expected.
+//     This includes: escape symbol at EOL, opening tag at EOL, attribute trigger at EOL, and attribute payload start at EOL.
+//
+//   - [IssueRedundantEscape]: Added when the escape symbol precedes a non-special character. The escaped character is still
+//     included in the output as an escape sequence token.
+//
+//   - [IssueUnclosedTag]: Added when a greedy or grasping tag's opening sequence is found, but no matching closing sequence
+//     exists in the input. For [Greedy] tags, the opening tag is skipped as plain text. For [Grasping] tags, the entire rest
+//     of the input becomes the tag's payload.
+//
+//   - [IssueMisplacedClosingTag]: Added when a closing tag is found at the very beginning of the input (index 0). The closing
+//     tag is treated as plain text.
+//
+//   - [IssueUnexpectedSymbol]: Added when a multi-char tag's sequence is interrupted by an unexpected byte. The partial sequence
+//     is treated as plain text.
+//
+//   - [IssueTagKeyTooLong]: Added when a [RuleTagVsContent] tag's opening sequence exceeds [Limits.MaxKeyLen] bytes.
+//     The opening sequence is treated as plain text.
+//
+//   - [IssueTagPayloadTooLong]: Added when a [Greedy] tag's payload exceeds [Limits.MaxPayloadLen] bytes without
+//     finding the closing sequence. The tag is treated according to its [Greed] level.
+//
+//   - [IssueAttrKeyTooLong]: Added when the attribute payload start symbol is not found within [Limits.MaxAttrKeyLen] bytes
+//     after the attribute trigger. The trigger is treated as plain text.
+//
+//   - [IssueAttrPayloadTooLong]: Added when the attribute payload end symbol is not found within [Limits.MaxAttrPayloadLen] bytes
+//     after the payload start. The trigger is treated as plain text.
+//
+//   - [IssueUnclosedAttrPayload]: Added when the attribute payload start symbol is found but the payload end symbol is missing
+//     before the end of the input. The trigger is treated as plain text.
+//
+//   - [IssueEmptyAttrPayload]: Added when the attribute payload is present but empty (e.g., "!k{}" or "!{}"). The trigger is
+//     treated as plain text.
+//
+//   - [IssueWarningsTruncated]: Added automatically by [Warnings] when using [WarnOverflowTrunc] policy and the maximum capacity
+//     is reached. This warning replaces all subsequent warnings and indicates how many were dropped.
 //
 // TODO: add preallocated tag strings inside the dictionary
 // TODO: add docs for cases when closing tag does not match the opening and is returned as plain text along with a Warning
-// TODO: add limits for Tag-Vs-Content rule.
 package scum
 
 // Dictionary manages creation and deletion of Tags and their corresponding Actions.
 type Dictionary struct {
+	// Limits is a set of numbers defined to limit the excessive input scanning
+	// during the tokenization process and to reduce the damage of the potential DoS attacks.
 	Limits Limits
 
 	// actions maps particular Tag's ID to its corresponding [Action].
@@ -153,9 +243,21 @@ func (d *Dictionary) Action(id byte) (Action, bool) {
 	return a, a != nil
 }
 
-// IsSpecial returns true if the provided char has it's corresponging [Action],
-// therefore is a special symbol.
+// IsSpecial returns true if the provided char is registered inside the [Dictionary]
+// as either a [Tag], an attribute signature's part, an escape symbol, or an escape symbol;
 func (d *Dictionary) IsSpecial(char byte) bool {
+	if char == 0 {
+		return false
+	}
+
+	switch char {
+	case d.attrTrigger,
+		d.attrPayloadStart,
+		d.attrPayloadEnd,
+		d.escapeTrigger:
+		return true
+	}
+
 	return d.actions[char] != nil
 }
 
@@ -168,14 +270,24 @@ func NewDictionary(limits Limits) (Dictionary, error) {
 		return Dictionary{}, err
 	}
 
-	if limits.MaxAttrKeyLen == 0 {
-		limits.MaxAttrKeyLen = DefaultMaxAttrKeyLen
+	values := [4]*int{
+		&limits.MaxAttrKeyLen,
+		&limits.MaxAttrPayloadLen,
+		&limits.MaxPayloadLen,
+		&limits.MaxKeyLen,
 	}
-	if limits.MaxAttrPayloadLen == 0 {
-		limits.MaxAttrPayloadLen = DefaultMaxAttrPayloadLen
+
+	defaultValues := [4]int{
+		DefaultMaxAttrKeyLen,
+		DefaultMaxAttrPayloadLen,
+		DefaultMaxPayloadLen,
+		DefaultMaxKeyLen,
 	}
-	if limits.MaxGreedyPayloadLen == 0 {
-		limits.MaxGreedyPayloadLen = DefaultMaxGreedyPayloadLen
+
+	for i, v := range defaultValues {
+		if *values[i] == 0 {
+			*values[i] = v
+		}
 	}
 
 	return Dictionary{Limits: limits}, nil

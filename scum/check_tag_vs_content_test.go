@@ -10,7 +10,8 @@ import (
 func newTagVsContentCtx(t *testing.T, input string, idx int, ch byte) ActionContext {
 	t.Helper()
 
-	var d Dictionary
+	d, err := NewDictionary(Limits{})
+	require.NoError(t, err)
 	warns, err := NewWarnings(WarnOverflowNoCap, 8)
 	require.NoError(t, err)
 

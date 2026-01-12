@@ -103,9 +103,11 @@ func singleCharGraspingPlan(t *Tag, p *Plan) {
 func addCloseTagCheck(t *Tag, p *Plan) {
 	if t.Rule == RuleTagVsContent {
 		p.AddStep(MutateWith(CheckTagVsContent))
+		p.AddStep(MutateWith(WarnTagKeyTooLong))
 	} else {
 		p.AddStep(MutateWith(CheckCloseTag))
 	}
+	p.AddStep(MutateWith(WarnTagPayloadTooLong))
 }
 
 func multiCharUniversalPlan(t *Tag, p *Plan) {
@@ -113,6 +115,7 @@ func multiCharUniversalPlan(t *Tag, p *Plan) {
 	if t.Greed > NonGreedy {
 		p.AddStep(MutateWith(CheckCloseTag))
 		p.AddStep(MutateWith(WarnUnclosedTag))
+		p.AddStep(MutateWith(WarnTagPayloadTooLong))
 
 		// only if the Tag is Greedy, add skip-if-unclosed
 		if t.Greed == Greedy {

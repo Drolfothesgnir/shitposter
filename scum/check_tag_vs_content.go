@@ -14,13 +14,24 @@ func CheckTagVsContent(ctx *ActionContext) {
 
 	i := ctx.Idx
 
-	for ; (openWidth < n-i) && (ctx.Input[i+openWidth] == char); openWidth++ {
+	lim := ctx.Dictionary.Limits.MaxKeyLen
+
+	maxWidth := min(lim, n-i)
+
+	for ; (openWidth < maxWidth) && (ctx.Input[i+openWidth] == char); openWidth++ {
 	}
 
 	// if the opening tag spans the entire rest of the string
 	// the tag conisdered unclosed and the context is mutated accordingly
 	if i+openWidth == n {
-		mutateWithOnlyOpeningTag(ctx, openWidth)
+		mutateWithOnlyOpeningTag(ctx, openWidth, false, false)
+		return
+	}
+
+	// if the opening tag length limit reached, but the opening sequence
+	// isn't finished, the tag is considered unclosed due to the limit
+	if openWidth == lim && ctx.Input[i+openWidth] == char {
+		mutateWithOnlyOpeningTag(ctx, lim, true, false)
 		return
 	}
 
@@ -30,13 +41,20 @@ func CheckTagVsContent(ctx *ActionContext) {
 	// we choose the next char after the first different char as the search start pos
 	searchStartIdx := i + openWidth + 1
 
-	for searchStartIdx < n-openWidth+1 {
-		relIdx := strings.IndexByte(ctx.Input[searchStartIdx:], char)
+	scanEnd := min(searchStartIdx+ctx.Dictionary.Limits.MaxPayloadLen, n-openWidth+1)
+
+	for searchStartIdx < scanEnd {
+		relIdx := strings.IndexByte(ctx.Input[searchStartIdx:scanEnd], char)
 
 		// if there are no closing sequence start in the rest of the input,
 		// again mutate the context accordingly
 		if relIdx == -1 {
-			mutateWithOnlyOpeningTag(ctx, openWidth)
+			if scanEnd < n-openWidth+1 {
+				mutateWithOnlyOpeningTag(ctx, openWidth, false, true)
+				return
+			}
+
+			mutateWithOnlyOpeningTag(ctx, openWidth, false, false)
 			return
 		}
 
@@ -69,10 +87,10 @@ func CheckTagVsContent(ctx *ActionContext) {
 
 	// if no closing tag found in the end, change the context with only
 	// opening Tag available
-	mutateWithOnlyOpeningTag(ctx, openWidth)
+	mutateWithOnlyOpeningTag(ctx, openWidth, false, false)
 }
 
-func mutateWithOnlyOpeningTag(ctx *ActionContext, w int) {
+func mutateWithOnlyOpeningTag(ctx *ActionContext, w int, keyLimitReached, payloadLimitReached bool) {
 	i := ctx.Idx
 	n := len(ctx.Input)
 
@@ -82,4 +100,6 @@ func mutateWithOnlyOpeningTag(ctx *ActionContext, w int) {
 	ctx.Bounds.Width = w
 	ctx.Bounds.Inner = Span{i + w, n}
 	ctx.Bounds.Raw = Span{i, n}
+	ctx.Bounds.KeyLenLimitReached = keyLimitReached
+	ctx.Bounds.PayloadLimitReached = payloadLimitReached
 }

@@ -77,9 +77,9 @@ func ActEscape(d *Dictionary, id byte, input string, i int, warns *Warnings) (to
 
 		warns.Add(Warning{
 			Issue: IssueRedundantEscape,
-			Pos:   i + 1,
-			Description: "expected any special symbol after the escape, at index " +
-				strconv.Itoa(i+1) + ", found " + got + ".",
+			Pos:   i,
+			Description: "redundant escape symbol found at index " +
+				strconv.Itoa(i) + ", before non-special " + got + ".",
 		})
 	}
 

@@ -5,7 +5,6 @@ import "fmt"
 // Limits define upper bounds used during tokenization to prevent excessive scanning
 // and potential denial-of-service scenarios.
 type Limits struct {
-
 	// MaxAttrKeyLen defines the maximum number of bytes scanned for an attribute key
 	// (from the attribute trigger up to the payload start symbol).
 	//
@@ -24,24 +23,31 @@ type Limits struct {
 	// Measured in bytes, not UTF-8 runes.
 	MaxAttrPayloadLen int
 
-	// MaxGreedyPayloadLen defines the maximum number of bytes the Greedy Tag's body can have.
-	MaxGreedyPayloadLen int
+	// MaxPayloadLen defines the maximum number of bytes the Greedy Tag's body can have.
+	// Also applied to the Tag-Vs-Content based search.
+	MaxPayloadLen int
+
+	// MaxKeyLen defines the maximum number of bytes the opening ang closing
+	// sequences can have.
+	MaxKeyLen int
 }
 
 // Validate checks if the limits are not negative.
 // Return [ConfigError] if at least on of the values is negative.
 func (l Limits) Validate() error {
 
-	values := [3]int{
+	values := [4]int{
 		l.MaxAttrKeyLen,
 		l.MaxAttrPayloadLen,
-		l.MaxGreedyPayloadLen,
+		l.MaxPayloadLen,
+		l.MaxKeyLen,
 	}
 
-	names := [3]string{
+	names := [4]string{
 		"MaxAttrKeyLen",
 		"MaxAttrPayloadLen",
 		"MaxGreedyPayloadLen",
+		"MaxKeyLen",
 	}
 
 	for i := range values {

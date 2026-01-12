@@ -14,28 +14,6 @@ func isASCIIPrintable(b byte) bool {
 	return b >= 32 && b <= 126
 }
 
-// checkByteDifference compares substr against the beginning of seq.
-// It returns the index of the first differing byte, or -1 if no difference is found.
-// substrShorter is true if substr is a prefix of seq but is shorter in length.
-func checkByteDifference(substr string, seq []byte) (diffIndex int, substrShorter bool) {
-	lenSubstr := len(substr)
-	lenSeq := len(seq)
-
-	diffIndex = -1
-	substrShorter = lenSubstr < lenSeq
-
-	minLen := min(lenSubstr, lenSeq)
-
-	for i := range minLen {
-		if substr[i] != seq[i] {
-			diffIndex = i
-			return
-		}
-	}
-
-	return
-}
-
 // extractNextRune returns the first value (either simple ASCII or an UTF-8 code point) of the non-empty substr.
 // It also returns the byte count of the found char and a bool flag, which is false in case the char is
 // not a valid UTF-8 code point, but an [utf8.RuneError].

@@ -33,6 +33,14 @@ type Bounds struct {
 	// SeqValid is true when the found Tag's byte sequence is completed.
 	// Useful for multi-char Tags.
 	SeqValid bool
+
+	// KeyLenLimitReached is true when the opening or the closing Tag sequence
+	// is longer than [Limits.MaxKeyLen].
+	KeyLenLimitReached bool
+
+	// PayloadLimitReached is true when the Tag's or attribute's payload is
+	// longer then [Limits.]
+	PayloadLimitReached bool
 }
 
 // NewBounds creates new [Bounds] based on the index i.

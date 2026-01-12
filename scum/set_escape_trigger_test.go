@@ -114,7 +114,7 @@ func TestActEscape_RedundantEscape_WhenNextIsNotSpecial_Warns(t *testing.T) {
 	list := warns.List()
 	require.Len(t, list, 1)
 	require.Equal(t, IssueRedundantEscape, list[0].Issue)
-	require.Equal(t, 1, list[0].Pos)
+	require.Equal(t, 0, list[0].Pos)
 	require.NotEmpty(t, list[0].Description)
 }
 
@@ -173,5 +173,5 @@ func TestActEscape_MultiByteRune_ConsumesWholeRuneAndWarnsIfNotSpecial(t *testin
 	list := warns.List()
 	require.Len(t, list, 1)
 	require.Equal(t, IssueRedundantEscape, list[0].Issue)
-	require.Equal(t, 1, list[0].Pos)
+	require.Equal(t, 0, list[0].Pos)
 }

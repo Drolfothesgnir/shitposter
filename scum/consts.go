@@ -56,89 +56,12 @@ const (
 )
 
 const (
-	MaxTagLen                  int   = 4 // Max length in bytes of the Tag's string representation.
-	MaxGreedLevel              Greed = Grasping
-	MaxRule                    Rule  = RuleTagVsContent
-	MaxTagNameLen              int   = 20   // Max count of UTF-8 chars, not bytes, that the Tag's name can contain.
-	DefaultMaxAttrKeyLen       int   = 128  // Default max number of bytes in the attribute's name.
-	DefaultMaxAttrPayloadLen   int   = 512  // Default max number of bytes in the attribute's payload.
-	DefaultMaxGreedyPayloadLen int   = 1024 // Default max number of bytes in the Greedy Tag's payload.
-)
-
-// Issue defines types of problems we might encounter during the tokenizing or the parsing processes.
-type Issue int
-
-const (
-	// IssueUnexpectedEOL means that either the specific symbol or a plain text was expected,
-	// but the input string was terminated.
-	IssueUnexpectedEOL Issue = iota
-
-	// IssueUnexpectedSymbol usually occurs during the tokenization, when the occured symbol breaks the Tag's
-	// opening or closing sequence.
-	IssueUnexpectedSymbol
-
-	// IssueUnclosedTag means that a Tag needs to be closed, but no closing Tag is found in the input.
-	IssueUnclosedTag
-
-	// IssueMisplacedClosingTag means that the closing [Tag] is placed at the very beginning of the input.
-	IssueMisplacedClosingTag
-
-	// IssueInvalidGreedLevel means the Tag's Greed level is greater than [MaxGreedLevel].
-	IssueInvalidGreedLevel
-
-	// IssueInvalidRule means the [Rule] is not applicable to the current [Tag], or it's value is higher than [MaxRule].
-	IssueInvalidRule
-
-	// IssueAmbiguousTagType means that the [Tag] has both [Tag.OpenID] and [Tag.CloseID] set, which means
-	// the Tag can't be classified as either opening or closing and the fields are not equal to the Tag's ID,
-	// which means the Tag can't be classified as Universal.
-	IssueAmbiguousTagType
-
-	// IssueInvalidTagNameLen occurs when the Tag's name is either empty string or it has length greater than
-	// [MaxTagNameLen].
-	IssueInvalidTagNameLen
-
-	// IssueInvalidTagSeqLen occurs when the Tag's string representation is either empty or is longer than [MaxTagLen].
-	IssueInvalidTagSeqLen
-
-	// IssueDuplicateTagID occurs when the [Tag] with the same ID is already registered.
-	IssueDuplicateTagID
-
-	// IssueInvalidTagSeq occurs when the Tag's string representation contains unprintable chars.
-	IssueInvalidTagSeq
-
-	// IssueRuleInapplicable occurs when the [Rule] is not avaliable due to [Greed] level or the [Tag] being multi-char.
-	IssueRuleInapplicable
-
-	// IssueRedundantEscape occurs when the next byte after the escape symbol does not trigger any [Action], and
-	// considered a plain text.
-	IssueRedundantEscape
-
-	// IssueUnprintableChar occurs when the symbol is not printable ASCII character
-	IssueUnprintableChar
-
-	// IssueWarningsTruncated occurs when there are too many Warnings recorded.
-	IssueWarningsTruncated
-
-	// IssueNegativeWarningsCap reports an invalid (negative) warnings capacity.
-	IssueNegativeWarningsCap
-
-	// IssueEmptyAttrPayload occurs when an attribute payload is present but empty, e.g. "!k{}" or "!{}".
-	IssueEmptyAttrPayload
-
-	// IssueUnclosedAttrPayload occurs when the attribute payload start is found, but the payload end symbol is missing.
-	IssueUnclosedAttrPayload
-
-	// IssueAttrKeyTooLong occurs when the attribute payload start symbol is not found within [Limits.MaxAttrKeyLen].
-	IssueAttrKeyTooLong
-
-	// IssueAttrPayloadTooLong occurs when the attribute payload end symbol is not found within [Limits.MaxAttrPayloadLen].
-	IssueAttrPayloadTooLong
-
-	// IssueInvalidAttrSymbol occurs during configuration when attribute symbols form an invalid signature
-	// (e.g. trigger equals payload start/end).
-	IssueInvalidAttrSymbol
-
-	// IssueNegativeLimit occurs during configuration when any value in [Limits] is negative.
-	IssueNegativeLimit
+	MaxTagLen                int   = 4 // Max length in bytes of the Tag's string representation.
+	MaxGreedLevel            Greed = Grasping
+	MaxRule                  Rule  = RuleTagVsContent
+	MaxTagNameLen            int   = 20   // Max count of UTF-8 chars, not bytes, that the Tag's name can contain.
+	DefaultMaxAttrKeyLen     int   = 128  // Default max number of bytes in the attribute's name.
+	DefaultMaxAttrPayloadLen int   = 512  // Default max number of bytes in the attribute's payload.
+	DefaultMaxPayloadLen     int   = 1024 // Default max number of bytes in the Tag's payload.
+	DefaultMaxKeyLen         int   = 128  // Default max number of bytes in the Tag-Vs-Content opening and closing sequences.
 )

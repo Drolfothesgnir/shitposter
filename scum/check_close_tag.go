@@ -40,10 +40,10 @@ func CheckCloseTag(ctx *ActionContext) {
 	}
 
 	// if the closing Tag exists we check if it's contained in the limited rest of the input
-	scanEnd := min(contentStartIdx+ctx.Dictionary.Limits.MaxGreedyPayloadLen+1, n)
+	scanEnd := min(contentStartIdx+ctx.Dictionary.Limits.MaxPayloadLen+1, n)
 	contained, relStartIdx, w := closeTag.Seq.IsContainedIn(ctx.Input[contentStartIdx:scanEnd])
 
-	// relStartIdx is relative to the string input[contentStartIdx:], therefore to make it absolute
+	// relStartIdx is relative to the string input[contentStartIdx:scanEnd], therefore to make it absolute
 	// to the whole input, it needs to be adjusted with contentStartIdx
 	absStartIdx := -1
 	if relStartIdx != -1 {
@@ -54,6 +54,7 @@ func CheckCloseTag(ctx *ActionContext) {
 	ctx.Bounds.Closed = contained
 	ctx.Bounds.CloseIdx = absStartIdx
 	ctx.Bounds.CloseWidth = w
+	ctx.Bounds.PayloadLimitReached = absStartIdx == -1 && scanEnd < n
 
 	// we mutate the Tag's bounds accordingly
 	if contained {

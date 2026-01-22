@@ -15,7 +15,8 @@ const (
 	// IssueUnclosedTag means that a Tag needs to be closed, but no closing Tag is found in the input.
 	IssueUnclosedTag
 
-	// IssueMisplacedClosingTag means that the closing [Tag] is placed at the very beginning of the input.
+	// IssueMisplacedClosingTag means that the closing [Tag] is placed at the very beginning of the input, or
+	// the Tag has missing opening Tag.
 	IssueMisplacedClosingTag
 
 	// IssueInvalidGreedLevel means the Tag's Greed level is greater than [MaxGreedLevel].
@@ -82,4 +83,11 @@ const (
 
 	// IssueTagPayloadTooLong occurs when the Tag's payload is longer than [Limits.MaxPayloadLen].
 	IssueTagPayloadTooLong
+
+	// IssueOpenCloseTagMismatch occurs when the opening Tag's [Tag.CloseID] != closing Tag's [Tag.OpenID].
+	IssueOpenCloseTagMismatch
+
+	// FIXME: refactor doc comment
+	// IssueDuplicateNestedTag occurs when the Tag is nested in the Tag with the same ID.
+	IssueDuplicateNestedTag
 )

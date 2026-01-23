@@ -37,8 +37,9 @@ type Node struct {
 	// Span defines the byte range in Input covered by this node.
 	Span Span
 
-	// Children defines the range in ChildrenIdx arena.
-	Children Range
+	FirstChild  int
+	LastChild   int
+	NextSibling int
 
 	// Attributes defines the range in Attributes arena.
 	Attributes Range
@@ -51,9 +52,6 @@ type AST struct {
 
 	// Nodes stores all AST nodes.
 	Nodes []Node
-
-	// ChildrenIdx stores child node indices for all nodes.
-	ChildrenIdx []int
 
 	// Attributes stores all attributes referenced by nodes.
 	Attributes []Attribute

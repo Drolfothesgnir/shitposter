@@ -36,8 +36,11 @@ func (s parserState) peekStack() byte {
 	return 0
 }
 
-func (s *parserState) popStack() {
-	s.stack = s.stack[:len(s.stack)-1]
+func (s *parserState) popStack() byte {
+	lastItemIdx := len(s.stack) - 1
+	lastItem := s.stack[lastItemIdx]
+	s.stack = s.stack[:lastItemIdx]
+	return lastItem
 }
 
 func (s *parserState) pushStack(b byte) {
@@ -75,10 +78,6 @@ func Parse(input string, d *Dictionary, warns *Warnings) AST {
 
 		case TokenTag:
 			processTag(&state, d, warns, t)
-
-			// NOTE: Do i really need type escape sequence?
-		case TokenEscapeSequence:
-			processText(&state, t)
 		}
 	}
 
@@ -89,16 +88,17 @@ func appendNode(ast *AST, parentIdx int, node Node) int {
 	nodeIdx := len(ast.Nodes)
 	ast.Nodes = append(ast.Nodes, node)
 
-	childIdx := len(ast.ChildrenIdx)
-	ast.ChildrenIdx = append(ast.ChildrenIdx, nodeIdx)
-
 	parent := &ast.Nodes[parentIdx]
 
-	if parent.Children.Len == 0 {
-		parent.Children.Start = childIdx
-	}
+	lastChildIdx := parent.LastChild
+	lastChild := &ast.Nodes[lastChildIdx]
+	lastChild.NextSibling = nodeIdx
 
-	parent.Children.Len++
+	parent.LastChild = nodeIdx
+
+	if parent.FirstChild == 0 {
+		parent.FirstChild = nodeIdx
+	}
 
 	return nodeIdx
 }
@@ -132,11 +132,11 @@ func processTag(state *parserState, d *Dictionary, warns *Warnings, tok Token) {
 
 	switch {
 	case tag.IsUniversal():
-		processUniversalTag(state, warns, tok)
+		processUniversalTag(state, d, warns, tok)
 		return
 
 	case tag.IsOpening():
-		processOpeningTag(state, warns, tok)
+		processOpeningTag(state, d, warns, tok)
 		return
 
 	case tag.IsClosing():
@@ -162,7 +162,7 @@ func appendGreedyNode(state *parserState, tok Token) {
 	state.lastNodeIdx = nodeIdx
 }
 
-func processUniversalTag(state *parserState, warns *Warnings, tok Token) {
+func processUniversalTag(state *parserState, d *Dictionary, warns *Warnings, tok Token) {
 	// 1. Check if the tag is a closing one and close if true
 	if state.openedTags[tok.Trigger] && state.peekStack() == tok.Trigger {
 		closeTag(state, tok)
@@ -170,10 +170,10 @@ func processUniversalTag(state *parserState, warns *Warnings, tok Token) {
 	}
 
 	// 2. Process the tag as an opening one.
-	processOpeningTag(state, warns, tok)
+	processOpeningTag(state, d, warns, tok)
 }
 
-func processOpeningTag(state *parserState, warns *Warnings, tok Token) {
+func processOpeningTag(state *parserState, d *Dictionary, warns *Warnings, tok Token) {
 	// 1. Check if the tag is opened already, skip if true
 	if state.openedTags[tok.Trigger] {
 		desc := "tag with ID " +
@@ -186,7 +186,7 @@ func processOpeningTag(state *parserState, warns *Warnings, tok Token) {
 			Description: desc,
 		})
 
-		state.skip[tok.Trigger]++
+		state.skip[d.tags[tok.Trigger].CloseID]++
 		return
 	}
 
@@ -201,6 +201,7 @@ func processOpeningTag(state *parserState, warns *Warnings, tok Token) {
 	state.pushCrumb(idx)
 	state.pushStack(tok.Trigger)
 	state.lastNodeIdx = idx
+	state.openedTags[tok.Trigger] = true
 }
 
 func processClosingTag(state *parserState, d *Dictionary, warns *Warnings, tok Token) {
@@ -252,8 +253,8 @@ func closeTag(state *parserState, tok Token) {
 	idx := state.popCrumb()
 	// making the closed tag the target for appending attributes
 	state.lastNodeIdx = idx
-	state.popStack()
-	state.openedTags[tok.Trigger] = false
+	openTagID := state.popStack()
+	state.openedTags[openTagID] = false
 }
 
 func processText(state *parserState, tok Token) {

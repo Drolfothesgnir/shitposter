@@ -83,16 +83,9 @@ func ActEscape(d *Dictionary, id byte, input string, i int, warns *Warnings) (to
 		})
 	}
 
-	// 2. Create Token
-	token = Token{
-		Type:    TokenEscapeSequence,
-		Trigger: id,
-		Pos:     i,
-		Width:   1 + nextWidth,
-		Payload: NewSpan(i+1, nextWidth),
-	}
-
+	// 2. Skip text
+	token = Token{}
 	stride = 1 + nextWidth
-	skip = false
+	skip = true
 	return
 }

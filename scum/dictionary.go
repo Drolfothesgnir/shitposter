@@ -103,6 +103,10 @@
 //     Attributes like this: [...]!{flagAttr1}!{flagAttr2}. You can combine valued and flag attributes. All attributes, that are following immediately after a Tag,
 //     will be considered this Tag's attributes.
 //
+//     Attribute will be attached to previous Tag, whether it's a normal tag or a text.
+//
+//     Example: in the input "$$hello$$ world!STYLE{color: \"#fff\"}", the STYLE attribute will be attached to the text node " world".
+//
 //     You also can have escaping inside the attribute's payload. For this you need to define an escape symbol via [Dictionary.SetEscapeTrigger].
 //     Also escaping the Attribute trigger will result in not starting the Attribute processing.
 //

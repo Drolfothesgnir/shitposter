@@ -11,10 +11,6 @@ const (
 	// The Tag can be Opening, Closing, or Universal.
 	TokenTag
 
-	// TokenEscapeSequence means the [Token] contains the escape character and the next character
-	// after it.
-	TokenEscapeSequence
-
 	// TokenAttributeKV means an Attribute of kind key-value.
 	TokenAttributeKV
 

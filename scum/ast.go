@@ -45,6 +45,15 @@ type Node struct {
 	Attributes Range
 }
 
+func NewNode() Node {
+	return Node{
+		Type:        NodeRoot,
+		FirstChild:  -1,
+		LastChild:   -1,
+		NextSibling: -1,
+	}
+}
+
 // AST is the arena-backed abstract syntax tree.
 type AST struct {
 	// Input is the original source string.

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func actNoop(d *Dictionary, id byte, input string, i int, warns *Warnings) (token Token, stride int, skip bool) {
+func actNoop(_ *Dictionary, _ *TokenizerState, _ *Warnings, _ string, _ byte, _ int) (token Token, stride int, skip bool) {
 	stride = 1
 	skip = true
 	return

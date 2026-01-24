@@ -1,10 +1,14 @@
 package scum
 
-import "strconv"
+import (
+	"strconv"
+)
 
+// TODO: document steps for Myself
 type parserState struct {
 	ast         AST
 	breadcrumbs []int
+	cumWidth    []int
 	skip        [256]int
 	openedTags  [256]bool
 	stack       []byte
@@ -47,27 +51,56 @@ func (s *parserState) pushStack(b byte) {
 	s.stack = append(s.stack, b)
 }
 
-func newParserState(input string) parserState {
+func (s *parserState) incrementCumWidth(w int) {
+	s.cumWidth[len(s.cumWidth)-1] += w
+}
+
+func (s *parserState) pushCumWidth(w int) {
+	s.cumWidth = append(s.cumWidth, w)
+}
+
+func (s *parserState) popCumWidth(w int) int {
+	lastItemIdx := len(s.cumWidth) - 1
+	lastItem := s.cumWidth[lastItemIdx]
+	delta := lastItem + w
+	s.cumWidth[lastItemIdx-1] += delta
+	s.cumWidth = s.cumWidth[:lastItemIdx]
+	return lastItem
+}
+
+func (s *parserState) peekCumWidth() int {
+	return s.cumWidth[len(s.cumWidth)-1]
+}
+
+func newParserState(input string, out TokenizerOutput) parserState {
 	root := NewNode()
-	root.Span = NewSpan(0, len(input))
+
+	// we expect to have at most as many nodes as there are tags and text tokens
+	totalExpectedNodes := max(out.TagsTotal+out.TextTokens, 1)
+	nodes := make([]Node, 1, totalExpectedNodes)
+	nodes[0] = root
+
 	ast := AST{
-		Input: input,
-		Nodes: []Node{root},
+		Input:      input,
+		Nodes:      nodes,
+		Attributes: make([]Attribute, 0, out.Attributes),
 	}
 
 	return parserState{
 		ast: ast,
 		// root node should always be present
 		breadcrumbs: []int{0},
+		// cumulative width of the root should always be present
+		cumWidth: []int{0},
 	}
 }
 
 func Parse(input string, d *Dictionary, warns *Warnings) AST {
-	tokens := Tokenize(d, input, warns)
+	out := Tokenize(d, input, warns)
 
-	state := newParserState(input)
+	state := newParserState(input, out)
 
-	for _, t := range tokens {
+	for _, t := range out.Tokens {
 		switch t.Type {
 		case TokenText:
 			processText(&state, t)
@@ -79,6 +112,9 @@ func Parse(input string, d *Dictionary, warns *Warnings) AST {
 			processTag(&state, d, warns, t)
 		}
 	}
+	// TODO: add unclosed tag warnings, check breadcrums for leftovers
+
+	state.ast.Nodes[0].Span.End = state.peekCumWidth()
 
 	return state.ast
 }
@@ -88,8 +124,6 @@ func appendNode(ast *AST, parentIdx int, node Node) int {
 	ast.Nodes = append(ast.Nodes, node)
 
 	parent := &ast.Nodes[parentIdx]
-
-	parent.Span.End = max(parent.Span.End, node.Span.End)
 
 	if parent.FirstChild == -1 {
 		parent.FirstChild = nodeIdx
@@ -152,14 +186,13 @@ func appendGreedyNode(state *parserState, tok Token) {
 	node.Type = NodeTag
 	node.TagID = tok.Trigger
 	node.Span = NewSpan(tok.Pos, tok.Width)
-
 	parentIdx := appendNode(&state.ast, state.peekCrumb(), node)
-
 	payload := NewNode()
 	payload.Type = NodeText
 	payload.Span = tok.Payload
 	nodeIdx := appendNode(&state.ast, parentIdx, payload)
 	state.lastNodeIdx = nodeIdx
+	state.incrementCumWidth(tok.Width)
 }
 
 func processUniversalTag(state *parserState, d *Dictionary, warns *Warnings, tok Token) {
@@ -195,10 +228,10 @@ func processOpeningTag(state *parserState, d *Dictionary, warns *Warnings, tok T
 	node.Type = NodeTag
 	node.TagID = tok.Trigger
 	node.Span = NewSpan(tok.Pos, tok.Width)
-
 	idx := appendNode(&state.ast, state.peekCrumb(), node)
 	state.pushCrumb(idx)
 	state.pushStack(tok.Trigger)
+	state.pushCumWidth(tok.Width)
 	state.lastNodeIdx = idx
 	state.openedTags[tok.Trigger] = true
 }
@@ -255,7 +288,7 @@ func closeTag(state *parserState, tok Token) {
 	state.lastNodeIdx = idx
 
 	// update the span of the closed tag
-	state.ast.Nodes[idx].Span.End += tok.Width
+	state.ast.Nodes[idx].Span.End += state.popCumWidth(tok.Width)
 
 	openTagID := state.popStack()
 	state.openedTags[openTagID] = false
@@ -267,6 +300,7 @@ func processText(state *parserState, tok Token) {
 	node.Span = tok.Payload
 	textIdx := appendNode(&state.ast, state.peekCrumb(), node)
 	state.lastNodeIdx = textIdx
+	state.incrementCumWidth(tok.Width)
 }
 
 func processAttribute(state *parserState, tok Token) {

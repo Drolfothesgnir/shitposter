@@ -103,7 +103,8 @@ func TestActAttribute_TriggerAtEnd(t *testing.T) {
 	input := "!"
 	warns := newWarnings(t)
 
-	_, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	_, stride, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 
 	require.True(t, skip)
 	require.Equal(t, 1, stride)
@@ -122,7 +123,8 @@ func TestActAttribute_NoPayloadStart_EOF(t *testing.T) {
 	input := "!abc" // no '{' and we reach EOL
 	warns := newWarnings(t)
 
-	_, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	_, stride, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 
 	require.True(t, skip)
 	require.Equal(t, 1, stride)
@@ -141,7 +143,8 @@ func TestActAttribute_KeyTooLong(t *testing.T) {
 	input := "!abcd{v}" // key "abcd" is longer than 2
 	warns := newWarnings(t)
 
-	_, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	_, stride, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 
 	require.True(t, skip)
 	require.Equal(t, 1, stride)
@@ -160,7 +163,8 @@ func TestActAttribute_PayloadStartAtEnd(t *testing.T) {
 	input := "!k{"
 	warns := newWarnings(t)
 
-	_, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	_, stride, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 
 	require.True(t, skip)
 	require.Equal(t, 1, stride)
@@ -179,7 +183,8 @@ func TestActAttribute_UnclosedPayload_EOF(t *testing.T) {
 	input := "!k{val" // no closing '}'
 	warns := newWarnings(t)
 
-	_, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	_, stride, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 
 	require.True(t, skip)
 	require.Equal(t, 1, stride)
@@ -198,7 +203,8 @@ func TestActAttribute_PayloadTooLong(t *testing.T) {
 	input := "!k{abcd}" // payload "abcd" longer than 2
 	warns := newWarnings(t)
 
-	_, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	_, stride, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 
 	require.True(t, skip)
 	require.Equal(t, 1, stride)
@@ -217,7 +223,8 @@ func TestActAttribute_EmptyPayload(t *testing.T) {
 	input := "!k{}"
 	warns := newWarnings(t)
 
-	_, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	_, stride, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 
 	require.True(t, skip)
 	require.Equal(t, 1, stride)
@@ -237,7 +244,8 @@ func TestActAttribute_Flag_OK(t *testing.T) {
 	input := "!{IS_FLAG}"
 	warns := newWarnings(t)
 
-	tok, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	tok, stride, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 
 	require.False(t, skip)
 	require.Equal(t, tok.Width, stride)
@@ -260,7 +268,8 @@ func TestActAttribute_KV_OK(t *testing.T) {
 	input := "!url{https://google.com}"
 	warns := newWarnings(t)
 
-	tok, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	tok, stride, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 
 	require.False(t, skip)
 	require.Equal(t, tok.Width, stride)
@@ -283,7 +292,8 @@ func TestActAttribute_Boundaries_ExactLimits_OK(t *testing.T) {
 	input := "!abc{wxyz}"
 	warns := newWarnings(t)
 
-	tok, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	tok, stride, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 
 	require.False(t, skip)
 	require.Equal(t, tok.Width, stride)
@@ -306,7 +316,8 @@ func TestActAttribute_KV_EscapedPayloadEnd_IsNotClosing(t *testing.T) {
 	input := `!k{a\}}`
 	warns := newWarnings(t)
 
-	tok, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	tok, stride, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 
 	require.False(t, skip)
 	require.Equal(t, tok.Width, stride)
@@ -329,7 +340,8 @@ func TestActAttribute_KV_EscapedPayloadEnd_Only_UnclosedAtEOF(t *testing.T) {
 	input := `!k{a\}`
 	warns := newWarnings(t)
 
-	_, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	_, stride, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 
 	require.True(t, skip)
 	require.Equal(t, 1, stride)
@@ -352,7 +364,8 @@ func TestActAttribute_KV_DoubleEscapeBeforeEnd_ClosesNormally(t *testing.T) {
 	input := `!k{\\}`
 	warns := newWarnings(t)
 
-	tok, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	tok, stride, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 
 	require.False(t, skip)
 	require.Equal(t, tok.Width, stride)
@@ -375,7 +388,8 @@ func TestActAttribute_KV_TripleEscapeThenBrace_BraceEscaped_NeedsNextBraceToClos
 	input := `!k{\\\}}`
 	warns := newWarnings(t)
 
-	tok, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	tok, stride, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 
 	require.False(t, skip)
 	require.Equal(t, tok.Width, stride)
@@ -398,7 +412,8 @@ func TestActAttribute_Flag_EscapedPayloadEnd_IsNotClosing(t *testing.T) {
 	input := `!{A\}B}`
 	warns := newWarnings(t)
 
-	tok, stride, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	tok, stride, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 
 	require.False(t, skip)
 	require.Equal(t, tok.Width, stride)
@@ -420,7 +435,8 @@ func TestActAttribute_KV_EscapeCharAtEndOfPayloadBeforeRealClose(t *testing.T) {
 	input := `!k{\\}`
 	warns := newWarnings(t)
 
-	tok, _, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	tok, _, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 	require.False(t, skip)
 	require.Equal(t, TokenAttributeKV, tok.Type)
 	require.Equal(t, `\\`, spanStr(input, tok.Payload))
@@ -437,7 +453,8 @@ func TestActAttribute_KV_NoEscapeTrigger_FallsBackToPlainSearch(t *testing.T) {
 	input := `!k{a\}}`
 	warns := newWarnings(t)
 
-	tok, _, skip := ActAttribute(&d, '!', input, 0, warns)
+	var s TokenizerState
+	tok, _, skip := ActAttribute(&d, &s, warns, input, '!', 0)
 	require.False(t, skip)
 	require.Equal(t, TokenAttributeKV, tok.Type)
 

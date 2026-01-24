@@ -27,7 +27,7 @@ func (d *Dictionary) SetEscapeTrigger(char byte) error {
 	return nil
 }
 
-func ActEscape(d *Dictionary, id byte, input string, i int, warns *Warnings) (token Token, stride int, skip bool) {
+func ActEscape(d *Dictionary, s *TokenizerState, warns *Warnings, input string, char byte, i int) (token Token, stride int, skip bool) {
 	n := len(input)
 
 	stride = 1

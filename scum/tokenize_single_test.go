@@ -47,8 +47,8 @@ func tokenize(t *testing.T, d *Dictionary, in string) ([]Token, Warnings) {
 	warns, err := NewWarnings(WarnOverflowNoCap, 1)
 	require.NoError(t, err)
 
-	toks := Tokenize(d, in, &warns)
-	return toks, warns
+	out := Tokenize(d, in, &warns)
+	return out.Tokens, warns
 }
 
 // ---------- warning helpers ----------

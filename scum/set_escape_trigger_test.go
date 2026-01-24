@@ -26,7 +26,8 @@ func TestSetEscapeTrigger_SetsAction(t *testing.T) {
 	// Smoke-check the action does what we expect.
 	in := `\a`
 	warns := newWarns(t)
-	tok, stride, skip := a(&d, '\\', in, 0, &warns)
+	var s TokenizerState
+	tok, stride, skip := a(&d, &s, &warns, in, '\\', 0)
 
 	require.True(t, skip)
 	require.Equal(t, 2, stride)
@@ -77,7 +78,8 @@ func TestActEscape_EscapeAtEnd_WarnsUnexpectedEOLAndSkips(t *testing.T) {
 
 	in := `\`
 	warns := newWarns(t)
-	tok, stride, skip := ActEscape(&d, '\\', in, 0, &warns)
+	var s TokenizerState
+	tok, stride, skip := ActEscape(&d, &s, &warns, in, '\\', 0)
 
 	list := warns.List()
 
@@ -99,7 +101,8 @@ func TestActEscape_RedundantEscape_WhenNextIsNotSpecial_Warns(t *testing.T) {
 
 	in := `\a`
 	warns := newWarns(t)
-	tok, stride, skip := ActEscape(&d, '\\', in, 0, &warns)
+	var s TokenizerState
+	tok, stride, skip := ActEscape(&d, &s, &warns, in, '\\', 0)
 
 	require.True(t, skip)
 	require.Equal(t, 2, stride)
@@ -119,7 +122,8 @@ func TestActEscape_InvalidUTF8Rune(t *testing.T) {
 	in := string([]byte{'\\', 0xff})
 
 	warns := newWarns(t)
-	tok, stride, skip := ActEscape(&d, '\\', in, 0, &warns)
+	var s TokenizerState
+	tok, stride, skip := ActEscape(&d, &s, &warns, in, '\\', 0)
 
 	require.True(t, skip)
 	require.Equal(t, 2, stride)
@@ -138,7 +142,8 @@ func TestActEscape_NextIsSpecial_NoRedundantWarning(t *testing.T) {
 
 	in := `\*`
 	warns := newWarns(t)
-	tok, stride, skip := ActEscape(&d, '\\', in, 0, &warns)
+	var s TokenizerState
+	tok, stride, skip := ActEscape(&d, &s, &warns, in, '\\', 0)
 
 	require.True(t, skip)
 	require.Equal(t, 2, stride)
@@ -154,7 +159,8 @@ func TestActEscape_MultiByteRune_ConsumesWholeRuneAndWarnsIfNotSpecial(t *testin
 	// "ß" is 2 bytes in UTF-8.
 	in := "\\ß"
 	warns := newWarns(t)
-	tok, stride, skip := ActEscape(&d, '\\', in, 0, &warns)
+	var s TokenizerState
+	tok, stride, skip := ActEscape(&d, &s, &warns, in, '\\', 0)
 
 	require.True(t, skip)
 	require.Equal(t, 3, stride) // '\' + 2 bytes

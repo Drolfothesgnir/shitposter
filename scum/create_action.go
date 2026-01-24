@@ -12,9 +12,8 @@ func CreateAction(t *Tag) Action {
 		multiCharPlan(t, p)
 	}
 
-	return func(d *Dictionary, id byte, input string, i int, warns *Warnings) (token Token, stride int, skip bool) {
-		ctx := NewActionContext(d, warns, input, id, i)
-
+	return func(d *Dictionary, s *TokenizerState, warns *Warnings, input string, char byte, i int) (token Token, stride int, skip bool) {
+		ctx := NewActionContext(d, s, warns, input, char, i)
 		return p.Run(&ctx)
 	}
 }
@@ -71,6 +70,7 @@ func singleCharUniversalPlan(t *Tag, p *Plan) {
 func closingPlan(_ *Tag, p *Plan) {
 	p.AddStep(MutateWith(WarnCloseTagAfterStart))
 	p.AddStep(StepSkipCloseTagAfterStart)
+	p.AddStep(MutateWith(CountCloseTag))
 	p.AddStep(StepEmitEntireTagToken)
 }
 
@@ -82,6 +82,13 @@ func singleCharNonGreedyPlan(t *Tag, p *Plan) {
 		p.AddStep(StepInfraWordCheck)
 	}
 
+	switch {
+	case t.IsUniversal():
+		p.AddStep(MutateWith(CountUniversalTag))
+	case t.IsOpening():
+		p.AddStep(MutateWith(CountOpenTag))
+	}
+
 	// emitting the opening Tag
 	p.AddStep(StepEmitEntireTagToken)
 }
@@ -90,12 +97,14 @@ func singleCharGreedyPlan(t *Tag, p *Plan) {
 	addCloseTagCheck(t, p)
 	p.AddStep(MutateWith(WarnUnclosedTag))
 	p.AddStep(StepSkipUnclosedOpenTag)
+	p.AddStep(MutateWith(CountTag))
 	p.AddStep(StepEmitEntireTagToken)
 }
 
 func singleCharGraspingPlan(t *Tag, p *Plan) {
 	addCloseTagCheck(t, p)
 	p.AddStep(MutateWith(WarnUnclosedTag))
+	p.AddStep(MutateWith(CountTag))
 	p.AddStep(StepEmitEntireTagToken)
 }
 
@@ -123,6 +132,17 @@ func multiCharUniversalPlan(t *Tag, p *Plan) {
 		}
 	}
 
+	if t.Greed == NonGreedy {
+		switch {
+		case t.IsUniversal():
+			p.AddStep(MutateWith(CountUniversalTag))
+		case t.IsOpening():
+			p.AddStep(MutateWith(CountOpenTag))
+		}
+	} else {
+		p.AddStep(MutateWith(CountTag))
+	}
+
 	p.AddStep(StepEmitEntireTagToken)
 }
 
@@ -133,4 +153,23 @@ func multiCharOpeningPlan(t *Tag, p *Plan) {
 	// except checking the opening-before-EOL case,
 	// the opening plan is the same as universal
 	multiCharUniversalPlan(t, p)
+}
+
+func CountTag(ac *ActionContext) {
+	ac.State.TagsTotal++
+}
+
+func CountCloseTag(ac *ActionContext) {
+	CountTag(ac)
+	ac.State.CloseTags++
+}
+
+func CountOpenTag(ac *ActionContext) {
+	CountTag(ac)
+	ac.State.OpenTags++
+}
+
+func CountUniversalTag(ac *ActionContext) {
+	CountTag(ac)
+	ac.State.UniversalTags++
 }

@@ -15,13 +15,15 @@ func newTagVsContentCtx(t *testing.T, input string, idx int, ch byte) ActionCont
 	warns, err := NewWarnings(WarnOverflowNoCap, 8)
 	require.NoError(t, err)
 
+	state := &TokenizerState{}
+
 	// Universal single-byte greedy tag using RuleTagVsContent.
 	tag, err := NewTag([]byte{ch}, "CODE", ch, ch, WithGreed(Greedy), WithRule(RuleTagVsContent))
 	require.NoError(t, err)
 
 	d.tags[ch] = tag
 
-	ctx := NewActionContext(&d, &warns, input, ch, idx)
+	ctx := NewActionContext(&d, state, &warns, input, ch, idx)
 	return ctx
 }
 

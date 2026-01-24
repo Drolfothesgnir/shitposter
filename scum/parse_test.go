@@ -11,9 +11,9 @@ func TestParse(t *testing.T) {
 	warns := newWarnings(t)
 
 	input := "Hello, $$world\\!$$"
-	tokens := Tokenize(&d, input, warns)
+	out := Tokenize(&d, input, warns)
 
-	require.Len(t, tokens, 4)
+	require.Len(t, out.Tokens, 4)
 
 	tree := Parse(input, &d, warns)
 	require.Empty(t, warns.List())

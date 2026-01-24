@@ -44,7 +44,7 @@ func (d *Dictionary) SetAttributeSignature(trigger, payloadStart, payloadEnd byt
 // It returns proper Attribute [Token], only if the Attribute is well-formed, that is, the payload is non-empty
 // and its start and end symbols are present in the input, after the trigger, and in the correct order.
 // Otherwise, the trigger is skipped as a plain text.
-func ActAttribute(d *Dictionary, id byte, input string, i int, warns *Warnings) (token Token, stride int, skip bool) {
+func ActAttribute(d *Dictionary, s *TokenizerState, warns *Warnings, input string, char byte, i int) (token Token, stride int, skip bool) {
 	n := len(input)
 
 	// 1. Check if the Attribute trigger is the last byte in the string
@@ -130,11 +130,14 @@ func ActAttribute(d *Dictionary, id byte, input string, i int, warns *Warnings) 
 	payload := NewSpan(startIdx, payloadEndIdx-startIdx)
 
 	token = Token{
-		Trigger: id,
+		Trigger: char,
 		Pos:     i,
 		Width:   width,
 		Payload: payload,
 	}
+
+	// increment attributes counter
+	s.Attributes++
 
 	// 8. Attribute is a flag
 	if payloadStartIdx-i-1 == 0 {

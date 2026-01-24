@@ -60,6 +60,7 @@ func NewBounds(i int) Bounds {
 type ActionContext struct {
 	Tag        *Tag
 	Dictionary *Dictionary
+	State      *TokenizerState
 	Input      string
 	Idx        int
 	Token      Token
@@ -71,7 +72,7 @@ type ActionContext struct {
 
 // NewActionContext creates new [ActionContext] based on provided [Dictionary], warnings slice, input,
 // char/Tag ID and the current tokenizer position i.
-func NewActionContext(d *Dictionary, w *Warnings, input string, char byte, i int) ActionContext {
+func NewActionContext(d *Dictionary, s *TokenizerState, w *Warnings, input string, char byte, i int) ActionContext {
 	b := NewBounds(i)
 
 	// since the ActionContext is only called in the actual Action, we assume the required Tag is
@@ -81,6 +82,7 @@ func NewActionContext(d *Dictionary, w *Warnings, input string, char byte, i int
 	return ActionContext{
 		Tag:        t,
 		Dictionary: d,
+		State:      s,
 		Input:      input,
 		Idx:        i,
 		Warns:      w,

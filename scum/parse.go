@@ -48,12 +48,11 @@ func (s *parserState) pushStack(b byte) {
 }
 
 func newParserState(input string) parserState {
+	root := NewNode()
+	root.Span = NewSpan(0, len(input))
 	ast := AST{
 		Input: input,
-		Nodes: []Node{{
-			Type: NodeRoot,
-			Span: NewSpan(0, len(input)),
-		}},
+		Nodes: []Node{root},
 	}
 
 	return parserState{
@@ -90,15 +89,17 @@ func appendNode(ast *AST, parentIdx int, node Node) int {
 
 	parent := &ast.Nodes[parentIdx]
 
-	lastChildIdx := parent.LastChild
-	lastChild := &ast.Nodes[lastChildIdx]
-	lastChild.NextSibling = nodeIdx
+	parent.Span.End = max(parent.Span.End, node.Span.End)
 
-	parent.LastChild = nodeIdx
-
-	if parent.FirstChild == 0 {
+	if parent.FirstChild == -1 {
 		parent.FirstChild = nodeIdx
+		parent.LastChild = nodeIdx
+		return nodeIdx
 	}
+
+	lastChild := &ast.Nodes[parent.LastChild]
+	lastChild.NextSibling = nodeIdx
+	parent.LastChild = nodeIdx
 
 	return nodeIdx
 }
@@ -147,17 +148,16 @@ func processTag(state *parserState, d *Dictionary, warns *Warnings, tok Token) {
 // TODO: doc comment the behaviour of adding two nodes, one for the tag itself and other
 // for the inner content
 func appendGreedyNode(state *parserState, tok Token) {
-	node := Node{
-		Type:  NodeTag,
-		TagID: tok.Trigger,
-		Span:  NewSpan(tok.Pos, tok.Width),
-	}
+	node := NewNode()
+	node.Type = NodeTag
+	node.TagID = tok.Trigger
+	node.Span = NewSpan(tok.Pos, tok.Width)
+
 	parentIdx := appendNode(&state.ast, state.peekCrumb(), node)
 
-	payload := Node{
-		Type: NodeText,
-		Span: tok.Payload,
-	}
+	payload := NewNode()
+	payload.Type = NodeText
+	payload.Span = tok.Payload
 	nodeIdx := appendNode(&state.ast, parentIdx, payload)
 	state.lastNodeIdx = nodeIdx
 }
@@ -191,11 +191,10 @@ func processOpeningTag(state *parserState, d *Dictionary, warns *Warnings, tok T
 	}
 
 	// 2. Else, open new Tag
-	node := Node{
-		Type:  NodeTag,
-		TagID: tok.Trigger,
-		Span:  NewSpan(tok.Pos, tok.Width),
-	}
+	node := NewNode()
+	node.Type = NodeTag
+	node.TagID = tok.Trigger
+	node.Span = NewSpan(tok.Pos, tok.Width)
 
 	idx := appendNode(&state.ast, state.peekCrumb(), node)
 	state.pushCrumb(idx)
@@ -249,19 +248,23 @@ func processClosingTag(state *parserState, d *Dictionary, warns *Warnings, tok T
 	closeTag(state, tok)
 }
 
+// FIXME: calculate right total Node span
 func closeTag(state *parserState, tok Token) {
 	idx := state.popCrumb()
 	// making the closed tag the target for appending attributes
 	state.lastNodeIdx = idx
+
+	// update the span of the closed tag
+	state.ast.Nodes[idx].Span.End += tok.Width
+
 	openTagID := state.popStack()
 	state.openedTags[openTagID] = false
 }
 
 func processText(state *parserState, tok Token) {
-	node := Node{
-		Type: NodeText,
-		Span: tok.Payload,
-	}
+	node := NewNode()
+	node.Type = NodeText
+	node.Span = tok.Payload
 	textIdx := appendNode(&state.ast, state.peekCrumb(), node)
 	state.lastNodeIdx = textIdx
 }

@@ -12,6 +12,7 @@ type parserState struct {
 	skip        [256]int
 	openedTags  [256]bool
 	stack       []byte
+	maxDepth    int
 	lastNodeIdx int
 }
 
@@ -49,6 +50,7 @@ func (s *parserState) popStack() byte {
 
 func (s *parserState) pushStack(b byte) {
 	s.stack = append(s.stack, b)
+	s.maxDepth = max(s.maxDepth, len(s.stack))
 }
 
 func (s *parserState) incrementCumWidth(w int) {
@@ -92,6 +94,7 @@ func newParserState(input string, out TokenizerOutput) parserState {
 		breadcrumbs: []int{0},
 		// cumulative width of the root should always be present
 		cumWidth: []int{0},
+		maxDepth: 1,
 	}
 }
 
@@ -137,6 +140,8 @@ func Parse(input string, d *Dictionary, warns *Warnings) AST {
 	// then finalize root
 	state.ast.Nodes[0].Span.End = state.peekCumWidth()
 
+	state.ast.MaxDepth = state.maxDepth
+
 	return state.ast
 }
 
@@ -145,6 +150,7 @@ func appendNode(ast *AST, parentIdx int, node Node) int {
 	ast.Nodes = append(ast.Nodes, node)
 
 	parent := &ast.Nodes[parentIdx]
+	parent.ChildCount++
 
 	if parent.FirstChild == -1 {
 		parent.FirstChild = nodeIdx

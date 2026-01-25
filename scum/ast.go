@@ -20,9 +20,9 @@ const (
 // Name and Payload are spans into the original input string.
 // IsFlag is true for flag attributes (no value).
 type Attribute struct {
-	Name    Span
-	Payload Span
-	IsFlag  bool
+	Name    Span `json:"name"`
+	Payload Span `json:"payload"`
+	IsFlag  bool `json:"is_flag"`
 }
 
 // Node represents a single AST node.
@@ -41,6 +41,10 @@ type Node struct {
 	LastChild   int
 	NextSibling int
 
+	// TODO: write tests for this
+	// ChildCount is the number of children of this node.
+	ChildCount int
+
 	// Attributes defines the range in Attributes arena.
 	Attributes Range
 }
@@ -51,6 +55,7 @@ func NewNode() Node {
 		FirstChild:  -1,
 		LastChild:   -1,
 		NextSibling: -1,
+		ChildCount:  0,
 	}
 }
 
@@ -64,4 +69,13 @@ type AST struct {
 
 	// Attributes stores all attributes referenced by nodes.
 	Attributes []Attribute
+
+	// MaxDepth is a meassurement of maximum embedding level of the AST.
+	MaxDepth int
+
+	// Warnings stores all warnings generated during parsing.
+	Warnings Warnings
+
+	// TextLength is the length of the text in the input.
+	TextLength int
 }

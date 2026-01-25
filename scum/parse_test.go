@@ -439,3 +439,285 @@ func TestParse_NestedTagSpan_ParentIncludesChildClosing(t *testing.T) {
 	require.Equal(t, 2, textNode.Span.Start)
 	require.Equal(t, 4, textNode.Span.End)
 }
+
+func TestParse_UnclosedTag_SingleUniversal(t *testing.T) {
+	d := testDict(t)
+	warns := newWarnings(t)
+
+	// $$bold without closing
+	input := "$$bold"
+	tree := Parse(input, &d, warns)
+
+	// Should have warning about unclosed tag
+	require.Len(t, warns.List(), 1)
+	require.Equal(t, IssueUnclosedTag, warns.List()[0].Issue)
+	require.Equal(t, 0, warns.List()[0].Pos)
+
+	// root -> BOLD tag -> text
+	require.Len(t, tree.Nodes, 3)
+
+	// Root spans entire input
+	require.Equal(t, 0, tree.Nodes[0].Span.Start)
+	require.Equal(t, len(input), tree.Nodes[0].Span.End)
+
+	// BOLD tag spans from 0 to end (no closing tag)
+	boldNode := tree.Nodes[1]
+	require.Equal(t, NodeTag, boldNode.Type)
+	require.Equal(t, byte('$'), boldNode.TagID)
+	require.Equal(t, 0, boldNode.Span.Start)
+	require.Equal(t, len(input), boldNode.Span.End)
+
+	// Text "bold" inside
+	textNode := tree.Nodes[2]
+	require.Equal(t, NodeText, textNode.Type)
+	require.Equal(t, "bold", input[textNode.Span.Start:textNode.Span.End])
+}
+
+func TestParse_UnclosedTag_OpeningTag(t *testing.T) {
+	d := testDict(t)
+	warns := newWarnings(t)
+
+	// [link without closing ]
+	input := "[link text"
+	tree := Parse(input, &d, warns)
+
+	// Should have warning about unclosed tag
+	require.Len(t, warns.List(), 1)
+	require.Equal(t, IssueUnclosedTag, warns.List()[0].Issue)
+
+	// root -> LINK tag -> text
+	require.Len(t, tree.Nodes, 3)
+
+	// LINK tag spans from 0 to end
+	linkNode := tree.Nodes[1]
+	require.Equal(t, NodeTag, linkNode.Type)
+	require.Equal(t, byte('['), linkNode.TagID)
+	require.Equal(t, 0, linkNode.Span.Start)
+	require.Equal(t, len(input), linkNode.Span.End)
+}
+
+func TestParse_UnclosedTag_NestedBothUnclosed(t *testing.T) {
+	d := testDict(t)
+	warns := newWarnings(t)
+
+	// [*nested - both [ and * unclosed
+	input := "[*nested"
+	tree := Parse(input, &d, warns)
+
+	// Should have 2 warnings - one for each unclosed tag
+	require.Len(t, warns.List(), 2)
+	for _, w := range warns.List() {
+		require.Equal(t, IssueUnclosedTag, w.Issue)
+	}
+
+	// root -> '[' tag -> '*' tag -> text
+	require.Len(t, tree.Nodes, 4)
+
+	// Root spans entire input
+	require.Equal(t, len(input), tree.Nodes[0].Span.End)
+
+	// '[' tag spans entire input
+	linkNode := tree.Nodes[1]
+	require.Equal(t, byte('['), linkNode.TagID)
+	require.Equal(t, 0, linkNode.Span.Start)
+	require.Equal(t, len(input), linkNode.Span.End)
+
+	// '*' tag spans from 1 to end
+	italicNode := tree.Nodes[2]
+	require.Equal(t, byte('*'), italicNode.TagID)
+	require.Equal(t, 1, italicNode.Span.Start)
+	require.Equal(t, len(input), italicNode.Span.End)
+
+	// Text "nested"
+	textNode := tree.Nodes[3]
+	require.Equal(t, "nested", input[textNode.Span.Start:textNode.Span.End])
+}
+
+func TestParse_UnclosedTag_InnerClosedOuterUnclosed(t *testing.T) {
+	d := testDict(t)
+	warns := newWarnings(t)
+
+	// [*closed* but [ unclosed
+	input := "[*closed*"
+	tree := Parse(input, &d, warns)
+
+	// Should have 1 warning - only [ is unclosed
+	require.Len(t, warns.List(), 1)
+	require.Equal(t, IssueUnclosedTag, warns.List()[0].Issue)
+	require.Equal(t, 0, warns.List()[0].Pos) // position of [
+
+	// root -> '[' tag -> '*' tag -> text
+	require.Len(t, tree.Nodes, 4)
+
+	// '[' tag spans entire input (unclosed)
+	linkNode := tree.Nodes[1]
+	require.Equal(t, byte('['), linkNode.TagID)
+	require.Equal(t, 0, linkNode.Span.Start)
+	require.Equal(t, len(input), linkNode.Span.End)
+
+	// '*' tag spans from 1 to 9 (properly closed)
+	italicNode := tree.Nodes[2]
+	require.Equal(t, byte('*'), italicNode.TagID)
+	require.Equal(t, 1, italicNode.Span.Start)
+	require.Equal(t, 9, italicNode.Span.End)
+}
+
+func TestParse_UnclosedTag_WithTextBeforeAndAfter(t *testing.T) {
+	d := testDict(t)
+	warns := newWarnings(t)
+
+	// "before $$bold" - text before unclosed tag
+	input := "before $$bold"
+	tree := Parse(input, &d, warns)
+
+	require.Len(t, warns.List(), 1)
+	require.Equal(t, IssueUnclosedTag, warns.List()[0].Issue)
+
+	// root -> text("before ") -> BOLD tag -> text("bold")
+	require.Len(t, tree.Nodes, 4)
+
+	// Root spans entire input
+	require.Equal(t, len(input), tree.Nodes[0].Span.End)
+
+	// First text node
+	require.Equal(t, NodeText, tree.Nodes[1].Type)
+	require.Equal(t, "before ", input[tree.Nodes[1].Span.Start:tree.Nodes[1].Span.End])
+
+	// BOLD tag starts at 7, spans to end
+	boldNode := tree.Nodes[2]
+	require.Equal(t, byte('$'), boldNode.TagID)
+	require.Equal(t, 7, boldNode.Span.Start)
+	require.Equal(t, len(input), boldNode.Span.End)
+}
+
+// Tests for tags with different opening/closing widths
+// IMAGE tag: :[ (2 chars) opens, ] (1 char) closes
+
+func TestParse_DifferentWidths_ImageTag(t *testing.T) {
+	d := testDict(t)
+	warns := newWarnings(t)
+
+	// :[alt text] - IMAGE tag with :[ opening (2) and ] closing (1)
+	input := ":[alt text]"
+	tree := Parse(input, &d, warns)
+
+	require.Empty(t, warns.List())
+	// root -> IMAGE tag -> text
+	require.Len(t, tree.Nodes, 3)
+
+	// IMAGE tag spans entire input: 0 to 11
+	imageNode := tree.Nodes[1]
+	require.Equal(t, NodeTag, imageNode.Type)
+	require.Equal(t, byte(':'), imageNode.TagID)
+	require.Equal(t, 0, imageNode.Span.Start)
+	require.Equal(t, len(input), imageNode.Span.End) // 11
+
+	// Text "alt text" inside (positions 2-10)
+	textNode := tree.Nodes[2]
+	require.Equal(t, NodeText, textNode.Type)
+	require.Equal(t, "alt text", input[textNode.Span.Start:textNode.Span.End])
+}
+
+func TestParse_DifferentWidths_ImageTagNested(t *testing.T) {
+	d := testDict(t)
+	warns := newWarnings(t)
+
+	// :[*italic*] - IMAGE with nested ITALIC
+	input := ":[*italic*]"
+	tree := Parse(input, &d, warns)
+
+	require.Empty(t, warns.List())
+	// root -> IMAGE -> ITALIC -> text
+	require.Len(t, tree.Nodes, 4)
+
+	// IMAGE tag spans entire input: 0 to 11
+	imageNode := tree.Nodes[1]
+	require.Equal(t, byte(':'), imageNode.TagID)
+	require.Equal(t, 0, imageNode.Span.Start)
+	require.Equal(t, len(input), imageNode.Span.End)
+
+	// ITALIC tag spans from 2 to 10 (*italic*)
+	italicNode := tree.Nodes[2]
+	require.Equal(t, byte('*'), italicNode.TagID)
+	require.Equal(t, 2, italicNode.Span.Start)
+	require.Equal(t, 10, italicNode.Span.End)
+}
+
+func TestParse_DifferentWidths_ImageTagUnclosed(t *testing.T) {
+	d := testDict(t)
+	warns := newWarnings(t)
+
+	// :[alt text - IMAGE tag unclosed (opening width 2, no closing)
+	input := ":[alt text"
+	tree := Parse(input, &d, warns)
+
+	// Should have warning about unclosed tag
+	require.Len(t, warns.List(), 1)
+	require.Equal(t, IssueUnclosedTag, warns.List()[0].Issue)
+
+	// root -> IMAGE tag -> text
+	require.Len(t, tree.Nodes, 3)
+
+	// IMAGE tag spans from 0 to end (10)
+	imageNode := tree.Nodes[1]
+	require.Equal(t, byte(':'), imageNode.TagID)
+	require.Equal(t, 0, imageNode.Span.Start)
+	require.Equal(t, len(input), imageNode.Span.End)
+
+	// Text "alt text" inside
+	textNode := tree.Nodes[2]
+	require.Equal(t, "alt text", input[textNode.Span.Start:textNode.Span.End])
+}
+
+func TestParse_DifferentWidths_NestedImageUnclosed(t *testing.T) {
+	d := testDict(t)
+	warns := newWarnings(t)
+
+	// :[*italic - IMAGE and ITALIC both unclosed
+	input := ":[*italic"
+	tree := Parse(input, &d, warns)
+
+	// Should have 2 warnings
+	require.Len(t, warns.List(), 2)
+
+	// root -> IMAGE -> ITALIC -> text
+	require.Len(t, tree.Nodes, 4)
+
+	// IMAGE spans entire input
+	imageNode := tree.Nodes[1]
+	require.Equal(t, 0, imageNode.Span.Start)
+	require.Equal(t, len(input), imageNode.Span.End)
+
+	// ITALIC spans from 2 to end
+	italicNode := tree.Nodes[2]
+	require.Equal(t, 2, italicNode.Span.Start)
+	require.Equal(t, len(input), italicNode.Span.End)
+}
+
+func TestParse_DifferentWidths_TextBeforeAndAfter(t *testing.T) {
+	d := testDict(t)
+	warns := newWarnings(t)
+
+	// "pre :[img] post" - text before and after IMAGE tag
+	input := "pre :[img] post"
+	tree := Parse(input, &d, warns)
+
+	require.Empty(t, warns.List())
+	// root -> text("pre ") -> IMAGE -> text("img") -> text(" post")
+	require.Len(t, tree.Nodes, 5)
+
+	// Root spans entire input
+	require.Equal(t, len(input), tree.Nodes[0].Span.End)
+
+	// First text "pre "
+	require.Equal(t, "pre ", input[tree.Nodes[1].Span.Start:tree.Nodes[1].Span.End])
+
+	// IMAGE tag spans from 4 to 10 (:[img])
+	imageNode := tree.Nodes[2]
+	require.Equal(t, byte(':'), imageNode.TagID)
+	require.Equal(t, 4, imageNode.Span.Start)
+	require.Equal(t, 10, imageNode.Span.End)
+
+	// Last text " post"
+	require.Equal(t, " post", input[tree.Nodes[4].Span.Start:tree.Nodes[4].Span.End])
+}

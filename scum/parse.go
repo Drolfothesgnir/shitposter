@@ -65,7 +65,7 @@ func (s *parserState) popCumWidth(w int) int {
 	delta := lastItem + w
 	s.cumWidth[lastItemIdx-1] += delta
 	s.cumWidth = s.cumWidth[:lastItemIdx]
-	return lastItem
+	return delta
 }
 
 func (s *parserState) peekCumWidth() int {
@@ -112,8 +112,29 @@ func Parse(input string, d *Dictionary, warns *Warnings) AST {
 			processTag(&state, d, warns, t)
 		}
 	}
-	// TODO: add unclosed tag warnings, check breadcrums for leftovers
 
+	for len(state.breadcrumbs) > 1 {
+		idx := state.popCrumb()
+		childWidth := state.popCumWidth(0) // no closing tag
+		// Use assignment, not +=, because childWidth already includes opening tag width
+		state.ast.Nodes[idx].Span.End = state.ast.Nodes[idx].Span.Start + childWidth
+
+		openTagID := state.popStack()
+		state.openedTags[openTagID] = false
+
+		desc := "missing closing Tag for the Tag with ID " +
+			strconv.QuoteRune(rune(openTagID)) +
+			" at position " +
+			strconv.Itoa(state.ast.Nodes[idx].Span.Start) + "."
+
+		warns.Add(Warning{
+			Issue:       IssueUnclosedTag,
+			Pos:         state.ast.Nodes[idx].Span.Start,
+			Description: desc,
+		})
+	}
+
+	// then finalize root
 	state.ast.Nodes[0].Span.End = state.peekCumWidth()
 
 	return state.ast
@@ -281,14 +302,15 @@ func processClosingTag(state *parserState, d *Dictionary, warns *Warnings, tok T
 	closeTag(state, tok)
 }
 
-// FIXME: calculate right total Node span
 func closeTag(state *parserState, tok Token) {
 	idx := state.popCrumb()
 	// making the closed tag the target for appending attributes
 	state.lastNodeIdx = idx
 
 	// update the span of the closed tag
-	state.ast.Nodes[idx].Span.End += state.popCumWidth(tok.Width)
+	// Use assignment: Span.End = Start + cumWidth (includes opening + children) + closingWidth
+	// This correctly handles tags with different opening/closing widths
+	state.ast.Nodes[idx].Span.End = state.ast.Nodes[idx].Span.Start + state.popCumWidth(tok.Width)
 
 	openTagID := state.popStack()
 	state.openedTags[openTagID] = false

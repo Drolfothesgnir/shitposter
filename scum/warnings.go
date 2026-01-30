@@ -13,8 +13,17 @@ type Warning struct {
 	// Pos defines the byte position in the input string at which the problem occured.
 	Pos int
 
-	// Description is a human-readable story of what went wrong.
-	Description string
+	// TagID is the ID of the Tag causing the issue.
+	TagID byte
+
+	// CloseTagID is the ID of the Tag expected to close the Tag causing the issue.
+	CloseTagID byte
+
+	// Expected is the next expected symbol.
+	Expected byte
+
+	// Got is the symbol that was found instead of the expected one.
+	Got byte
 }
 
 // WarningOverflowPolicy determines what happends when the maximum Warnin capacity is reached.
@@ -116,9 +125,8 @@ func (w *Warnings) Add(item Warning) {
 		w.droppedCount = 1
 		if w.maxWarnings > 0 {
 			w.list = append(w.list, Warning{
-				Issue:       IssueWarningsTruncated,
-				Pos:         w.firstDropPos,
-				Description: "too many warnings; further warnings suppressed",
+				Issue: IssueWarningsTruncated,
+				Pos:   w.firstDropPos,
 			})
 		}
 	}

@@ -16,9 +16,8 @@ func mustNewWarnings(t *testing.T, policy WarningOverflowPolicy, cap int) Warnin
 
 func newWarn(pos int) Warning {
 	return Warning{
-		Issue:       IssueUnexpectedEOL,
-		Pos:         pos,
-		Description: "x",
+		Issue: IssueUnexpectedEOL,
+		Pos:   pos,
 	}
 }
 
@@ -107,7 +106,6 @@ func TestWarnings_Trunc_ReservesSlotForMarker(t *testing.T) {
 	last := w.List()[2]
 	require.Equal(t, IssueWarningsTruncated, last.Issue)
 	require.Equal(t, 2, last.Pos)
-	require.NotEmpty(t, last.Description)
 }
 
 func TestWarnings_Trunc_Cap1_ListContainsOnlyMarker(t *testing.T) {
@@ -123,7 +121,6 @@ func TestWarnings_Trunc_Cap1_ListContainsOnlyMarker(t *testing.T) {
 	require.Len(t, w.List(), 1)
 	require.Equal(t, IssueWarningsTruncated, w.List()[0].Issue)
 	require.Equal(t, 10, w.List()[0].Pos)
-	require.NotEmpty(t, w.List()[0].Description)
 }
 
 func TestWarnings_Trunc_Cap0_StoresNothingButOverflowsOnFirstAdd(t *testing.T) {

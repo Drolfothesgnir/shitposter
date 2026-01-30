@@ -2,7 +2,6 @@ package scum
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -49,11 +48,7 @@ func ActAttribute(d *Dictionary, s *TokenizerState, warns *Warnings, input strin
 
 	// 1. Check if the Attribute trigger is the last byte in the string
 	if i+1 == n {
-		desc := "attribute trigger " +
-			strconv.QuoteRune(rune(d.attrTrigger)) +
-			" found at the very end of the input."
-
-		return skipWithWarn(warns, 1, i, IssueUnexpectedEOL, desc)
+		return skipWithWarn(warns, 1, i, IssueUnexpectedEOL)
 	}
 
 	// 2. Find payload start index
@@ -68,26 +63,17 @@ func ActAttribute(d *Dictionary, s *TokenizerState, warns *Warnings, input strin
 		// if the input string was not scanned till the end, the payload start symbol
 		// still might be there, so it's a limit issue
 		if scanEnd < n {
-			desc := "attribute key length limit reached."
-
-			return skipWithWarn(warns, 1, i, IssueAttrKeyTooLong, desc)
+			return skipWithWarn(warns, 1, i, IssueAttrKeyTooLong)
 		}
 
-		desc := "expected attribute payload start symbol " +
-			strconv.QuoteRune(rune(d.attrPayloadStart)) + " but got EOL."
-
-		return skipWithWarn(warns, 1, n, IssueUnexpectedEOL, desc)
+		return skipWithWarn(warns, 1, n, IssueUnexpectedEOL)
 	}
 
 	payloadStartIdx := i + 1 + relIdx
 
 	// 4. Payload start at EOL
 	if payloadStartIdx+1 == n {
-		desc := "attribute payload start " +
-			strconv.QuoteRune(rune(d.attrPayloadStart)) +
-			" found at the very end of the input."
-
-		return skipWithWarn(warns, 1, payloadStartIdx, IssueUnexpectedEOL, desc)
+		return skipWithWarn(warns, 1, payloadStartIdx, IssueUnexpectedEOL)
 	}
 
 	// 5. Find payload end
@@ -105,21 +91,15 @@ func ActAttribute(d *Dictionary, s *TokenizerState, warns *Warnings, input strin
 	if payloadEndIdx == -1 {
 		// same logic as with payload start idx
 		if scanEnd < n {
-			desc := "attribute payload length limit reached."
-
-			return skipWithWarn(warns, 1, i, IssueAttrPayloadTooLong, desc)
+			return skipWithWarn(warns, 1, i, IssueAttrPayloadTooLong)
 		}
 
-		desc := "attribute payload end symbol " +
-			strconv.QuoteRune(rune(d.attrPayloadEnd)) + " not found."
-
-		return skipWithWarn(warns, 1, n, IssueUnclosedAttrPayload, desc)
+		return skipWithWarn(warns, 1, n, IssueUnclosedAttrPayload)
 	}
 
 	// 7. Empty attribute payload
 	if payloadEndIdx == startIdx {
-		desc := "attribute payload is empty."
-		return skipWithWarn(warns, 1, startIdx, IssueEmptyAttrPayload, desc)
+		return skipWithWarn(warns, 1, startIdx, IssueEmptyAttrPayload)
 	}
 
 	width := payloadEndIdx - i + 1

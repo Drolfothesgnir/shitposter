@@ -1,9 +1,5 @@
 package scum
 
-import (
-	"strconv"
-)
-
 // TODO: document steps for Myself
 type parserState struct {
 	ast         AST
@@ -125,15 +121,11 @@ func Parse(input string, d *Dictionary, warns *Warnings) AST {
 		openTagID := state.popStack()
 		state.openedTags[openTagID] = false
 
-		desc := "missing closing Tag for the Tag with ID " +
-			strconv.QuoteRune(rune(openTagID)) +
-			" at position " +
-			strconv.Itoa(state.ast.Nodes[idx].Span.Start) + "."
-
 		warns.Add(Warning{
-			Issue:       IssueUnclosedTag,
-			Pos:         state.ast.Nodes[idx].Span.Start,
-			Description: desc,
+			Issue:      IssueUnclosedTag,
+			Pos:        state.ast.Nodes[idx].Span.Start,
+			TagID:      openTagID,
+			CloseTagID: d.tags[openTagID].CloseID,
 		})
 	}
 
@@ -236,14 +228,10 @@ func processUniversalTag(state *parserState, d *Dictionary, warns *Warnings, tok
 func processOpeningTag(state *parserState, d *Dictionary, warns *Warnings, tok Token) {
 	// 1. Check if the tag is opened already, skip if true
 	if state.openedTags[tok.Trigger] {
-		desc := "tag with ID " +
-			strconv.QuoteRune(rune(tok.Trigger)) +
-			" is a descendant of the tag with the same ID."
-
 		warns.Add(Warning{
-			Issue:       IssueDuplicateNestedTag,
-			Pos:         tok.Pos,
-			Description: desc,
+			Issue: IssueDuplicateNestedTag,
+			Pos:   tok.Pos,
+			TagID: tok.Trigger,
 		})
 
 		state.skip[d.tags[tok.Trigger].CloseID]++
@@ -271,16 +259,11 @@ func processClosingTag(state *parserState, d *Dictionary, warns *Warnings, tok T
 	// TODO: doc comment this behaviour
 	// 1. If stack is empty add a Warning and return
 	if stacked == 0 {
-		// FIXME: refactor message
-		desc := "closing tag with ID " +
-			strconv.QuoteRune(rune(tok.Trigger)) +
-			" expected to have an opening counterpart with ID " +
-			strconv.QuoteRune(rune(tag.OpenID)) + " which is missing in the input."
-
 		warns.Add(Warning{
-			Issue:       IssueMisplacedClosingTag,
-			Pos:         tok.Pos,
-			Description: desc,
+			Issue:    IssueMisplacedClosingTag,
+			Pos:      tok.Pos,
+			TagID:    tok.Trigger,
+			Expected: tag.OpenID,
 		})
 		return
 	}
@@ -290,16 +273,11 @@ func processClosingTag(state *parserState, d *Dictionary, warns *Warnings, tok T
 	// TODO: doc comment this behaviour
 	// 2. If the opening and closing Tags mismatched add a Warning and return
 	if (openTag.CloseID != tok.Trigger) && (tag.OpenID != stacked) {
-		// FIXME: refactor message
-		desc := "closing tag with ID " +
-			strconv.QuoteRune(rune(tok.Trigger)) +
-			" cannot match with opening tag with ID " +
-			strconv.QuoteRune(rune(stacked))
-
 		warns.Add(Warning{
-			Issue:       IssueOpenCloseTagMismatch,
-			Pos:         tok.Pos,
-			Description: desc,
+			Issue:    IssueOpenCloseTagMismatch,
+			Pos:      tok.Pos,
+			TagID:    tok.Trigger,
+			Expected: stacked,
 		})
 		return
 	}

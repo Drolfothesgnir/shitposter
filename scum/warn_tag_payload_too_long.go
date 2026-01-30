@@ -6,8 +6,7 @@ func WarnTagPayloadTooLong(ctx *ActionContext) {
 	}
 
 	ctx.Warns.Add(Warning{
-		Issue:       IssueTagPayloadTooLong,
-		Pos:         ctx.Idx,
-		Description: "tag payload's length limit reached.",
+		Issue: IssueTagPayloadTooLong,
+		Pos:   ctx.Idx,
 	})
 }

@@ -73,9 +73,6 @@ type AST struct {
 	// MaxDepth is a meassurement of maximum embedding level of the AST.
 	MaxDepth int
 
-	// Warnings stores all warnings generated during parsing.
-	Warnings Warnings
-
 	// TextLength is the length of the text in the input.
 	TextLength int
 }

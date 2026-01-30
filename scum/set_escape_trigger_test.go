@@ -89,7 +89,6 @@ func TestActEscape_EscapeAtEnd_WarnsUnexpectedEOLAndSkips(t *testing.T) {
 
 	require.Equal(t, IssueUnexpectedEOL, list[0].Issue)
 	require.Equal(t, 0, list[0].Pos) // you said you changed this to i
-	require.NotEmpty(t, list[0].Description)
 
 	// token is expected to be empty when skip == true (zero-value is fine)
 	require.Equal(t, TokenType(0), tok.Type)
@@ -111,7 +110,6 @@ func TestActEscape_RedundantEscape_WhenNextIsNotSpecial_Warns(t *testing.T) {
 	require.Len(t, list, 1)
 	require.Equal(t, IssueRedundantEscape, list[0].Issue)
 	require.Equal(t, 0, list[0].Pos)
-	require.NotEmpty(t, list[0].Description)
 }
 
 func TestActEscape_InvalidUTF8Rune(t *testing.T) {

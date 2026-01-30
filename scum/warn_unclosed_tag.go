@@ -1,9 +1,5 @@
 package scum
 
-import (
-	"strconv"
-)
-
 // WarnUnclosedTag adds a [Warning] of an unclosed [Tag]. If the Tag is closed, is
 // the closing Tag itself, or is unclosed because of payload limit reached, this is no-op.
 func WarnUnclosedTag(ctx *ActionContext) {
@@ -12,14 +8,10 @@ func WarnUnclosedTag(ctx *ActionContext) {
 		return
 	}
 
-	desc := "unclosed tag " +
-		strconv.Quote(ctx.Tag.Name) +
-		": expected closing tag with ID " +
-		strconv.Itoa(int(ctx.Tag.CloseID))
-
 	ctx.Warns.Add(Warning{
-		Issue:       IssueUnclosedTag,
-		Pos:         ctx.Idx,
-		Description: desc,
+		Issue:      IssueUnclosedTag,
+		Pos:        ctx.Idx,
+		TagID:      ctx.Tag.ID(),
+		CloseTagID: ctx.Tag.CloseID,
 	})
 }

@@ -2,7 +2,6 @@ package scum
 
 import (
 	"fmt"
-	"strconv"
 )
 
 // SetEscapeTrigger sets the char as an escape symbol. Escaping means
@@ -39,9 +38,8 @@ func ActEscape(d *Dictionary, s *TokenizerState, warns *Warnings, input string, 
 	// in this case add a Warning and skip current symbol
 	if i+1 == n {
 		warns.Add(Warning{
-			Issue:       IssueUnexpectedEOL,
-			Pos:         i,
-			Description: "redundant escape symbol found at the very end of the input.",
+			Issue: IssueUnexpectedEOL,
+			Pos:   i,
 		})
 
 		skip = true
@@ -67,19 +65,15 @@ func ActEscape(d *Dictionary, s *TokenizerState, warns *Warnings, input string, 
 			next, nextWidth, ok = extractNextRune(input[i+1:])
 		}
 
-		// define description based on whether extracted rune is an invalid symbol
-		var got string
+		var gotByte byte
 		if ok {
-			got = strconv.QuoteRune(next)
-		} else {
-			got = "unknown symbol"
+			gotByte = byte(next)
 		}
 
 		warns.Add(Warning{
 			Issue: IssueRedundantEscape,
 			Pos:   i,
-			Description: "redundant escape symbol found at index " +
-				strconv.Itoa(i) + ", before non-special " + got + ".",
+			Got:   gotByte,
 		})
 	}
 

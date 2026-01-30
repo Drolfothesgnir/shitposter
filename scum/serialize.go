@@ -9,7 +9,6 @@ var nodeTypeToString = map[NodeType]string{
 type SerializableAST struct {
 	Tree       SerializableNode `json:"tree"`
 	TextLength int              `json:"text_length"`
-	Warnings   []Warning        `json:"warnings"`
 }
 
 type SerializableNode struct {
@@ -27,7 +26,6 @@ type serializeTask struct {
 	nodeIdx  int // index in ast.Nodes
 }
 
-// TODO: add Warnings to the result
 // TODO: add text length to the result
 func (ast AST) Serialize() (out SerializableAST) {
 	root := ast.Nodes[0]
@@ -82,7 +80,6 @@ func (ast AST) Serialize() (out SerializableAST) {
 
 	out.Tree = tree
 	out.TextLength = ast.TextLength
-	out.Warnings = ast.Warnings.List()
 
 	return out
 }

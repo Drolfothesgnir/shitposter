@@ -7,8 +7,7 @@ func WarnTagKeyTooLong(ctx *ActionContext) {
 	}
 
 	ctx.Warns.Add(Warning{
-		Issue:       IssueTagKeyTooLong,
-		Pos:         ctx.Idx,
-		Description: "tag's opening/closing sequence length limit reached.",
+		Issue: IssueTagKeyTooLong,
+		Pos:   ctx.Idx,
 	})
 }

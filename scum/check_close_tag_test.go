@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func actNoop(_ *Dictionary, _ *TokenizerState, _ *Warnings, _ string, _ byte, _ int) (token Token, stride int, skip bool) {
+func actNoop(_ *ActionContext) (token Token, stride int, skip bool) {
 	stride = 1
 	skip = true
 	return
@@ -78,7 +78,7 @@ func TestCheckCloseTag_NoClosingTagRegistered(t *testing.T) {
 		Idx:        0,
 		Tag:        &tag,
 		Dictionary: &d,
-		Bounds:     &Bounds{Width: 2},
+		Bounds:     Bounds{Width: 2},
 	}
 
 	CheckCloseTag(ctx)
@@ -113,7 +113,7 @@ func TestCheckCloseTag_ClosingTagContained_SingleByteClose(t *testing.T) {
 		Idx:        0,
 		Tag:        &openTag,
 		Dictionary: &d,
-		Bounds:     &Bounds{Width: 2},
+		Bounds:     Bounds{Width: 2},
 	}
 
 	CheckCloseTag(ctx)
@@ -153,7 +153,7 @@ func TestCheckCloseTag_ClosingTagContained_MultiByteClose(t *testing.T) {
 		Idx:        0,
 		Tag:        &openTag,
 		Dictionary: &d,
-		Bounds:     &Bounds{Width: 2},
+		Bounds:     Bounds{Width: 2},
 	}
 
 	CheckCloseTag(ctx)
@@ -193,7 +193,7 @@ func TestCheckCloseTag_ClosingTagNotContained_ClosestPrefixReported(t *testing.T
 		Idx:        0,
 		Tag:        &openTag,
 		Dictionary: &d,
-		Bounds:     &Bounds{Width: 2},
+		Bounds:     Bounds{Width: 2},
 	}
 
 	CheckCloseTag(ctx)
@@ -230,7 +230,7 @@ func TestCheckCloseTag_ClosingTagNotContained_NoFirstByteFound(t *testing.T) {
 		Idx:        0,
 		Tag:        &openTag,
 		Dictionary: &d,
-		Bounds:     &Bounds{Width: 2},
+		Bounds:     Bounds{Width: 2},
 	}
 
 	CheckCloseTag(ctx)

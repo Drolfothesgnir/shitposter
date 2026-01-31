@@ -43,17 +43,19 @@ func (d *Dictionary) SetAttributeSignature(trigger, payloadStart, payloadEnd byt
 // It returns proper Attribute [Token], only if the Attribute is well-formed, that is, the payload is non-empty
 // and its start and end symbols are present in the input, after the trigger, and in the correct order.
 // Otherwise, the trigger is skipped as a plain text.
-func ActAttribute(d *Dictionary, s *TokenizerState, warns *Warnings, input string, char byte, i int) (token Token, stride int, skip bool) {
-	n := len(input)
+func ActAttribute(ac *ActionContext) (token Token, stride int, skip bool) {
+	i := ac.Idx
+
+	n := len(ac.Input)
 
 	// 1. Check if the Attribute trigger is the last byte in the string
 	if i+1 == n {
-		return skipWithWarn(warns, 1, i, IssueUnexpectedEOL)
+		return skipWithWarn(ac.Warns, 1, i, IssueUnexpectedEOL)
 	}
 
 	// 2. Find payload start index
-	scanEnd := min(i+1+d.Limits.MaxAttrKeyLen+1, n)
-	relIdx := strings.IndexByte(input[i+1:scanEnd], d.attrPayloadStart)
+	scanEnd := min(i+1+ac.Dictionary.Limits.MaxAttrKeyLen+1, n)
+	relIdx := strings.IndexByte(ac.Input[i+1:scanEnd], ac.Dictionary.attrPayloadStart)
 
 	// 3. No payload start
 	// technically, all text after the trigger, which is not payload start or end symbol,
@@ -63,43 +65,43 @@ func ActAttribute(d *Dictionary, s *TokenizerState, warns *Warnings, input strin
 		// if the input string was not scanned till the end, the payload start symbol
 		// still might be there, so it's a limit issue
 		if scanEnd < n {
-			return skipWithWarn(warns, 1, i, IssueAttrKeyTooLong)
+			return skipWithWarn(ac.Warns, 1, i, IssueAttrKeyTooLong)
 		}
 
-		return skipWithWarn(warns, 1, n, IssueUnexpectedEOL)
+		return skipWithWarn(ac.Warns, 1, n, IssueUnexpectedEOL)
 	}
 
 	payloadStartIdx := i + 1 + relIdx
 
 	// 4. Payload start at EOL
 	if payloadStartIdx+1 == n {
-		return skipWithWarn(warns, 1, payloadStartIdx, IssueUnexpectedEOL)
+		return skipWithWarn(ac.Warns, 1, payloadStartIdx, IssueUnexpectedEOL)
 	}
 
 	// 5. Find payload end
 	payloadEndIdx := -1
 	startIdx := payloadStartIdx + 1
-	scanEnd = min(startIdx+d.Limits.MaxAttrPayloadLen+1, n)
+	scanEnd = min(startIdx+ac.Dictionary.Limits.MaxAttrPayloadLen+1, n)
 
-	if d.escapeTrigger != 0 {
-		payloadEndIdx = findPayloadEndWithEscape(input, startIdx, scanEnd, d.attrPayloadEnd, d.escapeTrigger)
+	if ac.Dictionary.escapeTrigger != 0 {
+		payloadEndIdx = findPayloadEndWithEscape(ac.Input, startIdx, scanEnd, ac.Dictionary.attrPayloadEnd, ac.Dictionary.escapeTrigger)
 	} else {
-		payloadEndIdx = findPayloadEnd(input, startIdx, scanEnd, d.attrPayloadEnd)
+		payloadEndIdx = findPayloadEnd(ac.Input, startIdx, scanEnd, ac.Dictionary.attrPayloadEnd)
 	}
 
 	// 6. No payload end
 	if payloadEndIdx == -1 {
 		// same logic as with payload start idx
 		if scanEnd < n {
-			return skipWithWarn(warns, 1, i, IssueAttrPayloadTooLong)
+			return skipWithWarn(ac.Warns, 1, i, IssueAttrPayloadTooLong)
 		}
 
-		return skipWithWarn(warns, 1, n, IssueUnclosedAttrPayload)
+		return skipWithWarn(ac.Warns, 1, n, IssueUnclosedAttrPayload)
 	}
 
 	// 7. Empty attribute payload
 	if payloadEndIdx == startIdx {
-		return skipWithWarn(warns, 1, startIdx, IssueEmptyAttrPayload)
+		return skipWithWarn(ac.Warns, 1, startIdx, IssueEmptyAttrPayload)
 	}
 
 	width := payloadEndIdx - i + 1
@@ -110,14 +112,14 @@ func ActAttribute(d *Dictionary, s *TokenizerState, warns *Warnings, input strin
 	payload := NewSpan(startIdx, payloadEndIdx-startIdx)
 
 	token = Token{
-		Trigger: char,
+		Trigger: ac.Trigger,
 		Pos:     i,
 		Width:   width,
 		Payload: payload,
 	}
 
 	// increment attributes counter
-	s.Attributes++
+	ac.State.Attributes++
 
 	// 8. Attribute is a flag
 	if payloadStartIdx-i-1 == 0 {

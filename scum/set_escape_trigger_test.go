@@ -27,7 +27,8 @@ func TestSetEscapeTrigger_SetsAction(t *testing.T) {
 	in := `\a`
 	warns := newWarns(t)
 	var s TokenizerState
-	tok, stride, skip := a(&d, &s, &warns, in, '\\', 0)
+	ac := NewActionContext(&d, &s, &warns, in, '\\', 0)
+	tok, stride, skip := a(&ac)
 
 	require.True(t, skip)
 	require.Equal(t, 2, stride)
@@ -79,7 +80,8 @@ func TestActEscape_EscapeAtEnd_WarnsUnexpectedEOLAndSkips(t *testing.T) {
 	in := `\`
 	warns := newWarns(t)
 	var s TokenizerState
-	tok, stride, skip := ActEscape(&d, &s, &warns, in, '\\', 0)
+	ac := NewActionContext(&d, &s, &warns, in, '\\', 0)
+	tok, stride, skip := ActEscape(&ac)
 
 	list := warns.List()
 
@@ -101,7 +103,8 @@ func TestActEscape_RedundantEscape_WhenNextIsNotSpecial_Warns(t *testing.T) {
 	in := `\a`
 	warns := newWarns(t)
 	var s TokenizerState
-	tok, stride, skip := ActEscape(&d, &s, &warns, in, '\\', 0)
+	ac := NewActionContext(&d, &s, &warns, in, '\\', 0)
+	tok, stride, skip := ActEscape(&ac)
 
 	require.True(t, skip)
 	require.Equal(t, 2, stride)
@@ -121,7 +124,8 @@ func TestActEscape_InvalidUTF8Rune(t *testing.T) {
 
 	warns := newWarns(t)
 	var s TokenizerState
-	tok, stride, skip := ActEscape(&d, &s, &warns, in, '\\', 0)
+	ac := NewActionContext(&d, &s, &warns, in, '\\', 0)
+	tok, stride, skip := ActEscape(&ac)
 
 	require.True(t, skip)
 	require.Equal(t, 2, stride)
@@ -141,7 +145,8 @@ func TestActEscape_NextIsSpecial_NoRedundantWarning(t *testing.T) {
 	in := `\*`
 	warns := newWarns(t)
 	var s TokenizerState
-	tok, stride, skip := ActEscape(&d, &s, &warns, in, '\\', 0)
+	ac := NewActionContext(&d, &s, &warns, in, '\\', 0)
+	tok, stride, skip := ActEscape(&ac)
 
 	require.True(t, skip)
 	require.Equal(t, 2, stride)
@@ -158,7 +163,8 @@ func TestActEscape_MultiByteRune_ConsumesWholeRuneAndWarnsIfNotSpecial(t *testin
 	in := "\\ß"
 	warns := newWarns(t)
 	var s TokenizerState
-	tok, stride, skip := ActEscape(&d, &s, &warns, in, '\\', 0)
+	ac := NewActionContext(&d, &s, &warns, in, '\\', 0)
+	tok, stride, skip := ActEscape(&ac)
 
 	require.True(t, skip)
 	require.Equal(t, 3, stride) // '\' + 2 bytes

@@ -12,9 +12,8 @@ func CreateAction(t *Tag) Action {
 		multiCharPlan(t, p)
 	}
 
-	return func(d *Dictionary, s *TokenizerState, warns *Warnings, input string, char byte, i int) (token Token, stride int, skip bool) {
-		ctx := NewActionContext(d, s, warns, input, char, i)
-		return p.Run(&ctx)
+	return func(ac *ActionContext) (token Token, stride int, skip bool) {
+		return p.Run(ac)
 	}
 }
 

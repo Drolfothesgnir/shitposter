@@ -2,7 +2,6 @@ package scum
 
 import (
 	"fmt"
-	"strconv"
 )
 
 // SetEscapeTrigger sets the char as an escape symbol. Escaping means
@@ -27,8 +26,9 @@ func (d *Dictionary) SetEscapeTrigger(char byte) error {
 	return nil
 }
 
-func ActEscape(d *Dictionary, s *TokenizerState, warns *Warnings, input string, char byte, i int) (token Token, stride int, skip bool) {
-	n := len(input)
+func ActEscape(ac *ActionContext) (token Token, stride int, skip bool) {
+	i := ac.Idx
+	n := len(ac.Input)
 
 	stride = 1
 
@@ -38,10 +38,9 @@ func ActEscape(d *Dictionary, s *TokenizerState, warns *Warnings, input string, 
 
 	// in this case add a Warning and skip current symbol
 	if i+1 == n {
-		warns.Add(Warning{
-			Issue:       IssueUnexpectedEOL,
-			Pos:         i,
-			Description: "redundant escape symbol found at the very end of the input.",
+		ac.Warns.Add(Warning{
+			Issue: IssueUnexpectedEOL,
+			Pos:   i,
 		})
 
 		skip = true
@@ -50,13 +49,13 @@ func ActEscape(d *Dictionary, s *TokenizerState, warns *Warnings, input string, 
 
 	// 1.2 Check if the next symbol is not special
 
-	nextByte := input[i+1]
+	nextByte := ac.Input[i+1]
 
 	// width of the next code-point
 	nextWidth := 1
 
 	// in this case we add a Warning of redundant escape
-	if d.actions[nextByte] == nil {
+	if ac.Dictionary.actions[nextByte] == nil {
 
 		next := rune(nextByte)
 		ok := true
@@ -64,22 +63,18 @@ func ActEscape(d *Dictionary, s *TokenizerState, warns *Warnings, input string, 
 		// if the next byte is a part of a multi-byte char,
 		// extract the whole rune
 		if nextByte > 127 {
-			next, nextWidth, ok = extractNextRune(input[i+1:])
+			next, nextWidth, ok = extractNextRune(ac.Input[i+1:])
 		}
 
-		// define description based on whether extracted rune is an invalid symbol
-		var got string
+		var gotByte byte
 		if ok {
-			got = strconv.QuoteRune(next)
-		} else {
-			got = "unknown symbol"
+			gotByte = byte(next)
 		}
 
-		warns.Add(Warning{
+		ac.Warns.Add(Warning{
 			Issue: IssueRedundantEscape,
 			Pos:   i,
-			Description: "redundant escape symbol found at index " +
-				strconv.Itoa(i) + ", before non-special " + got + ".",
+			Got:   gotByte,
 		})
 	}
 

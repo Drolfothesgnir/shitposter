@@ -27,6 +27,7 @@ func TestParse(t *testing.T) {
 			FirstChild:  1,
 			LastChild:   2,
 			NextSibling: -1,
+			ChildCount:  2,
 		},
 		{
 			Type:        NodeText,
@@ -42,6 +43,7 @@ func TestParse(t *testing.T) {
 			FirstChild:  3,
 			LastChild:   3,
 			NextSibling: -1,
+			ChildCount:  1,
 		},
 		{
 			Type:        NodeText,
@@ -49,6 +51,7 @@ func TestParse(t *testing.T) {
 			FirstChild:  -1,
 			LastChild:   -1,
 			NextSibling: -1,
+			ChildCount:  0,
 		},
 	}
 	require.Equal(t, nodes[0], tree.Nodes[0])

@@ -90,4 +90,7 @@ const (
 	// FIXME: refactor doc comment
 	// IssueDuplicateNestedTag occurs when the Tag is nested in the Tag with the same ID.
 	IssueDuplicateNestedTag
+
+	// NumIssues is the total number of Issue types. Should be the last in the const list.
+	NumIssues
 )

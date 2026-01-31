@@ -61,3 +61,7 @@ const (
 	DefaultMaxPayloadLen     int   = 1024 // Default max number of bytes in the Tag's payload.
 	DefaultMaxKeyLen         int   = 128  // Default max number of bytes in the Tag-Vs-Content opening and closing sequences.
 )
+
+// ByteToTokenRatio is the ratio of the number of bytes in the input string to the number of Tokens.
+// It is used to estimate the initial capacity of the Tokens slice.
+const ByteToTokenRatio = 3 / 1

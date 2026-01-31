@@ -1,7 +1,5 @@
 package scum
 
-import "strconv"
-
 // WarnOpenTagBeforeEOL adds a [Warning] of the opening Tag before the very end of the input.
 func WarnOpenTagBeforeEOL(ctx *ActionContext) {
 	n := len(ctx.Input)
@@ -17,8 +15,6 @@ func WarnOpenTagBeforeEOL(ctx *ActionContext) {
 	ctx.Warns.Add(Warning{
 		Issue: IssueUnexpectedEOL,
 		Pos:   n,
-		Description: "opening Tag with name " +
-			strconv.Quote(ctx.Tag.Name) +
-			" was found at the very end of the input and will be treated as plain text.",
+		TagID: ctx.Tag.ID(),
 	})
 }

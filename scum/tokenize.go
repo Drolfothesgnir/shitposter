@@ -34,8 +34,16 @@ type TokenizerState struct {
 // NOTE: i will likely reuse the warns slice during the parsing, so it's passed as reference instead of being created here.
 func Tokenize(d *Dictionary, input string, warns *Warnings) (out TokenizerOutput) {
 	n := len(input)
+	out.Tokens = make([]Token, 0, n/(ByteToTokenRatio+1))
 
 	var s TokenizerState
+
+	ac := ActionContext{
+		Dictionary: d,
+		State:      &s,
+		Input:      input,
+		Warns:      warns,
+	}
 
 	// the place where current plain string started
 	textStart := 0
@@ -52,7 +60,8 @@ func Tokenize(d *Dictionary, input string, warns *Warnings) (out TokenizerOutput
 			continue
 		}
 
-		token, stride, skip := act(d, &s, warns, input, b, i)
+		ac.Reset(b, i)
+		token, stride, skip := act(&ac)
 
 		// stride = max(stride, 1)
 

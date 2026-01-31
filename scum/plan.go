@@ -1,5 +1,11 @@
 package scum
 
+// Action is a function triggered by a special symbol defined in the [Dictionary].
+// It processes the input string starting from the index i and returns a [Token], byte stride and
+// a boolean flag which tells if the returned token is empty.
+// WARNING: an Action MUST always return a stride > 0, even when skip = true.
+type Action func(ac *ActionContext) (token Token, stride int, skip bool)
+
 // Bounds contains the metadata about current Tag's string representation's
 // consistency.
 // Useful for creating Warnings.
@@ -43,17 +49,19 @@ type Bounds struct {
 	PayloadLimitReached bool
 }
 
-// NewBounds creates new [Bounds] based on the index i.
-func NewBounds(i int) Bounds {
-	return Bounds{
-		Raw:        NewSpan(i, 1),
-		Inner:      NewSpan(i, 0),
-		Closed:     false,
-		Width:      1,
-		CloseWidth: 0,
-		CloseIdx:   -1,
-		SeqValid:   false,
-	}
+// Reset resets the Bounds to the initial state.
+func (b *Bounds) Reset(i int) {
+	b.CloseIdx = -1
+	b.Closed = false
+	b.Inner.Start = i
+	b.Inner.End = i
+	b.Raw.Start = i
+	b.Raw.End = i + 1
+	b.SeqValid = false
+	b.Width = 1
+	b.CloseWidth = 0
+	b.KeyLenLimitReached = false
+	b.PayloadLimitReached = false
 }
 
 // ActionContext defines the inter-step state for the Step execution.
@@ -61,19 +69,32 @@ type ActionContext struct {
 	Tag        *Tag
 	Dictionary *Dictionary
 	State      *TokenizerState
+	Warns      *Warnings
+	Bounds     Bounds
+	Trigger    byte
 	Input      string
 	Idx        int
 	Token      Token
 	Stride     int
 	Skip       bool
-	Warns      *Warnings
-	Bounds     *Bounds
+}
+
+// Reset resets the ActionContext to the initial state.
+func (ac *ActionContext) Reset(char byte, i int) {
+	ac.Tag = &ac.Dictionary.tags[char]
+	ac.Idx = i
+	ac.Token = Token{}
+	ac.Stride = 0
+	ac.Skip = false
+	ac.Trigger = char
+	ac.Bounds.Reset(i)
 }
 
 // NewActionContext creates new [ActionContext] based on provided [Dictionary], warnings slice, input,
 // char/Tag ID and the current tokenizer position i.
 func NewActionContext(d *Dictionary, s *TokenizerState, w *Warnings, input string, char byte, i int) ActionContext {
-	b := NewBounds(i)
+	b := Bounds{}
+	b.Reset(i)
 
 	// since the ActionContext is only called in the actual Action, we assume the required Tag is
 	// available.
@@ -89,7 +110,8 @@ func NewActionContext(d *Dictionary, s *TokenizerState, w *Warnings, input strin
 		Token:      Token{},
 		Stride:     0,
 		Skip:       false,
-		Bounds:     &b,
+		Bounds:     b,
+		Trigger:    char,
 	}
 }
 
@@ -107,11 +129,6 @@ type Plan struct {
 // reset on every new Step start.
 func (p Plan) Run(ctx *ActionContext) (Token, int, bool) {
 	for _, s := range p.Steps {
-		// cleaning the context at the start of the new Step
-		ctx.Token = Token{}
-		ctx.Stride = 0
-		ctx.Skip = false
-
 		// if the current Step handles the case successfully we stop the execution and
 		// return the Step's result.
 		if s(ctx) {

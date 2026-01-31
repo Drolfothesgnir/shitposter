@@ -202,11 +202,10 @@ func longestCommonSubPrefix(src string, seq []byte) (contained bool, idx, length
 	return false, maxStartIdx, maxLength
 }
 
-func skipWithWarn(w *Warnings, stride, pos int, issue Issue, desc string) (Token, int, bool) {
+func skipWithWarn(w *Warnings, stride, pos int, issue Issue) (Token, int, bool) {
 	w.Add(Warning{
-		Issue:       issue,
-		Pos:         pos,
-		Description: desc,
+		Issue: issue,
+		Pos:   pos,
 	})
 
 	return Token{}, stride, true

@@ -14,6 +14,9 @@ const (
 	NodeRoot NodeType = iota
 	NodeText
 	NodeTag
+
+	// NumNodeTypes is the total number of Node types. Should be placed as last const.
+	NumNodeTypes
 )
 
 // Attribute represents a tag attribute.

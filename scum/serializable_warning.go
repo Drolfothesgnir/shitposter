@@ -107,10 +107,10 @@ func serializeWarningsTruncated(w Warning, d *Dictionary) SerializableWarning {
 }
 
 func serializeUnclosedTag(w Warning, d *Dictionary) SerializableWarning {
-	desc := `unclosed tag with name "` +
+	desc := "unclosed tag with name " +
 		d.tags[w.TagID].Name +
-		`": expected closing tag with name "` +
-		d.tags[w.CloseTagID].Name + `".`
+		": expected closing tag with name " +
+		d.tags[w.CloseTagID].Name + "."
 
 	return SerializableWarning{
 		ByteIdx:     w.Pos,
@@ -138,9 +138,9 @@ func serializeTagKeyTooLong(w Warning, d *Dictionary) SerializableWarning {
 func serializeUnexpectedEOL(w Warning, d *Dictionary) SerializableWarning {
 	var desc string
 	if w.TagID != 0 {
-		desc = `opening tag with name "` +
+		desc = "opening tag with name " +
 			d.tags[w.TagID].Name +
-			`" was found at the very end of the input and will be treated as plain text.`
+			" was found at the very end of the input and will be treated as plain text."
 	} else {
 		desc = "redundant escape symbol found at the very end of the input."
 	}
@@ -152,10 +152,10 @@ func serializeUnexpectedEOL(w Warning, d *Dictionary) SerializableWarning {
 }
 
 func serializeUnexpectedSymbol(w Warning, d *Dictionary) SerializableWarning {
-	desc := `unexpected symbol while processing the tag with name "` +
+	desc := "unexpected symbol while processing the tag with name " +
 		d.tags[w.TagID].Name +
-		`": expected to get "` + string(w.Expected) +
-		`", but got "` + string(w.Got) + `".`
+		": expected to get " + string(w.Expected) +
+		", but got " + string(w.Got) + "."
 
 	return SerializableWarning{
 		ByteIdx:     w.Pos,
@@ -169,14 +169,14 @@ func serializeMisplacedClosingTag(w Warning, d *Dictionary) SerializableWarning 
 	if w.TagID != 0 {
 		tag := d.tags[w.TagID]
 		if w.Expected == 0 {
-			desc = `closing tag with name "` +
+			desc = "closing tag with name " +
 				tag.Name +
-				`" found at the very start of the input and will be treated as plain text.`
+				" found at the very start of the input and will be treated as plain text."
 		} else {
-			desc = `closing tag with name "` +
+			desc = "closing tag with name " +
 				d.tags[w.TagID].Name +
-				`" expected to have an opening counterpart with name "` +
-				d.tags[tag.OpenID].Name + `" which is missing in the input.`
+				" expected to have an opening counterpart with name " +
+				d.tags[tag.OpenID].Name + " which is missing in the input."
 		}
 	} else {
 		desc = "misplaced closing tag."
@@ -206,10 +206,10 @@ func serializeRedundantEscape(w Warning, d *Dictionary) SerializableWarning {
 }
 
 func serializeOpenCloseTagMismatch(w Warning, d *Dictionary) SerializableWarning {
-	desc := `closing tag with name "` +
+	desc := "closing tag with name " +
 		d.tags[w.TagID].Name +
-		`" cannot match with opening tag with name "` +
-		d.tags[w.Expected].Name + `".`
+		" cannot match with opening tag with name " +
+		d.tags[w.Expected].Name + "."
 
 	return SerializableWarning{
 		ByteIdx:     w.Pos,
@@ -219,9 +219,9 @@ func serializeOpenCloseTagMismatch(w Warning, d *Dictionary) SerializableWarning
 }
 
 func serializeDuplicateNestedTag(w Warning, d *Dictionary) SerializableWarning {
-	desc := `tag with name "` +
+	desc := "tag with name " +
 		d.tags[w.TagID].Name +
-		`" is a descendant of the tag with the same name.`
+		" is a descendant of the tag with the same name."
 
 	return SerializableWarning{
 		ByteIdx:     w.Pos,

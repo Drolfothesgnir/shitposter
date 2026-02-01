@@ -97,6 +97,13 @@ func Tokenize(d *Dictionary, input string, warns *Warnings) (out TokenizerOutput
 
 		// appending the Action's Token
 		out.Tokens = append(out.Tokens, token)
+
+		// Count non-empty greedy content as text token for accurate preallocation
+		if ac.Tag.Greed > NonGreedy && token.Payload.End > token.Payload.Start {
+			out.TextTokens++
+			// also count the text correctly
+			out.TextLen += token.Payload.End - token.Payload.Start
+		}
 	}
 
 	// if there are no special symbols from the last text string's start to the very end of the input

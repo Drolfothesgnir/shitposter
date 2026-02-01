@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func requireTokenizeInvariants(t *testing.T, inp string, out TokenizerOutput) {
+func requireTokenizeInvariants(t *testing.T, inp string, out TokenizerOutput, d *Dictionary) {
 	t.Helper()
 
 	toks := out.Tokens
@@ -34,6 +34,12 @@ func requireTokenizeInvariants(t *testing.T, inp string, out TokenizerOutput) {
 		if tok.Type == TokenText {
 			require.Equal(t, Span{Start: tok.Pos, End: tok.Pos + tok.Width}, tok.Payload)
 			textLen += tok.Width
+			textTokens++
+		}
+
+		tag := d.tags[tok.Trigger]
+		if tag.Greed > NonGreedy && tok.Payload.End > tok.Payload.Start {
+			textLen += tok.Payload.End - tok.Payload.Start
 			textTokens++
 		}
 	}
@@ -212,7 +218,7 @@ func TestTokenize_EscapeBeforeSpecial_TagIsNotTriggered(t *testing.T) {
 	inp := `\*hi*`
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	// Escaped '*' at position 1 should NOT be a tag
 	for _, tok := range out.Tokens {
@@ -234,7 +240,7 @@ func TestTokenize_RedundantEscape_BeforeNonSpecial(t *testing.T) {
 	inp := `\a`
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	ws := w.List()
 	require.Len(t, ws, 1)
@@ -249,7 +255,7 @@ func TestTokenize_EscapeAtEOL_WarnsUnexpectedEOL(t *testing.T) {
 	inp := `\`
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	ws := w.List()
 	require.Len(t, ws, 1)
@@ -264,7 +270,7 @@ func TestTokenize_AttributePayload_EscapedEndBrace(t *testing.T) {
 	inp := `!k{a\}}`
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 	require.Empty(t, w.List())
 
 	require.Len(t, out.Tokens, 1)
@@ -289,7 +295,7 @@ func TestTokenize_EscapedAttributeTrigger_DoesNotStartAttribute(t *testing.T) {
 	inp := `\!k{v}`
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	// Escaped '!' should NOT produce attribute tokens
 	for _, tok := range out.Tokens {
@@ -321,7 +327,7 @@ func TestTokenize_AttrKeyTooLong(t *testing.T) {
 	inp := "!toolong{value}"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	// The '!' should be treated as plain text since key limit was reached
 	require.Len(t, out.Tokens, 1)
@@ -348,7 +354,7 @@ func TestTokenize_AttrKeyExactlyAtLimit(t *testing.T) {
 	inp := "!abc{value}"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	require.Len(t, out.Tokens, 1)
 	require.Equal(t, TokenAttributeKV, out.Tokens[0].Type)
@@ -372,7 +378,7 @@ func TestTokenize_AttrPayloadTooLong(t *testing.T) {
 	inp := "!k{toolongvalue}"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	// The '!' should be treated as plain text since payload limit was reached
 	require.Len(t, out.Tokens, 1)
@@ -399,7 +405,7 @@ func TestTokenize_AttrPayloadExactlyAtLimit(t *testing.T) {
 	inp := "!k{12345}"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	require.Len(t, out.Tokens, 1)
 	require.Equal(t, TokenAttributeKV, out.Tokens[0].Type)
@@ -428,7 +434,7 @@ func TestTokenize_GreedyPayloadTooLong(t *testing.T) {
 	inp := "(toolongurl)"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	// The '(' should be treated as plain text since closing tag not found within limit
 	ws := w.List()
@@ -460,7 +466,7 @@ func TestTokenize_GreedyPayloadExactlyAtLimit(t *testing.T) {
 	inp := "(12345)"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	require.Len(t, out.Tokens, 1)
 	require.Equal(t, TokenTag, out.Tokens[0].Type)
@@ -485,7 +491,7 @@ func TestTokenize_GraspingPayloadTooLong_ConsumesRest(t *testing.T) {
 	inp := "(toolongurl"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	// Grasping tag should still produce a tag token even when limit reached
 	require.Len(t, out.Tokens, 1)
@@ -513,7 +519,7 @@ func TestTokenize_TagVsContent_KeyTooLong(t *testing.T) {
 	inp := "````code````"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	// The opening sequence should be treated as plain text
 	ws := w.List()
@@ -542,7 +548,7 @@ func TestTokenize_TagVsContent_KeyExactlyAtLimit(t *testing.T) {
 	inp := "```code```"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	require.Len(t, out.Tokens, 1)
 	require.Equal(t, TokenTag, out.Tokens[0].Type)
@@ -564,7 +570,7 @@ func TestTokenize_TagVsContent_PayloadTooLong(t *testing.T) {
 	inp := "`toolongcode`"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	// The tag should be treated as plain text since payload limit was reached
 	ws := w.List()
@@ -593,7 +599,7 @@ func TestTokenize_TagVsContent_PayloadExactlyAtLimit(t *testing.T) {
 	inp := "`12345`"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	require.Len(t, out.Tokens, 1)
 	require.Equal(t, TokenTag, out.Tokens[0].Type)
@@ -615,7 +621,7 @@ func TestTokenize_TagVsContent_MultiBacktick_KeyTooLong(t *testing.T) {
 	inp := "```code```"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	ws := w.List()
 	found := false
@@ -645,7 +651,7 @@ func TestTokenize_GreedyPayloadTooLong_WarnsPayloadTooLong(t *testing.T) {
 	inp := "(toolongurl)"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	ws := w.List()
 	foundPayloadTooLong := false
@@ -671,7 +677,7 @@ func TestTokenize_TagVsContent_PayloadTooLong_WarnsPayloadTooLong(t *testing.T) 
 	inp := "`toolongcode`"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	ws := w.List()
 	foundPayloadTooLong := false
@@ -699,7 +705,7 @@ func TestTokenize_GraspingPayloadTooLong_WarnsPayloadTooLong(t *testing.T) {
 	inp := "(toolongurl"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	ws := w.List()
 	foundPayloadTooLong := false
@@ -727,7 +733,7 @@ func TestTokenize_GreedyPayloadWithinLimit_NoWarning(t *testing.T) {
 	inp := "(shorturl)"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	require.Len(t, out.Tokens, 1)
 	require.Equal(t, TokenTag, out.Tokens[0].Type)
@@ -748,7 +754,7 @@ func TestTokenize_AttrFlagPayloadTooLong(t *testing.T) {
 	inp := "!{toolong}"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	ws := w.List()
 	require.NotEmpty(t, ws)
@@ -778,7 +784,7 @@ func TestTokenize_AttrFlagPayloadExactlyAtLimit(t *testing.T) {
 	inp := "!{flag}"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	require.Len(t, out.Tokens, 1)
 	require.Equal(t, TokenAttributeFlag, out.Tokens[0].Type)
@@ -804,7 +810,7 @@ func TestTokenize_MultiCharGreedyPayloadTooLong(t *testing.T) {
 	inp := "[[toolongcontent]]"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	// Per docs: when payload limit is reached, IssueTagPayloadTooLong warning should be emitted
 	ws := w.List()
@@ -832,7 +838,7 @@ func TestTokenize_TagVsContent_ClosingTagBeyondPayloadLimit(t *testing.T) {
 	inp := "```this is way too long for the limit```"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 
 	ws := w.List()
 	foundPayloadTooLong := false
@@ -854,7 +860,7 @@ func TestTokenizerOutput_PlainTextOnly(t *testing.T) {
 	inp := "hello world"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 	require.Empty(t, w.List())
 
 	require.Len(t, out.Tokens, 1)
@@ -877,7 +883,7 @@ func TestTokenizerOutput_EmptyInput(t *testing.T) {
 	inp := ""
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 	require.Empty(t, w.List())
 
 	require.Len(t, out.Tokens, 0)
@@ -900,7 +906,7 @@ func TestTokenizerOutput_MixedContent(t *testing.T) {
 	inp := "hello $$bold$$ world"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 	require.Empty(t, w.List())
 
 	// Tokens: text("hello "), tag($$), text("bold"), tag($$), text(" world")
@@ -924,7 +930,7 @@ func TestTokenizerOutput_OpenCloseTags(t *testing.T) {
 	inp := "[link]"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 	require.Empty(t, w.List())
 
 	// Tokens: tag([), text("link"), tag(])
@@ -947,7 +953,7 @@ func TestTokenizerOutput_MultipleAttributes(t *testing.T) {
 	inp := "!a{1}!b{2}"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 	require.Empty(t, w.List())
 
 	require.Len(t, out.Tokens, 2)
@@ -968,15 +974,15 @@ func TestTokenizerOutput_GreedyTagWithPayload(t *testing.T) {
 	inp := "`code`"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 	require.Empty(t, w.List())
 
 	require.Len(t, out.Tokens, 1)
 	require.Equal(t, TokenTag, out.Tokens[0].Type)
 	require.Equal(t, "code", spanStr(inp, out.Tokens[0].Payload))
 
-	require.Equal(t, 0, out.TextLen)
-	require.Equal(t, 0, out.TextTokens)
+	require.Equal(t, 4, out.TextLen)
+	require.Equal(t, 1, out.TextTokens)
 	// Greedy RuleTagVsContent tags don't increment TagsTotal through normal path
 	require.Equal(t, 0, out.Attributes)
 }
@@ -989,7 +995,7 @@ func TestTokenizerOutput_ComplexDocument(t *testing.T) {
 	inp := "Hello [$$world$$]!url{http://x}"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 	require.Empty(t, w.List())
 
 	// Tokens: text("Hello "), tag([), tag($$), text("world"), tag($$), tag(]), attr(!url{...})
@@ -1013,7 +1019,7 @@ func TestTokenizerOutput_NestedTags(t *testing.T) {
 	inp := "$$*nested*$$"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 	require.Empty(t, w.List())
 
 	// Tokens: tag($$), tag(*), text("nested"), tag(*), tag($$)
@@ -1036,7 +1042,7 @@ func TestTokenizerOutput_OnlyTagsNoText(t *testing.T) {
 	inp := "$$$$"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 	require.Empty(t, w.List())
 
 	// Two universal tags
@@ -1064,7 +1070,7 @@ func TestTokenizerOutput_SingleCharGreedyTag_NotCountedInUniversalTags(t *testin
 	inp := "`code`"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 	require.Empty(t, w.List())
 
 	require.Len(t, out.Tokens, 1)
@@ -1085,7 +1091,7 @@ func TestTokenizerOutput_MultiCharGreedyTag_NotCountedInUniversalTags(t *testing
 	inp := "~~strikethrough~~"
 	out := Tokenize(d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, d)
 	require.Empty(t, w.List())
 
 	// Greedy tag should increment TagsTotal but NOT UniversalTags
@@ -1103,7 +1109,7 @@ func TestTokenizerOutput_MultiCharGraspingTag_NotCountedInUniversalTags(t *testi
 	inp := "```code block```"
 	out := Tokenize(d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, d)
 	require.Empty(t, w.List())
 
 	// Grasping tag should increment TagsTotal but NOT UniversalTags
@@ -1121,7 +1127,7 @@ func TestTokenizerOutput_MixedGreedyAndNonGreedy(t *testing.T) {
 	inp := "**bold** ~~strike~~"
 	out := Tokenize(d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, d)
 	require.Empty(t, w.List())
 
 	// 2 non-greedy ** tags + 1 greedy ~~ tag = 3 TagsTotal
@@ -1147,7 +1153,7 @@ func TestTokenizerOutput_SingleCharGreedyOpeningTag_NotCountedInOpenTags(t *test
 	inp := "(content)"
 	out := Tokenize(&d, inp, w)
 
-	requireTokenizeInvariants(t, inp, out)
+	requireTokenizeInvariants(t, inp, out, &d)
 	require.Empty(t, w.List())
 
 	// Greedy opening tag consumes the content and closing tag as a single token
@@ -1175,7 +1181,7 @@ func FuzzTokenize_Invariants(f *testing.F) {
 
 		require.NotPanics(t, func() {
 			out := Tokenize(&d, inp, w)
-			requireTokenizeInvariants(t, inp, out)
+			requireTokenizeInvariants(t, inp, out, &d)
 		})
 	})
 }

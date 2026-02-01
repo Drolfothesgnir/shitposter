@@ -26,7 +26,6 @@ type serializeTask struct {
 	nodeIdx  int // index in ast.Nodes
 }
 
-// TODO: add text length to the result
 func (ast AST) Serialize() (out SerializableAST) {
 	root := ast.Nodes[0]
 

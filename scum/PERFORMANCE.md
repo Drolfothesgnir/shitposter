@@ -1,6 +1,6 @@
 # Performance Analysis: scum Parser and Tokenizer
 
-**Last Updated**: 2026-01-31  
+**Last Updated**: 2026-02-01  
 **System**: AMD Ryzen 9 6900HS, Linux, Go benchmark with `-benchmem -benchtime=3s`
 
 ---
@@ -11,7 +11,7 @@
 |-----------|---------|-------|--------|----------|
 | **Tokenize** | ~5.6M | 595 ns | 4 | 1,360 B |
 | **Parse** | ~2.1M | 1,712 ns | 10 | 2,696 B |
-| **Serialize** | ~5.6M | 638 ns | 9 | 1,792 B |
+| **Serialize** | ~6.6M | 555 ns | 5 | 1,728 B |
 | **Parse_LongInput** (~1KB) | ~172K | 21,148 ns | 10 | 39,304 B |
 | **Parse_DeeplyNested** | ~3.4M | 1,058 ns | 12 | 1,480 B |
 
@@ -34,7 +34,7 @@
 |-----------|----------------|---------------|-------------|---------------|--------------|---------------|
 | **Tokenize** | 882 | 595 | **+32% faster** | 2,320 | 1,360 | **-41%** |
 | **Parse** | 2,249 | 1,712 | **+24% faster** | 3,656 | 2,696 | **-26%** |
-| **Serialize** | 724 | 638 | **+12% faster** | 1,792 | 1,792 | same |
+| **Serialize** | 724 | 555 | **+23% faster** | 1,792 | 1,728 | **-4%** |
 | **Parse_LongInput** | 27,218 | 21,148 | **+22% faster** | 53,576 | 39,304 | **-27%** |
 | **Parse_DeeplyNested** | 1,415 | 1,058 | **+25% faster** | 1,992 | 1,480 | **-26%** |
 | **AlternatingOpenClose** | 116,160 | 96,963 | **+17% faster** | 287,050 | 199,049 | **-31%** |
@@ -78,28 +78,35 @@
 
 ## Key Findings
 
-### 1. Tokenize optimization applied ✅
+### 1. Serialize optimization applied ✅
+
+Pre-allocating a single backing array for all child nodes reduced:
+- Allocations from 9 → 5 (44% reduction)
+- Memory from 1,792 B → 1,728 B (4% reduction)
+- Time from 638 ns → 555 ns (13% faster)
+
+### 2. Tokenize optimization applied ✅
 
 Token slice pre-allocation (`make([]Token, 0, len(input)/4)`) reduced:
 - Allocations from 8 → 4 (50% reduction)
 - Memory from 2,320 B → 1,360 B (41% reduction)
 - Time from 882 ns → 595 ns (32% faster)
 
-### 2. Memory pressure triggers GC
+### 3. Memory pressure triggers GC
 
 ~22% of CPU spent in GC. Culprits:
 - `tokenize.go:79` — Token slice growth
 - `parse.go:78` — `nodes := make([]Node, 1, totalExpectedNodes)` — good pre-allocation but still allocates
 - `warnings.go:97` — unbounded `w.list = append(...)` in `WarnOverflowNoCap` mode
 
-### 3. AlternatingOpenClose improved ✅
+### 4. AlternatingOpenClose improved ✅
 
 Previously the worst case (287KB, 116μs), now significantly better:
 - Memory: 287,050 B → 199,049 B (31% reduction)
 - Time: 116,160 ns → 96,963 ns (17% faster)
 - Allocations: 21 → 12 (43% reduction)
 
-### 4. Escape handling is expensive (EscapeHell: 119KB)
+### 5. Escape handling is expensive (EscapeHell: 119KB)
 
 Escape sequences (`\*`, `\$$`, `\[`) require additional lookahead and branching.
 
@@ -166,4 +173,29 @@ go tool pprof -top -cum cpu.prof
 # Generate memory profile
 go test -bench=BenchmarkParse -memprofile=mem.prof ./scum/
 go tool pprof -top -cum mem.prof
+```
+
+## Advanced Profiling
+
+```bash
+# Interactive web UI (best for exploration - opens flame graphs, call graphs)
+go tool pprof -http=:8080 cpu.prof
+
+# Line-by-line source timing
+go tool pprof -list=Tokenize cpu.prof
+go tool pprof -list=Parse cpu.prof
+
+# Escape analysis (what allocates on heap vs stack)
+go build -gcflags='-m' ./scum/ 2>&1 | grep -E 'escape|heap'
+
+# Verbose escape analysis (shows reasoning)
+go build -gcflags='-m -m' ./scum/ 2>&1 | head -100
+
+# Benchmark comparison (detect regressions)
+# First, save baseline:
+go test -bench=. -benchmem -count=5 ./scum/ > old.txt
+# After changes:
+go test -bench=. -benchmem -count=5 ./scum/ > new.txt
+# Compare (requires: go install golang.org/x/perf/cmd/benchstat@latest):
+benchstat old.txt new.txt
 ```

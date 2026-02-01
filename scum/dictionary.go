@@ -49,6 +49,8 @@
 //     token will be for tag not a text. Example: The same setting as in the Example 2, 3.2.2. - "[**some link**](https://google.com". The
 //     substring, starting from "(" and to the end, will be a token and it's internal value will be "https://google.com".
 //
+//     3.4 Payload. The Greedy Tag's payload is considered as a text node and will be accounted as a plain text.
+//
 //  4. Sequence. You can construct your tags from at most [MaxTagLength] (4 by default). You can create tag like this "$}{|". The Sequence
 //     is a slice of bytes with length of the defined tag, and with indexes corresponding to indexes of chars in the tag. For tag "$}{|"
 //     Sequence will be []byte{'$', '}', '{', '|'}.
@@ -169,45 +171,45 @@
 // A [Warning] is added during tokenization when the input contains problematic but recoverable patterns. Warnings do not stop processing;
 // instead, the tokenizer attempts to make sense of the input. Each Warning contains an [Issue] and a position in the input.
 //
-//   - [IssueUnexpectedEOL]: Added when a special symbol is found at the very end of the input where more content is expected.
+//   - [IssueUnexpectedEOL] Added when a special symbol is found at the very end of the input where more content is expected.
 //     This includes: escape symbol at EOL, opening tag at EOL, attribute trigger at EOL, and attribute payload start at EOL.
 //
-//   - [IssueRedundantEscape]: Added when the escape symbol precedes a non-special character. The escaped character is still
+//   - [IssueRedundantEscape] Added when the escape symbol precedes a non-special character. The escaped character is still
 //     included in the output as an escape sequence token.
 //
-//   - [IssueUnclosedTag]: Added when a greedy or grasping tag's opening sequence is found, but no matching closing sequence
+//   - [IssueUnclosedTag] Added when a greedy or grasping tag's opening sequence is found, but no matching closing sequence
 //     exists in the input. For [Greedy] tags, the opening tag is skipped as plain text. For [Grasping] tags, the entire rest
 //     of the input becomes the tag's payload.
 //
-//   - [IssueMisplacedClosingTag]: Added when a closing tag is found at the very beginning of the input (index 0). The closing
+//   - [IssueMisplacedClosingTag] Added when a closing tag is found at the very beginning of the input (index 0). The closing
 //     tag is treated as plain text.
 //
-//   - [IssueUnexpectedSymbol]: Added when a multi-char tag's sequence is interrupted by an unexpected byte. The partial sequence
+//   - [IssueUnexpectedSymbol] Added when a multi-char tag's sequence is interrupted by an unexpected byte. The partial sequence
 //     is treated as plain text.
 //
-//   - [IssueTagKeyTooLong]: Added when a [RuleTagVsContent] tag's opening sequence exceeds [Limits.MaxKeyLen] bytes.
+//   - [IssueTagKeyTooLong] Added when a [RuleTagVsContent] tag's opening sequence exceeds [Limits.MaxKeyLen] bytes.
 //     The opening sequence is treated as plain text.
 //
-//   - [IssueTagPayloadTooLong]: Added when a [Greedy] tag's payload exceeds [Limits.MaxPayloadLen] bytes without
+//   - [IssueTagPayloadTooLong] Added when a [Greedy] tag's payload exceeds [Limits.MaxPayloadLen] bytes without
 //     finding the closing sequence. The tag is treated according to its [Greed] level.
 //
-//   - [IssueAttrKeyTooLong]: Added when the attribute payload start symbol is not found within [Limits.MaxAttrKeyLen] bytes
+//   - [IssueAttrKeyTooLong] Added when the attribute payload start symbol is not found within [Limits.MaxAttrKeyLen] bytes
 //     after the attribute trigger. The trigger is treated as plain text.
 //
-//   - [IssueAttrPayloadTooLong]: Added when the attribute payload end symbol is not found within [Limits.MaxAttrPayloadLen] bytes
+//   - [IssueAttrPayloadTooLong] Added when the attribute payload end symbol is not found within [Limits.MaxAttrPayloadLen] bytes
 //     after the payload start. The trigger is treated as plain text.
 //
-//   - [IssueUnclosedAttrPayload]: Added when the attribute payload start symbol is found but the payload end symbol is missing
+//   - [IssueUnclosedAttrPayload] Added when the attribute payload start symbol is found but the payload end symbol is missing
 //     before the end of the input. The trigger is treated as plain text.
 //
-//   - [IssueEmptyAttrPayload]: Added when the attribute payload is present but empty (e.g., "!k{}" or "!{}"). The trigger is
+//   - [IssueEmptyAttrPayload] Added when the attribute payload is present but empty (e.g., "!k{}" or "!{}"). The trigger is
 //     treated as plain text.
 //
-//   - [IssueWarningsTruncated]: Added automatically by [Warnings] when using [WarnOverflowTrunc] policy and the maximum capacity
+//   - [IssueWarningsTruncated] Added automatically by [Warnings] when using [WarnOverflowTrunc] policy and the maximum capacity
 //     is reached. This warning replaces all subsequent warnings and indicates how many were dropped.
 //
-// TODO: add preallocated tag strings inside the dictionary
-// TODO: add docs for cases when closing tag does not match the opening and is returned as plain text along with a Warning
+//   - [IssueOpenCloseTagMismatch] Added when the opening Tag awaits for the closing Tag with one ID but the next closing Tag has different ID.
+//     In this case the closing Tag will be treated as a plain text.
 package scum
 
 // Dictionary manages creation and deletion of Tags and their corresponding Actions.

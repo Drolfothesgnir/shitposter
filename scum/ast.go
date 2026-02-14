@@ -44,7 +44,6 @@ type Node struct {
 	LastChild   int
 	NextSibling int
 
-	// TODO: write tests for this
 	// ChildCount is the number of children of this node.
 	ChildCount int
 

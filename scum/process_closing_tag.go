@@ -1,11 +1,19 @@
 package scum
 
+// processClosingTag handles a token that can only close a tag (e.g. ]).
+//
+// Three outcomes are possible:
+//  1. No tag is open (stack empty): emit [IssueMisplacedClosingTag] and discard
+//     the token entirely.
+//  2. The top-of-stack tag doesn't match: emit [IssueOpenCloseTagMismatch] and
+//     demote the closing token to a text node (incrementing textNodes so it is
+//     reflected in [AST.TotalTextNodes]).
+//  3. Match: delegate to [closeTag] to pop the stacks and finalize the span.
 func processClosingTag(state *parserState, d *Dictionary, warns *Warnings, tok Token) {
 	stacked := state.peekStack()
 
 	tag := d.tags[tok.Trigger]
 
-	// 1. If stack is empty add a Warning and return
 	if stacked == 0 {
 		warns.Add(Warning{
 			Issue:    IssueMisplacedClosingTag,
@@ -18,7 +26,6 @@ func processClosingTag(state *parserState, d *Dictionary, warns *Warnings, tok T
 
 	openTag := d.tags[stacked]
 
-	// 2. If the opening and closing Tags mismatched add a Warning, treat the closing Tag as a text and return
 	if (openTag.CloseID != tok.Trigger) && (tag.OpenID != stacked) {
 		warns.Add(Warning{
 			Issue:    IssueOpenCloseTagMismatch,
@@ -33,6 +40,5 @@ func processClosingTag(state *parserState, d *Dictionary, warns *Warnings, tok T
 		return
 	}
 
-	// 3. Otherwise close the Tag
 	closeTag(state, tok)
 }

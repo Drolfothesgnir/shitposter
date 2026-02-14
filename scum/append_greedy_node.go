@@ -1,5 +1,10 @@
 package scum
 
+// appendGreedyNode handles a self-contained (greedy) tag token such as
+// backtick code spans. It creates a [NodeTag] parent and a [NodeText] child
+// for the payload in one shot, without pushing onto the breadcrumb/stack
+// (since greedy tags are already fully closed by the tokenizer).
+// The token's full width is added to the current depth's cumulative width.
 func appendGreedyNode(state *parserState, tok Token) {
 	node := NewNode()
 	node.Type = NodeTag

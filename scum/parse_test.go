@@ -697,6 +697,92 @@ func TestParse_DifferentWidths_NestedImageUnclosed(t *testing.T) {
 	require.Equal(t, len(input), italicNode.Span.End)
 }
 
+func TestParse_ChildCount(t *testing.T) {
+	d := testDict(t)
+
+	tests := []struct {
+		name   string
+		input  string
+		checks map[int]int // nodeIndex -> expected ChildCount
+	}{
+		{
+			name:  "empty input, root has 0 children",
+			input: "",
+			checks: map[int]int{
+				0: 0, // root
+			},
+		},
+		{
+			name:  "plain text, root has 1 child",
+			input: "hello",
+			checks: map[int]int{
+				0: 1, // root -> text
+				1: 0, // text leaf
+			},
+		},
+		{
+			name:  "single tag with text, root=1 tag=1",
+			input: "$$bold$$",
+			checks: map[int]int{
+				0: 1, // root -> BOLD
+				1: 1, // BOLD -> text
+				2: 0, // text leaf
+			},
+		},
+		{
+			name:  "text before and after tag, root=3",
+			input: "a $$b$$ c",
+			checks: map[int]int{
+				0: 3, // root -> text, BOLD, text
+				1: 0, // text "a " leaf
+				2: 1, // BOLD -> text
+				3: 0, // text "b" leaf
+				4: 0, // text " c" leaf
+			},
+		},
+		{
+			name:  "nested tags each have 1 child",
+			input: "[*hi*]",
+			checks: map[int]int{
+				0: 1, // root -> LINK
+				1: 1, // LINK -> ITALIC
+				2: 1, // ITALIC -> text
+				3: 0, // text leaf
+			},
+		},
+		{
+			name:  "tag with multiple children",
+			input: "[a *b* c]",
+			checks: map[int]int{
+				0: 1, // root -> LINK
+				1: 3, // LINK -> text, ITALIC, text
+			},
+		},
+		{
+			name:  "greedy tag has 1 text child",
+			input: "`code`",
+			checks: map[int]int{
+				0: 1, // root -> CODE
+				1: 1, // CODE -> text
+				2: 0, // text leaf
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			warns := newWarnings(t)
+			tree := Parse(tt.input, &d, warns)
+
+			for idx, expected := range tt.checks {
+				require.Less(t, idx, len(tree.Nodes), "node index %d out of range (len=%d)", idx, len(tree.Nodes))
+				require.Equal(t, expected, tree.Nodes[idx].ChildCount,
+					"node[%d] (type=%d) ChildCount mismatch", idx, tree.Nodes[idx].Type)
+			}
+		})
+	}
+}
+
 func TestParse_DifferentWidths_TextBeforeAndAfter(t *testing.T) {
 	d := testDict(t)
 	warns := newWarnings(t)
@@ -723,4 +809,86 @@ func TestParse_DifferentWidths_TextBeforeAndAfter(t *testing.T) {
 
 	// Last text " post"
 	require.Equal(t, " post", input[tree.Nodes[4].Span.Start:tree.Nodes[4].Span.End])
+}
+
+func TestParse_TotalTagNodesAndTotalTextNodes(t *testing.T) {
+	d := testDict(t)
+
+	tests := []struct {
+		name           string
+		input          string
+		totalTagNodes  int
+		totalTextNodes int
+	}{
+		{
+			name:           "empty input",
+			input:          "",
+			totalTagNodes:  0,
+			totalTextNodes: 0,
+		},
+		{
+			name:           "plain text only",
+			input:          "hello",
+			totalTagNodes:  0,
+			totalTextNodes: 1,
+		},
+		{
+			name:           "single universal tag with text",
+			input:          "$$bold$$",
+			totalTagNodes:  1,
+			totalTextNodes: 1,
+		},
+		{
+			name:           "text before and after tag",
+			input:          "a $$b$$ c",
+			totalTagNodes:  1,
+			totalTextNodes: 3,
+		},
+		{
+			name:           "nested tags",
+			input:          "[*hi*]",
+			totalTagNodes:  2,
+			totalTextNodes: 1,
+		},
+		{
+			name:           "tag with multiple text children",
+			input:          "[a *b* c]",
+			totalTagNodes:  2,
+			totalTextNodes: 3,
+		},
+		{
+			name:           "greedy tag does not count as tag node",
+			input:          "`code`",
+			totalTagNodes:  0,
+			totalTextNodes: 1,
+		},
+		{
+			name:           "mixed universal tags",
+			input:          "Text $$bold$$ more *italic* end",
+			totalTagNodes:  2,
+			totalTextNodes: 5,
+		},
+		{
+			name:           "image opening/closing tag",
+			input:          ":[alt text]",
+			totalTagNodes:  1,
+			totalTextNodes: 1,
+		},
+		{
+			name:           "duplicate nested tag not counted",
+			input:          "[outer [inner] outer]",
+			totalTagNodes:  1,
+			totalTextNodes: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			warns := newWarnings(t)
+			tree := Parse(tt.input, &d, warns)
+
+			require.Equal(t, tt.totalTagNodes, tree.TotalTagNodes, "TotalTagNodes mismatch")
+			require.Equal(t, tt.totalTextNodes, tree.TotalTextNodes, "TotalTextNodes mismatch")
+		})
+	}
 }

@@ -87,8 +87,7 @@ const (
 	// IssueOpenCloseTagMismatch occurs when the opening Tag's [Tag.CloseID] != closing Tag's [Tag.OpenID].
 	IssueOpenCloseTagMismatch
 
-	// FIXME: refactor doc comment
-	// IssueDuplicateNestedTag occurs when the Tag is nested in the Tag with the same ID.
+	// IssueDuplicateNestedTag occurs when the Tag is a descendant of the Tag with the same ID.
 	IssueDuplicateNestedTag
 
 	// NumIssues is the total number of Issue types. Should be the last in the const list.

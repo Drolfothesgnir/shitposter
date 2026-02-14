@@ -44,7 +44,6 @@ type Node struct {
 	LastChild   int
 	NextSibling int
 
-	// TODO: write tests for this
 	// ChildCount is the number of children of this node.
 	ChildCount int
 
@@ -78,4 +77,10 @@ type AST struct {
 
 	// TextLength is the length of the text in the input.
 	TextLength int
+
+	// TotalTagNodes is the total count of the effective (no duplicate nesting) Tags in the input.
+	TotalTagNodes int
+
+	// TotalTextNodes is the total count of the plain text nodes in the input.
+	TotalTextNodes int
 }

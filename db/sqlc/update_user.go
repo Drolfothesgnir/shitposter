@@ -58,15 +58,7 @@ func (s *SQLStore) UpdateUser(ctx context.Context, arg UpdateUserParams) (Update
 	if err != nil {
 		// if 'not found' is returned it means the target user doesn't exist
 		if errors.Is(err, pgx.ErrNoRows) {
-			opErr := newOpError(
-				opUpdateUser,
-				KindNotFound,
-				entUser,
-				fmt.Errorf("user with id %d not found", arg.ID),
-				withEntityID(arg.ID),
-			)
-
-			return UpdateUserResult{}, opErr
+			return UpdateUserResult{}, notFoundError(opUpdateUser, entUser, arg.ID)
 		}
 
 		// else return internal/fk-violation error

@@ -34,15 +34,7 @@ func (s *SQLStore) UpdateComment(ctx context.Context, arg UpdateCommentParams) (
 
 	// 1. Comment doesn't exist
 	if errors.Is(err, pgx.ErrNoRows) {
-		opErr := newOpError(
-			opUpdateComment,
-			KindNotFound,
-			entComment,
-			fmt.Errorf("comment with id %d not found", arg.CommentID),
-			withEntityID(arg.CommentID),
-		)
-
-		return UpdateCommentResult{}, opErr
+		return UpdateCommentResult{}, notFoundError(opUpdateComment, entComment, arg.CommentID)
 	}
 
 	// 2. Internal error

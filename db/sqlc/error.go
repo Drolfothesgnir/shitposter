@@ -149,6 +149,17 @@ func withField(failingField string) errDecorator {
 	return func(be *OpError) { be.FailingField = failingField }
 }
 
+// notFoundError builds *OpError for the common "entity not found" case.
+func notFoundError(op string, entity string, entityID int64) *OpError {
+	return newOpError(
+		op,
+		KindNotFound,
+		entity,
+		fmt.Errorf("%s with id %d not found", entity, entityID),
+		withEntityID(entityID),
+	)
+}
+
 type opDetails struct {
 	userID    int64
 	postID    int64

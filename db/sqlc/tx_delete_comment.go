@@ -42,13 +42,7 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 		// otherwise return "not found"
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return newOpError(
-					opDeleteComment,
-					KindNotFound,
-					entComment,
-					fmt.Errorf("comment with id %d not found", arg.CommentID),
-					withEntityID(arg.CommentID),
-				)
+				return notFoundError(opDeleteComment, entComment, arg.CommentID)
 			}
 			return sqlError(
 				opDeleteComment,

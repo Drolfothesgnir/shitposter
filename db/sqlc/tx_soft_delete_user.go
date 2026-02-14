@@ -52,14 +52,7 @@ func (store *SQLStore) SoftDeleteUserTx(ctx context.Context, userID int64) (Soft
 		if err != nil {
 			// if 'not found' return error since we cannot return missing user's details
 			if errors.Is(err, pgx.ErrNoRows) {
-				return newOpError(
-					opSoftDeleteUser,
-					KindNotFound,
-					entUser,
-					// TODO: maybe extract this 'not found' err into separate helper
-					fmt.Errorf("user with id %d not found", userID),
-					withEntityID(userID),
-				)
+				return notFoundError(opSoftDeleteUser, entUser, userID)
 			}
 
 			// else check for sql errors

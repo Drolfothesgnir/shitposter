@@ -10,6 +10,9 @@ import (
 
 const opGetUser = "get-user"
 
+// GetUser retrieves the user with the provided ID.
+// Returns KindNotFound if the user does not exist, KindDeleted if the user
+// has been soft-deleted, or KindInternal on database errors.
 func (s *SQLStore) GetUser(ctx context.Context, userID int64) (User, error) {
 	user, err := s.getUser(ctx, userID)
 	if err != nil {

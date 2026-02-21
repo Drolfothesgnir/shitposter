@@ -42,10 +42,10 @@ func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 }
 
 // CreateUserWithCredentialsTx mocks base method.
-func (m *MockStore) CreateUserWithCredentialsTx(ctx context.Context, arg db.CreateUserWithCredentialsTxParams) (db.CreateUserWithCredentialsTxResult, error) {
+func (m *MockStore) CreateUserWithCredentialsTx(ctx context.Context, arg db.CreateUserWithCredentialsTxParams) (db.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateUserWithCredentialsTx", ctx, arg)
-	ret0, _ := ret[0].(db.CreateUserWithCredentialsTxResult)
+	ret0, _ := ret[0].(db.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

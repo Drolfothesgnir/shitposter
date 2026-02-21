@@ -17,6 +17,11 @@ type VoteCommentTxParams struct {
 	Vote      int16 // Can be 1 or -1
 }
 
+// VoteCommentTx records an upvote (+1) or downvote (-1) on a comment and updates
+// the comment's popularity counters within a transaction. Returns KindInvalid if
+// the vote value is not 1 or -1, KindRelation if the comment or user does not exist,
+// KindConflict if the same vote has already been cast, KindDeleted if the comment is
+// soft-deleted, or KindInternal on database errors.
 func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (Comment, error) {
 	var result Comment
 	err := s.execTx(ctx, func(q *Queries) error {

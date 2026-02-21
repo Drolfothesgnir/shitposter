@@ -19,6 +19,12 @@ type InsertCommentTxParams struct {
 	Downvotes int64       `json:"downvotes"`
 }
 
+// InsertCommentTx creates a new comment, either a root comment or a reply to an
+// existing comment, within a transaction. Returns KindNotFound if the parent comment
+// does not exist, KindRelation if the parent belongs to a different post or the post
+// does not exist, KindDeleted if the parent comment is soft-deleted, or KindInternal
+// on database errors.
+//
 // TODO: Currently user is allowed to reply to his own comments to the infinite depth.
 // I should limit this behaviour.
 func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParams) (Comment, error) {

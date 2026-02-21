@@ -36,6 +36,10 @@ type UpdateUserResult struct {
 	LastModifiedAt time.Time   `json:"last_modified_at"`
 }
 
+// UpdateUser applies the non-nil fields in arg to the user record.
+// Returns KindInvalid if all fields are nil, KindNotFound if the user does not exist,
+// KindDeleted if the user is soft-deleted, KindConflict on username/email uniqueness
+// violations, or KindInternal on database errors.
 func (s *SQLStore) UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserResult, error) {
 	if arg.empty() {
 		opErr := newOpError(

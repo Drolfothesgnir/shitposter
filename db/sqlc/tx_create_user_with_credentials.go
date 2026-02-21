@@ -25,9 +25,8 @@ type CreateCredentialsTxParams struct {
 	PublicKeyAlgorithm      int32                   `json:"public_key_algorithm"`
 }
 
-// CreateUserWithCredentialsTx creates a user and a WebAuthn credential
-// in a single transaction. On error, neither the user nor the credential
-// is persisted.
+// NewCreateUserParams builds a createUserParams from the provided arguments,
+// handling the optional profileImgURL conversion to pgtype.Text.
 func NewCreateUserParams(username, email string, profileImgURL *string, webauthnUserHandle []byte) createUserParams {
 	imgURL, valid := "", false
 	if profileImgURL != nil {
@@ -48,16 +47,15 @@ type CreateUserWithCredentialsTxParams struct {
 	Cred CreateCredentialsTxParams `json:"cred"`
 }
 
-type CreateUserWithCredentialsTxResult struct {
-	User User `json:"user"`
-}
-
-// Function to create both "users" row and "webauthn_credentials" row in one transaction.
-func (store *SQLStore) CreateUserWithCredentialsTx(ctx context.Context, arg CreateUserWithCredentialsTxParams) (CreateUserWithCredentialsTxResult, error) {
-	var result CreateUserWithCredentialsTxResult
+// CreateUserWithCredentialsTx creates a user and a WebAuthn credential in a
+// single transaction. On error neither the user nor the credential is persisted.
+// Returns KindConflict on username/email uniqueness violations, or KindInternal
+// on database errors.
+func (store *SQLStore) CreateUserWithCredentialsTx(ctx context.Context, arg CreateUserWithCredentialsTxParams) (User, error) {
+	var user User
 	err := store.execTx(ctx, func(q *Queries) error {
 		var err error
-		result.User, err = q.createUser(ctx, arg.User)
+		user, err = q.createUser(ctx, arg.User)
 		if err != nil {
 			return sqlError(
 				opCreateUserWithCredentials,
@@ -70,7 +68,7 @@ func (store *SQLStore) CreateUserWithCredentialsTx(ctx context.Context, arg Crea
 
 		params := createWebauthnCredentialsParams{
 			ID:                      arg.Cred.ID,
-			UserID:                  result.User.ID,
+			UserID:                  user.ID,
 			PublicKey:               arg.Cred.PublicKey,
 			SignCount:               0,
 			Transports:              arg.Cred.Transports,
@@ -91,12 +89,12 @@ func (store *SQLStore) CreateUserWithCredentialsTx(ctx context.Context, arg Crea
 		if err != nil {
 			return sqlError(
 				opCreateUserWithCredentials,
-				opDetails{entity: entWauthnCred, userID: result.User.ID},
+				opDetails{entity: entWauthnCred, userID: user.ID},
 				err,
 			)
 		}
 		return nil
 	})
 
-	return result, err
+	return user, err
 }

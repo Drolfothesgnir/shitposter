@@ -32,6 +32,10 @@ type CommentQuery struct {
 	Offset int32
 }
 
+// QueryComments returns a paginated set of comments for a post, ordered by
+// popularity ("pop"), newest first ("new"), or oldest first ("old").
+// Returns an empty slice when the post has no comments or does not exist.
+// Returns KindInvalid if the order value is invalid, or KindInternal on database errors.
 func (s *SQLStore) QueryComments(ctx context.Context, q CommentQuery) ([]CommentsWithAuthor, error) {
 	var result []CommentsWithAuthor
 	var err error

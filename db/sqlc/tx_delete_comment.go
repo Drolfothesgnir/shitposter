@@ -28,6 +28,12 @@ type DeleteCommentTxResult struct {
 	Success     bool      `json:"success"` // True if the delete operation is considered successful: hard delete, soft delete, or already deleted.
 }
 
+// DeleteCommentTx deletes a comment. Leaf comments are hard-deleted; comments with
+// children are soft-deleted (body cleared, is_deleted flag set). Already-deleted
+// comments are treated as a successful no-op.
+// Returns KindNotFound if the comment does not exist, KindPermission if the comment
+// belongs to another user, KindRelation if the comment belongs to a different post,
+// KindCorrupted on unexpected inconsistent DB state, or KindInternal on database errors.
 func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParams) (DeleteCommentTxResult, error) {
 	var row deleteCommentIfLeafRow
 	var result DeleteCommentTxResult

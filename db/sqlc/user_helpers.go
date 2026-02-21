@@ -7,7 +7,8 @@ const (
 	opEmailExists    = "email-exists"
 )
 
-// UsernameExists checks if user with provided username exists and returns boolean and error.
+// UsernameExists reports whether an active user with the given username exists.
+// Returns KindInternal on database errors.
 func (s *SQLStore) UsernameExists(ctx context.Context, username string) (bool, error) {
 	exists, err := s.usernameExists(ctx, username)
 	if err != nil {
@@ -21,7 +22,8 @@ func (s *SQLStore) UsernameExists(ctx context.Context, username string) (bool, e
 	return exists, nil
 }
 
-// EmailExists checks if user with provided email exists and returns boolean and error.
+// EmailExists reports whether an active user with the given email exists.
+// Returns KindInternal on database errors.
 func (s *SQLStore) EmailExists(ctx context.Context, email string) (bool, error) {
 	exists, err := s.emailExists(ctx, email)
 

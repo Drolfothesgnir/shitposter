@@ -24,6 +24,11 @@ type UpdateCommentResult struct {
 	LastModifiedAt time.Time `json:"last_modified_at"`
 }
 
+// UpdateComment updates the body of a comment identified by CommentID.
+// The caller must own the comment and the comment must belong to the given post.
+// Returns KindNotFound if the comment does not exist, KindPermission if the comment
+// belongs to another user, KindDeleted if the comment is soft-deleted, KindRelation
+// if the comment belongs to a different post, or KindInternal on database errors.
 func (s *SQLStore) UpdateComment(ctx context.Context, arg UpdateCommentParams) (UpdateCommentResult, error) {
 	updateResult, err := s.updateComment(ctx, updateCommentParams{
 		PUserID:    arg.UserID,

@@ -37,6 +37,10 @@ const (
 
 	// KindCorrupted indicates an inconsistent or impossible DB state.
 	KindCorrupted
+
+	// KindConstraint indicates there is some kind of limit achieved which blocks
+	// operation execution (e.g. maximum comment depth reached).
+	KindConstraint
 )
 
 var kindNames = map[Kind]string{
@@ -48,6 +52,7 @@ var kindNames = map[Kind]string{
 	KindConflict:   "conflict",
 	KindDeleted:    "deleted",
 	KindCorrupted:  "corrupted",
+	KindConstraint: "constraint",
 }
 
 func (k Kind) String() string {

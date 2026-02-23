@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 
+	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -118,12 +119,14 @@ type Store interface {
 type SQLStore struct {
 	*Queries
 	connPool *pgxpool.Pool
+	config   *util.Config
 }
 
-func NewStore(connPool *pgxpool.Pool) Store {
+func NewStore(connPool *pgxpool.Pool, config *util.Config) Store {
 	return &SQLStore{
 		connPool: connPool,
 		Queries:  New(connPool),
+		config:   config,
 	}
 }
 

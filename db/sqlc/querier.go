@@ -37,6 +37,7 @@ type Querier interface {
 	getPostVote(ctx context.Context, arg getPostVoteParams) (PostVote, error)
 	getPostWithAuthor(ctx context.Context, id int64) (PostsWithAuthor, error)
 	getPostsByPopularity(ctx context.Context, arg getPostsByPopularityParams) ([]PostsWithAuthor, error)
+	getRootCommentCountForUser(ctx context.Context, arg getRootCommentCountForUserParams) (int64, error)
 	getSession(ctx context.Context, id uuid.UUID) (Session, error)
 	getUser(ctx context.Context, id int64) (User, error)
 	getUserByEmail(ctx context.Context, email string) (User, error)

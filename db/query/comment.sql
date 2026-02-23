@@ -95,3 +95,10 @@ RETURNING *;
 -- name: getCommentWithAuthor :one
 SELECT * FROM comments_with_author
 WHERE id = $1;
+
+-- name: getRootCommentCountForUser :one
+SELECT COUNT(*) FROM comments
+WHERE 
+  post_id = $1 AND 
+  user_id = $2 AND
+  parent_id IS NULL;

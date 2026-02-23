@@ -19,8 +19,14 @@ type InsertCommentTxParams struct {
 	Downvotes int64       `json:"downvotes"`
 }
 
-// TODO: Currently user is allowed to reply to his own comments to the infinite depth.
-// I should limit this behaviour.
+// InsertCommentTx creates a new comment, either a root comment or a reply to an
+// existing comment, within a transaction. Returns KindNotFound if the parent comment
+// does not exist, KindRelation if the parent belongs to a different post or the post
+// does not exist, KindDeleted if the parent comment is soft-deleted, or KindInternal
+// on database errors.
+//
+// TODO: Limit root comments creation for one user;
+// TODO: Limit user's ability to reply to his own comments;
 func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParams) (Comment, error) {
 	var result Comment
 
@@ -85,7 +91,21 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 					opInsertComment,
 					KindDeleted,
 					entComment,
-					fmt.Errorf("cannot reply to a deleted comment with id: %d", parentID),
+					fmt.Errorf("cannot reply to the deleted comment with id: %d", parentID),
+					withEntityID(parentID),
+				)
+			}
+
+			// if the comment addition will violate maximum depth constraint,
+			// return constraint error
+			if parent.Depth+1 >= s.config.CommentMaxNestingDepth {
+				parentID := parent.ID
+
+				return newOpError(
+					opInsertComment,
+					KindConstraint,
+					entComment,
+					fmt.Errorf("cannot reply to the comment with id %d; maximum comment depth reached", parentID),
 					withEntityID(parentID),
 				)
 			}

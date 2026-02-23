@@ -205,3 +205,102 @@ func TestInsertCommentTx_DeletedParent(t *testing.T) {
 	require.Zero(t, opErr.RelatedEntityID)
 	require.Empty(t, opErr.FailingField)
 }
+
+// Reply at exactly the maximum allowed depth should be rejected: KindConstraint
+func TestInsertCommentTx_MaxDepthExceeded(t *testing.T) {
+	ctx := context.Background()
+
+	// temporarily set max depth to 3 (allowed depths: 0, 1, 2)
+	original := testStore.config.CommentMaxNestingDepth
+	testStore.config.CommentMaxNestingDepth = 3
+	t.Cleanup(func() { testStore.config.CommentMaxNestingDepth = original })
+
+	post := createRandomPost(t)
+
+	// build a chain: depth 0 -> 1 -> 2
+	root, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID: post.UserID,
+		PostID: post.ID,
+		Body:   "depth-0",
+	})
+	require.NoError(t, err)
+	require.EqualValues(t, 0, root.Depth)
+
+	child1, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID:   post.UserID,
+		PostID:   post.ID,
+		Body:     "depth-1",
+		ParentID: pgtype.Int8{Int64: root.ID, Valid: true},
+	})
+	require.NoError(t, err)
+	require.EqualValues(t, 1, child1.Depth)
+
+	child2, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID:   post.UserID,
+		PostID:   post.ID,
+		Body:     "depth-2",
+		ParentID: pgtype.Int8{Int64: child1.ID, Valid: true},
+	})
+	require.NoError(t, err)
+	require.EqualValues(t, 2, child2.Depth)
+
+	// attempting depth 3 should be rejected
+	_, err = testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID:   post.UserID,
+		PostID:   post.ID,
+		Body:     "depth-3-should-fail",
+		ParentID: pgtype.Int8{Int64: child2.ID, Valid: true},
+	})
+	require.Error(t, err)
+
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+
+	require.Equal(t, opInsertComment, opErr.Op)
+	require.Equal(t, KindConstraint, opErr.Kind)
+	require.Equal(t, entComment, opErr.Entity)
+	require.EqualValues(t, child2.ID, opErr.EntityID)
+}
+
+// Reply at one level below the max depth should succeed
+func TestInsertCommentTx_MaxDepthAllowed(t *testing.T) {
+	ctx := context.Background()
+
+	// max depth = 2 means allowed depths are 0 and 1
+	original := testStore.config.CommentMaxNestingDepth
+	testStore.config.CommentMaxNestingDepth = 2
+	t.Cleanup(func() { testStore.config.CommentMaxNestingDepth = original })
+
+	post := createRandomPost(t)
+
+	root, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID: post.UserID,
+		PostID: post.ID,
+		Body:   "depth-0",
+	})
+	require.NoError(t, err)
+	require.EqualValues(t, 0, root.Depth)
+
+	// depth 1 should be allowed (1 < 2)
+	child, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID:   post.UserID,
+		PostID:   post.ID,
+		Body:     "depth-1-ok",
+		ParentID: pgtype.Int8{Int64: root.ID, Valid: true},
+	})
+	require.NoError(t, err)
+	require.EqualValues(t, 1, child.Depth)
+
+	// depth 2 should be rejected (2 >= 2)
+	_, err = testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID:   post.UserID,
+		PostID:   post.ID,
+		Body:     "depth-2-should-fail",
+		ParentID: pgtype.Int8{Int64: child.ID, Valid: true},
+	})
+	require.Error(t, err)
+
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+	require.Equal(t, KindConstraint, opErr.Kind)
+}

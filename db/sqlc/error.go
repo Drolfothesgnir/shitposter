@@ -37,6 +37,10 @@ const (
 
 	// KindCorrupted indicates an inconsistent or impossible DB state.
 	KindCorrupted
+
+	// KindConstraint indicates there is some kind of limit achieved which blocks
+	// operation execution (e.g. maximum comment depth reached).
+	KindConstraint
 )
 
 var kindNames = map[Kind]string{
@@ -48,6 +52,7 @@ var kindNames = map[Kind]string{
 	KindConflict:   "conflict",
 	KindDeleted:    "deleted",
 	KindCorrupted:  "corrupted",
+	KindConstraint: "constraint",
 }
 
 func (k Kind) String() string {
@@ -147,6 +152,17 @@ func withRelated(entity string, entityID int64) errDecorator {
 // withField augments base OpError with provided failing field.
 func withField(failingField string) errDecorator {
 	return func(be *OpError) { be.FailingField = failingField }
+}
+
+// notFoundError builds *OpError for the common "entity not found" case.
+func notFoundError(op string, entity string, entityID int64) *OpError {
+	return newOpError(
+		op,
+		KindNotFound,
+		entity,
+		fmt.Errorf("%s with id %d not found", entity, entityID),
+		withEntityID(entityID),
+	)
 }
 
 type opDetails struct {

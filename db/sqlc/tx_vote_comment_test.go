@@ -285,7 +285,7 @@ func TestVoteCommentTx_ConcurrentSameUserSameComment(t *testing.T) {
 	const n = 10
 	errCh := make(chan error, n)
 
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
 			_, err := testStore.VoteCommentTx(ctx, VoteCommentTxParams{
 				UserID:    user.ID,
@@ -301,7 +301,7 @@ func TestVoteCommentTx_ConcurrentSameUserSameComment(t *testing.T) {
 		}()
 	}
 
-	for i := 0; i < n; i++ {
+	for range n {
 		err := <-errCh
 		require.NoError(t, err)
 	}
@@ -310,8 +310,8 @@ func TestVoteCommentTx_ConcurrentSameUserSameComment(t *testing.T) {
 	require.NoError(t, err)
 
 	// Exactly one upvote should be applied.
-	require.EqualValues(t, initialUp+1, reloaded.Upvotes)
-	require.EqualValues(t, initialDown, reloaded.Downvotes)
+	require.Equal(t, initialUp+1, reloaded.Upvotes)
+	require.Equal(t, initialDown, reloaded.Downvotes)
 }
 
 // helper for concurrent test: treat KIND conflict on vote as non-fatal.

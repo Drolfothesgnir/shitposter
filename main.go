@@ -69,7 +69,7 @@ func main() {
 		log.Fatal().Err(err).Msg("cannot connect to the database")
 	}
 
-	store := db.NewStore(conn)
+	store := db.NewStore(conn, &config)
 
 	// running db migrations every time the server starts
 	// it's idempotent, so the schema establishes only once if no new versions added

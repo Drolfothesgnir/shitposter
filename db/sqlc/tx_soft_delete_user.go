@@ -24,6 +24,10 @@ type SoftDeleteUserTxResult struct {
 	LastModifiedAt time.Time   `json:"last_modified_at"`
 }
 
+// SoftDeleteUserTx deletes the user's auth sessions and WebAuthn credentials,
+// then marks the user as soft-deleted, all within a single transaction.
+// Returns KindNotFound if the user does not exist, or KindInternal on database
+// errors or unexpected failure.
 func (store *SQLStore) SoftDeleteUserTx(ctx context.Context, userID int64) (SoftDeleteUserTxResult, error) {
 	var result SoftDeleteUserTxResult
 
@@ -52,14 +56,7 @@ func (store *SQLStore) SoftDeleteUserTx(ctx context.Context, userID int64) (Soft
 		if err != nil {
 			// if 'not found' return error since we cannot return missing user's details
 			if errors.Is(err, pgx.ErrNoRows) {
-				return newOpError(
-					opSoftDeleteUser,
-					KindNotFound,
-					entUser,
-					// TODO: maybe extract this 'not found' err into separate helper
-					fmt.Errorf("user with id %d not found", userID),
-					withEntityID(userID),
-				)
+				return notFoundError(opSoftDeleteUser, entUser, userID)
 			}
 
 			// else check for sql errors

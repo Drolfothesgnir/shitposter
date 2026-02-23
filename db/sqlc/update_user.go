@@ -36,6 +36,10 @@ type UpdateUserResult struct {
 	LastModifiedAt time.Time   `json:"last_modified_at"`
 }
 
+// UpdateUser applies the non-nil fields in arg to the user record.
+// Returns KindInvalid if all fields are nil, KindNotFound if the user does not exist,
+// KindDeleted if the user is soft-deleted, KindConflict on username/email uniqueness
+// violations, or KindInternal on database errors.
 func (s *SQLStore) UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserResult, error) {
 	if arg.empty() {
 		opErr := newOpError(
@@ -58,15 +62,7 @@ func (s *SQLStore) UpdateUser(ctx context.Context, arg UpdateUserParams) (Update
 	if err != nil {
 		// if 'not found' is returned it means the target user doesn't exist
 		if errors.Is(err, pgx.ErrNoRows) {
-			opErr := newOpError(
-				opUpdateUser,
-				KindNotFound,
-				entUser,
-				fmt.Errorf("user with id %d not found", arg.ID),
-				withEntityID(arg.ID),
-			)
-
-			return UpdateUserResult{}, opErr
+			return UpdateUserResult{}, notFoundError(opUpdateUser, entUser, arg.ID)
 		}
 
 		// else return internal/fk-violation error

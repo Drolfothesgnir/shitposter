@@ -26,6 +26,7 @@ type Config struct {
 	EmailSenderPassword      string        `mapstructure:"EMAIL_SENDER_PASSWORD"`
 	AccessTokenDuration      time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
 	RefreshTokenDuration     time.Duration `mapstructure:"REFRESH_TOKEN_DURATION"`
+	CommentMaxNestingDepth   int32         `mapstructure:"COMMENT_MAX_NESTING_DEPTH"`
 }
 
 func LoadConfig(path string) (config Config, err error) {

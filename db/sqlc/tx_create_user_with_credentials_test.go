@@ -22,21 +22,21 @@ func TestCreateUserWithCredentials_Success(t *testing.T) {
 	)
 	cred := credentialParamsTx()
 
-	res, err := testStore.CreateUserWithCredentialsTx(ctx,
+	user, err := testStore.CreateUserWithCredentialsTx(ctx,
 		CreateUserWithCredentialsTxParams{
 			User: u,
 			Cred: cred,
 		})
 
 	require.NoError(t, err)
-	require.NotZero(t, res.User.ID)
+	require.NotZero(t, user.ID)
 
 	// credential exists
-	c, err := testStore.getUserCredentials(ctx, res.User.ID)
+	c, err := testStore.getUserCredentials(ctx, user.ID)
 	require.NoError(t, err)
 
 	require.Len(t, c, 1)
-	require.Equal(t, res.User.ID, c[0].UserID)
+	require.Equal(t, user.ID, c[0].UserID)
 	require.Equal(t, cred.PublicKey, c[0].PublicKey)
 }
 

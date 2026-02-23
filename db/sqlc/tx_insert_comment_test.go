@@ -36,7 +36,7 @@ func TestInsertCommentTx_RootComment(t *testing.T) {
 	require.EqualValues(t, arg.Downvotes, comment.Downvotes)
 }
 
-// Child comment (with parent_id)
+// Child comment (with parent_id) — reply from a different user
 func TestInsertCommentTx_ChildComment(t *testing.T) {
 	ctx := context.Background()
 
@@ -44,8 +44,11 @@ func TestInsertCommentTx_ChildComment(t *testing.T) {
 	parent := createRandomComment(t)
 	parentID := parent.ID
 
+	// replying user must differ from the parent's author
+	replyUser := createRandomUser(t)
+
 	arg := InsertCommentTxParams{
-		UserID:    parent.UserID,
+		UserID:    replyUser.ID,
 		PostID:    parent.PostID,
 		Body:      util.RandomString(10),
 		ParentID:  pgtype.Int8{Int64: parentID, Valid: true},
@@ -206,7 +209,8 @@ func TestInsertCommentTx_DeletedParent(t *testing.T) {
 	require.Empty(t, opErr.FailingField)
 }
 
-// Reply at exactly the maximum allowed depth should be rejected: KindConstraint
+// Reply at exactly the maximum allowed depth should be rejected: KindConstraint.
+// Uses alternating users to avoid the self-reply constraint.
 func TestInsertCommentTx_MaxDepthExceeded(t *testing.T) {
 	ctx := context.Background()
 
@@ -216,10 +220,12 @@ func TestInsertCommentTx_MaxDepthExceeded(t *testing.T) {
 	t.Cleanup(func() { testStore.config.CommentMaxNestingDepth = original })
 
 	post := createRandomPost(t)
+	userA := post.UserID
+	userB := createRandomUser(t).ID
 
-	// build a chain: depth 0 -> 1 -> 2
+	// build a chain: depth 0 (A) -> 1 (B) -> 2 (A)
 	root, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
-		UserID: post.UserID,
+		UserID: userA,
 		PostID: post.ID,
 		Body:   "depth-0",
 	})
@@ -227,7 +233,7 @@ func TestInsertCommentTx_MaxDepthExceeded(t *testing.T) {
 	require.EqualValues(t, 0, root.Depth)
 
 	child1, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
-		UserID:   post.UserID,
+		UserID:   userB,
 		PostID:   post.ID,
 		Body:     "depth-1",
 		ParentID: pgtype.Int8{Int64: root.ID, Valid: true},
@@ -236,7 +242,7 @@ func TestInsertCommentTx_MaxDepthExceeded(t *testing.T) {
 	require.EqualValues(t, 1, child1.Depth)
 
 	child2, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
-		UserID:   post.UserID,
+		UserID:   userA,
 		PostID:   post.ID,
 		Body:     "depth-2",
 		ParentID: pgtype.Int8{Int64: child1.ID, Valid: true},
@@ -244,9 +250,9 @@ func TestInsertCommentTx_MaxDepthExceeded(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 2, child2.Depth)
 
-	// attempting depth 3 should be rejected
+	// attempting depth 3 (B) should be rejected by depth constraint
 	_, err = testStore.InsertCommentTx(ctx, InsertCommentTxParams{
-		UserID:   post.UserID,
+		UserID:   userB,
 		PostID:   post.ID,
 		Body:     "depth-3-should-fail",
 		ParentID: pgtype.Int8{Int64: child2.ID, Valid: true},
@@ -262,7 +268,8 @@ func TestInsertCommentTx_MaxDepthExceeded(t *testing.T) {
 	require.EqualValues(t, child2.ID, opErr.EntityID)
 }
 
-// Reply at one level below the max depth should succeed
+// Reply at one level below the max depth should succeed.
+// Uses alternating users to avoid the self-reply constraint.
 func TestInsertCommentTx_MaxDepthAllowed(t *testing.T) {
 	ctx := context.Background()
 
@@ -272,6 +279,7 @@ func TestInsertCommentTx_MaxDepthAllowed(t *testing.T) {
 	t.Cleanup(func() { testStore.config.CommentMaxNestingDepth = original })
 
 	post := createRandomPost(t)
+	replyUser := createRandomUser(t)
 
 	root, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
 		UserID: post.UserID,
@@ -283,7 +291,7 @@ func TestInsertCommentTx_MaxDepthAllowed(t *testing.T) {
 
 	// depth 1 should be allowed (1 < 2)
 	child, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
-		UserID:   post.UserID,
+		UserID:   replyUser.ID,
 		PostID:   post.ID,
 		Body:     "depth-1-ok",
 		ParentID: pgtype.Int8{Int64: root.ID, Valid: true},
@@ -303,4 +311,46 @@ func TestInsertCommentTx_MaxDepthAllowed(t *testing.T) {
 	var opErr *OpError
 	require.ErrorAs(t, err, &opErr)
 	require.Equal(t, KindConstraint, opErr.Kind)
+}
+
+// Self-reply: user cannot reply to their own comment
+func TestInsertCommentTx_SelfReply(t *testing.T) {
+	ctx := context.Background()
+
+	parent := createRandomComment(t)
+
+	// same user tries to reply to their own comment
+	_, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID:   parent.UserID,
+		PostID:   parent.PostID,
+		Body:     "self-reply-should-fail",
+		ParentID: pgtype.Int8{Int64: parent.ID, Valid: true},
+	})
+	require.Error(t, err)
+
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+
+	require.Equal(t, opInsertComment, opErr.Op)
+	require.Equal(t, KindConstraint, opErr.Kind)
+	require.Equal(t, entComment, opErr.Entity)
+	require.EqualValues(t, parent.UserID, opErr.UserID)
+}
+
+// Different user replying should succeed (not blocked by self-reply constraint)
+func TestInsertCommentTx_DifferentUserReply(t *testing.T) {
+	ctx := context.Background()
+
+	parent := createRandomComment(t)
+	otherUser := createRandomUser(t)
+
+	comment, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID:   otherUser.ID,
+		PostID:   parent.PostID,
+		Body:     "reply-from-other-user",
+		ParentID: pgtype.Int8{Int64: parent.ID, Valid: true},
+	})
+	require.NoError(t, err)
+	require.Equal(t, otherUser.ID, comment.UserID)
+	require.EqualValues(t, parent.Depth+1, comment.Depth)
 }

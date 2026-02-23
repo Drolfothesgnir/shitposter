@@ -26,7 +26,6 @@ type InsertCommentTxParams struct {
 // on database errors.
 //
 // TODO: Limit root comments creation for one user;
-// TODO: Limit user's ability to reply to his own comments;
 func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParams) (Comment, error) {
 	var result Comment
 
@@ -45,7 +44,7 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 					opInsertComment,
 					KindNotFound,
 					entComment,
-					fmt.Errorf("cannot reply to the comment with id: %d, the comment doesn't exist", parentID),
+					fmt.Errorf("cannot reply to the comment with id [%d]: the comment doesn't exist", parentID),
 					withRelated(entComment, parentID),
 				)
 			}
@@ -73,7 +72,7 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 					KindRelation,
 					entComment,
 					fmt.Errorf(
-						"cannot reply to comment %d for post %d: parent comment belongs to post %d",
+						"cannot reply to comment with ID [%d] for post with ID [%d]: parent comment belongs to post with ID [%d]",
 						parentID,
 						arg.PostID,
 						parent.PostID,
@@ -83,15 +82,15 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 				)
 			}
 
+			parentID = parent.ID
+
 			// check if comment is alive
 			if parent.IsDeleted {
-				parentID := parent.ID
-
 				return newOpError(
 					opInsertComment,
 					KindDeleted,
 					entComment,
-					fmt.Errorf("cannot reply to the deleted comment with id: %d", parentID),
+					fmt.Errorf("cannot reply to the deleted comment with id [%d]", parentID),
 					withEntityID(parentID),
 				)
 			}
@@ -99,14 +98,23 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 			// if the comment addition will violate maximum depth constraint,
 			// return constraint error
 			if parent.Depth+1 >= s.config.CommentMaxNestingDepth {
-				parentID := parent.ID
-
 				return newOpError(
 					opInsertComment,
 					KindConstraint,
 					entComment,
-					fmt.Errorf("cannot reply to the comment with id %d; maximum comment depth reached", parentID),
+					fmt.Errorf("cannot reply to the comment with id [%d]: maximum comment depth reached", parentID),
 					withEntityID(parentID),
+				)
+			}
+
+			// check if user tries to reply to his own comment, abort if true
+			if parent.UserID == arg.UserID {
+				return newOpError(
+					opInsertComment,
+					KindConstraint,
+					entComment,
+					fmt.Errorf("user with ID [%d] cannot reply to his own comment with ID [%d]", arg.UserID, parentID),
+					withUser(arg.UserID),
 				)
 			}
 

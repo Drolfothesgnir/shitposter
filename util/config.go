@@ -10,23 +10,24 @@ import (
 )
 
 type Config struct {
-	Environment              string        `mapstructure:"ENVIRONMENT"`
-	DBSource                 string        `mapstructure:"DB_SOURCE"`
-	MigrationURL             string        `mapstructure:"MIGRATION_URL"`
-	HTTPServerAddress        URLString     `mapstructure:"HTTP_SERVER_ADDRESS"`
-	PublicOrigin             URLString     `mapstructure:"PUBLIC_ORIGIN"`
-	RPDisplayName            string        `mapstructure:"RP_DISPLAY_NAME"`
-	AllowedOrigins           []string      `mapstructure:"ALLOWED_ORIGINS"`
-	RedisAddress             string        `mapstructure:"REDIS_ADDRESS"`
-	RegistrationSessionTTL   time.Duration `mapstructure:"REGISTRATION_SESSION_TTL"`
-	AuthenticationSessionTTL time.Duration `mapstructure:"AUTHENTICATION_SESSION_TTL"`
-	TokenSymmetricKey        string        `mapstructure:"TOKEN_SYMMETRIC_KEY"`
-	EmailSenderName          string        `mapstructure:"EMAIL_SENDER_NAME"`
-	EmailSenderAddress       string        `mapstructure:"EMAIL_SENDER_ADDRESS"`
-	EmailSenderPassword      string        `mapstructure:"EMAIL_SENDER_PASSWORD"`
-	AccessTokenDuration      time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
-	RefreshTokenDuration     time.Duration `mapstructure:"REFRESH_TOKEN_DURATION"`
-	CommentMaxNestingDepth   int32         `mapstructure:"COMMENT_MAX_NESTING_DEPTH"`
+	Environment                string        `mapstructure:"ENVIRONMENT"`
+	DBSource                   string        `mapstructure:"DB_SOURCE"`
+	MigrationURL               string        `mapstructure:"MIGRATION_URL"`
+	HTTPServerAddress          URLString     `mapstructure:"HTTP_SERVER_ADDRESS"`
+	PublicOrigin               URLString     `mapstructure:"PUBLIC_ORIGIN"`
+	RPDisplayName              string        `mapstructure:"RP_DISPLAY_NAME"`
+	AllowedOrigins             []string      `mapstructure:"ALLOWED_ORIGINS"`
+	RedisAddress               string        `mapstructure:"REDIS_ADDRESS"`
+	RegistrationSessionTTL     time.Duration `mapstructure:"REGISTRATION_SESSION_TTL"`
+	AuthenticationSessionTTL   time.Duration `mapstructure:"AUTHENTICATION_SESSION_TTL"`
+	TokenSymmetricKey          string        `mapstructure:"TOKEN_SYMMETRIC_KEY"`
+	EmailSenderName            string        `mapstructure:"EMAIL_SENDER_NAME"`
+	EmailSenderAddress         string        `mapstructure:"EMAIL_SENDER_ADDRESS"`
+	EmailSenderPassword        string        `mapstructure:"EMAIL_SENDER_PASSWORD"`
+	AccessTokenDuration        time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
+	RefreshTokenDuration       time.Duration `mapstructure:"REFRESH_TOKEN_DURATION"`
+	CommentMaxNestingDepth     int32         `mapstructure:"COMMENT_MAX_NESTING_DEPTH"`
+	CommentMaxRootCountPerUser int64         `mapstructure:"COMMENT_MAX_ROOT_COUNT_PER_USER"`
 }
 
 func LoadConfig(path string) (config Config, err error) {

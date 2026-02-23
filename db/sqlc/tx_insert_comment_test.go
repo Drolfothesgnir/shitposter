@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/Drolfothesgnir/shitposter/util"
@@ -353,4 +354,122 @@ func TestInsertCommentTx_DifferentUserReply(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, otherUser.ID, comment.UserID)
 	require.EqualValues(t, parent.Depth+1, comment.Depth)
+}
+
+// Root comment count limit: user cannot exceed the configured max per post
+func TestInsertCommentTx_MaxRootCommentsExceeded(t *testing.T) {
+	ctx := context.Background()
+
+	original := testStore.config.CommentMaxRootCountPerUser
+	testStore.config.CommentMaxRootCountPerUser = 2
+	t.Cleanup(func() { testStore.config.CommentMaxRootCountPerUser = original })
+
+	post := createRandomPost(t)
+
+	// first two root comments should succeed
+	for i := 0; i < 2; i++ {
+		_, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+			UserID: post.UserID,
+			PostID: post.ID,
+			Body:   fmt.Sprintf("root-%d", i),
+		})
+		require.NoError(t, err)
+	}
+
+	// third root comment should be rejected
+	_, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID: post.UserID,
+		PostID: post.ID,
+		Body:   "root-should-fail",
+	})
+	require.Error(t, err)
+
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+
+	require.Equal(t, opInsertComment, opErr.Op)
+	require.Equal(t, KindConstraint, opErr.Kind)
+	require.Equal(t, entComment, opErr.Entity)
+	require.EqualValues(t, post.UserID, opErr.UserID)
+	require.Equal(t, entPost, opErr.RelatedEntity)
+	require.EqualValues(t, post.ID, opErr.RelatedEntityID)
+}
+
+// Root comment limit is per-post: maxing out on one post should not affect another
+func TestInsertCommentTx_MaxRootCommentsPerPost(t *testing.T) {
+	ctx := context.Background()
+
+	original := testStore.config.CommentMaxRootCountPerUser
+	testStore.config.CommentMaxRootCountPerUser = 1
+	t.Cleanup(func() { testStore.config.CommentMaxRootCountPerUser = original })
+
+	user := createRandomUser(t)
+	post1 := createRandomPost(t)
+	post2 := createRandomPost(t)
+
+	// one root comment on post1
+	_, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID: user.ID,
+		PostID: post1.ID,
+		Body:   "root-on-post1",
+	})
+	require.NoError(t, err)
+
+	// one root comment on post2 should still succeed
+	_, err = testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID: user.ID,
+		PostID: post2.ID,
+		Body:   "root-on-post2",
+	})
+	require.NoError(t, err)
+
+	// second root on post1 should be rejected
+	_, err = testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID: user.ID,
+		PostID: post1.ID,
+		Body:   "second-root-on-post1-should-fail",
+	})
+	require.Error(t, err)
+
+	var opErr *OpError
+	require.ErrorAs(t, err, &opErr)
+	require.Equal(t, KindConstraint, opErr.Kind)
+}
+
+// Replies should not be affected by the root comment limit
+func TestInsertCommentTx_RootLimitDoesNotAffectReplies(t *testing.T) {
+	ctx := context.Background()
+
+	original := testStore.config.CommentMaxRootCountPerUser
+	testStore.config.CommentMaxRootCountPerUser = 1
+	t.Cleanup(func() { testStore.config.CommentMaxRootCountPerUser = original })
+
+	post := createRandomPost(t)
+	otherUser := createRandomUser(t)
+
+	// user creates one root comment (max reached)
+	root, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID: post.UserID,
+		PostID: post.ID,
+		Body:   "only-root",
+	})
+	require.NoError(t, err)
+
+	// other user replies to it
+	reply, err := testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID:   otherUser.ID,
+		PostID:   post.ID,
+		Body:     "reply-ok",
+		ParentID: pgtype.Int8{Int64: root.ID, Valid: true},
+	})
+	require.NoError(t, err)
+
+	// original user replies back (should succeed despite root limit being maxed)
+	_, err = testStore.InsertCommentTx(ctx, InsertCommentTxParams{
+		UserID:   post.UserID,
+		PostID:   post.ID,
+		Body:     "reply-back-ok",
+		ParentID: pgtype.Int8{Int64: reply.ID, Valid: true},
+	})
+	require.NoError(t, err)
 }

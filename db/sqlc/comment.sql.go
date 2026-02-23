@@ -344,6 +344,26 @@ func (q *Queries) getOldestComments(ctx context.Context, arg getOldestCommentsPa
 	return items, nil
 }
 
+const getRootCommentCountForUser = `-- name: getRootCommentCountForUser :one
+SELECT COUNT(*) FROM comments
+WHERE 
+  post_id = $1 AND 
+  user_id = $2 AND
+  parent_id IS NULL
+`
+
+type getRootCommentCountForUserParams struct {
+	PostID int64 `json:"post_id"`
+	UserID int64 `json:"user_id"`
+}
+
+func (q *Queries) getRootCommentCountForUser(ctx context.Context, arg getRootCommentCountForUserParams) (int64, error) {
+	row := q.db.QueryRow(ctx, getRootCommentCountForUser, arg.PostID, arg.UserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const softDeleteComment = `-- name: softDeleteComment :one
 UPDATE comments
 SET 

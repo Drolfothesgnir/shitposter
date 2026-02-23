@@ -66,10 +66,13 @@ type Store interface {
 	// to an existing comment, within a transaction.
 	//
 	// Errors returned (*OpError):
-	//   - KindNotFound – parent comment does not exist (reply only)
-	//   - KindRelation – parent comment belongs to a different post, or the post does not exist
-	//   - KindDeleted  – parent comment has been soft-deleted (reply only)
-	//   - KindInternal – database or transaction error
+	//   - KindNotFound    – parent comment does not exist (reply only)
+	//   - KindRelation    – parent comment belongs to a different post, or the post does not exist
+	//   - KindDeleted     – parent comment has been soft-deleted (reply only)
+	//   - KindConstraint  – maximum nesting depth reached (reply only)
+	//   - KindConstraint  – user cannot reply to their own comment (reply only)
+	//   - KindConstraint  – user exceeded maximum root comments per post (root only)
+	//   - KindInternal    – database or transaction error
 	InsertCommentTx(ctx context.Context, arg InsertCommentTxParams) (Comment, error)
 
 	// QueryComments returns a paginated set of comments for a post, ordered by

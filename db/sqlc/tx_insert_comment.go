@@ -20,12 +20,18 @@ type InsertCommentTxParams struct {
 }
 
 // InsertCommentTx creates a new comment, either a root comment or a reply to an
-// existing comment, within a transaction. Returns KindNotFound if the parent comment
-// does not exist, KindRelation if the parent belongs to a different post or the post
-// does not exist, KindDeleted if the parent comment is soft-deleted, or KindInternal
-// on database errors.
+// existing comment, within a transaction.
 //
-// TODO: Limit root comments creation for one user;
+// For replies, returns KindNotFound if the parent comment does not exist,
+// KindRelation if the parent belongs to a different post or the post does not exist,
+// KindDeleted if the parent comment is soft-deleted, KindConstraint if maximum
+// nesting depth is reached, or KindConstraint if the user is replying to their own
+// comment.
+//
+// For root comments, returns KindConstraint if the user exceeded the maximum number
+// of root comments per post.
+//
+// May also return KindInternal on database or transaction errors.
 func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParams) (Comment, error) {
 	var result Comment
 
@@ -120,6 +126,38 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 
 			// if everything is ok child will have parent's depth + 1
 			depth = parent.Depth + 1
+		} else {
+			// check if the max root comment number for this user is reached,
+			// abort if true
+			// NOTE: add an index for it in case in which the performance will degrade because of
+			// high traffic
+			rootCommentCount, err := q.getRootCommentCountForUser(ctx, getRootCommentCountForUserParams{
+				PostID: arg.PostID,
+				UserID: arg.UserID,
+			})
+
+			if err != nil {
+				return sqlError(
+					opInsertComment,
+					opDetails{
+						userID: arg.UserID,
+						postID: arg.PostID,
+						entity: entComment,
+					},
+					err,
+				)
+			}
+
+			if rootCommentCount >= s.config.CommentMaxRootCountPerUser {
+				return newOpError(
+					opInsertComment,
+					KindConstraint,
+					entComment,
+					fmt.Errorf("user with ID [%d] cannot add anymore new root comments to the post with ID [%d]", arg.UserID, arg.PostID),
+					withUser(arg.UserID),
+					withRelated(entPost, arg.PostID),
+				)
+			}
 		}
 
 		comment, err := q.createComment(ctx, createCommentParams{

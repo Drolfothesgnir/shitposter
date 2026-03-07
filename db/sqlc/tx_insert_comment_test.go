@@ -102,7 +102,7 @@ func TestInsertCommentTx_ParentNotFound(t *testing.T) {
 
 	// you modelled this as "comment" related to missing "comment"
 	require.Equal(t, entComment, opErr.RelatedEntity)
-	require.EqualValues(t, nonExistingParentID, opErr.RelatedEntityID)
+	require.EqualValues(t, fmt.Sprint(nonExistingParentID), opErr.RelatedEntityID)
 
 	// no field-level issue here
 	require.Empty(t, opErr.FailingField)
@@ -142,7 +142,7 @@ func TestInsertCommentTx_ParentPostIDMismatch(t *testing.T) {
 
 	// you modelled parent as the related comment
 	require.Equal(t, entComment, opErr.RelatedEntity)
-	require.EqualValues(t, parentID, opErr.RelatedEntityID)
+	require.EqualValues(t, fmt.Sprint(parentID), opErr.RelatedEntityID)
 }
 
 // Invalid post_id (FK violation): KindRelation, entity=comment, related_entity=post
@@ -170,7 +170,7 @@ func TestInsertCommentTx_InvalidPostID(t *testing.T) {
 	// you're creating a comment that relates to a missing post
 	require.Equal(t, entComment, opErr.Entity)
 	require.Equal(t, entPost, opErr.RelatedEntity)
-	require.EqualValues(t, invalidPostID, opErr.RelatedEntityID)
+	require.EqualValues(t, fmt.Sprint(invalidPostID), opErr.RelatedEntityID)
 
 	// no specific failing field here
 	require.Empty(t, opErr.FailingField)
@@ -202,11 +202,11 @@ func TestInsertCommentTx_DeletedParent(t *testing.T) {
 	require.Equal(t, opInsertComment, opErr.Op)
 	require.Equal(t, KindDeleted, opErr.Kind)
 	require.Equal(t, entComment, opErr.Entity)
-	require.EqualValues(t, comment.ID, opErr.EntityID)
+	require.EqualValues(t, fmt.Sprint(comment.ID), opErr.EntityID)
 
 	// deleted parent itself is the entity; no related entity/field necessary
 	require.Empty(t, opErr.RelatedEntity)
-	require.Zero(t, opErr.RelatedEntityID)
+	require.Empty(t, opErr.RelatedEntityID)
 	require.Empty(t, opErr.FailingField)
 }
 
@@ -266,7 +266,7 @@ func TestInsertCommentTx_MaxDepthExceeded(t *testing.T) {
 	require.Equal(t, opInsertComment, opErr.Op)
 	require.Equal(t, KindConstraint, opErr.Kind)
 	require.Equal(t, entComment, opErr.Entity)
-	require.EqualValues(t, child2.ID, opErr.EntityID)
+	require.EqualValues(t, fmt.Sprint(child2.ID), opErr.EntityID)
 }
 
 // Reply at one level below the max depth should succeed.
@@ -335,7 +335,7 @@ func TestInsertCommentTx_SelfReply(t *testing.T) {
 	require.Equal(t, opInsertComment, opErr.Op)
 	require.Equal(t, KindConstraint, opErr.Kind)
 	require.Equal(t, entComment, opErr.Entity)
-	require.EqualValues(t, parent.UserID, opErr.UserID)
+	require.EqualValues(t, fmt.Sprint(parent.UserID), opErr.UserID)
 }
 
 // Different user replying should succeed (not blocked by self-reply constraint)
@@ -390,9 +390,9 @@ func TestInsertCommentTx_MaxRootCommentsExceeded(t *testing.T) {
 	require.Equal(t, opInsertComment, opErr.Op)
 	require.Equal(t, KindConstraint, opErr.Kind)
 	require.Equal(t, entComment, opErr.Entity)
-	require.EqualValues(t, post.UserID, opErr.UserID)
+	require.EqualValues(t, fmt.Sprint(post.UserID), opErr.UserID)
 	require.Equal(t, entPost, opErr.RelatedEntity)
-	require.EqualValues(t, post.ID, opErr.RelatedEntityID)
+	require.EqualValues(t, fmt.Sprint(post.ID), opErr.RelatedEntityID)
 }
 
 // Root comment limit is per-post: maxing out on one post should not affect another

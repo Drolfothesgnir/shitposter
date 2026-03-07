@@ -39,7 +39,7 @@ func (s *SQLStore) UpdateComment(ctx context.Context, arg UpdateCommentParams) (
 
 	// 1. Comment doesn't exist
 	if errors.Is(err, pgx.ErrNoRows) {
-		return UpdateCommentResult{}, notFoundError(opUpdateComment, entComment, arg.CommentID)
+		return UpdateCommentResult{}, notFoundError(opUpdateComment, entComment, fmt.Sprint(arg.CommentID))
 	}
 
 	// 2. Internal error
@@ -47,9 +47,9 @@ func (s *SQLStore) UpdateComment(ctx context.Context, arg UpdateCommentParams) (
 		opErr := sqlError(
 			opUpdateComment,
 			opDetails{
-				userID:    arg.UserID,
-				postID:    arg.PostID,
-				commentID: arg.CommentID,
+				userID:    fmt.Sprint(arg.UserID),
+				postID:    fmt.Sprint(arg.PostID),
+				commentID: fmt.Sprint(arg.CommentID),
 				entity:    entComment,
 			},
 			err,
@@ -97,8 +97,8 @@ func (s *SQLStore) UpdateComment(ctx context.Context, arg UpdateCommentParams) (
 			KindPermission,
 			entComment,
 			fmt.Errorf("comment with id %d does not belong to user with id %d", arg.CommentID, arg.UserID),
-			withEntityID(arg.CommentID),
-			withUser(arg.UserID),
+			withEntityID(fmt.Sprint(arg.CommentID)),
+			withUser(fmt.Sprint(arg.UserID)),
 		)
 
 		return UpdateCommentResult{}, opErr
@@ -111,7 +111,7 @@ func (s *SQLStore) UpdateComment(ctx context.Context, arg UpdateCommentParams) (
 			KindDeleted,
 			entComment,
 			fmt.Errorf("comment with id %d is deleted and cannot be updated", arg.CommentID),
-			withEntityID(arg.CommentID),
+			withEntityID(fmt.Sprint(arg.CommentID)),
 		)
 
 		return UpdateCommentResult{}, opErr
@@ -124,8 +124,8 @@ func (s *SQLStore) UpdateComment(ctx context.Context, arg UpdateCommentParams) (
 			KindRelation,
 			entComment,
 			fmt.Errorf("comment with id %d does not belong to post with id %d", arg.CommentID, arg.PostID),
-			withEntityID(arg.CommentID),
-			withRelated(entPost, arg.PostID),
+			withEntityID(fmt.Sprint(arg.CommentID)),
+			withRelated(entPost, fmt.Sprint(arg.PostID)),
 		)
 
 		return UpdateCommentResult{}, opErr
@@ -138,7 +138,7 @@ func (s *SQLStore) UpdateComment(ctx context.Context, arg UpdateCommentParams) (
 		KindInternal,
 		entComment,
 		fmt.Errorf("comment update failed for unknown reason (comment_id=%d, user_id=%d, post_id=%d)", arg.CommentID, arg.UserID, arg.PostID),
-		withEntityID(arg.CommentID),
+		withEntityID(fmt.Sprint(arg.CommentID)),
 	)
 
 	return UpdateCommentResult{}, opErr

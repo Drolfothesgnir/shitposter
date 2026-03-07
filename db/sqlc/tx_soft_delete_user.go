@@ -37,7 +37,7 @@ func (store *SQLStore) SoftDeleteUserTx(ctx context.Context, userID int64) (Soft
 		if err != nil {
 			return sqlError(
 				opSoftDeleteUser,
-				opDetails{userID: userID, entity: entSession},
+				opDetails{userID: fmt.Sprint(userID), entity: entSession},
 				err,
 			)
 		}
@@ -46,7 +46,7 @@ func (store *SQLStore) SoftDeleteUserTx(ctx context.Context, userID int64) (Soft
 		if err != nil {
 			return sqlError(
 				opSoftDeleteUser,
-				opDetails{userID: userID, entity: entWauthnCred},
+				opDetails{userID: fmt.Sprint(userID), entity: entWauthnCred},
 				err,
 			)
 		}
@@ -56,13 +56,13 @@ func (store *SQLStore) SoftDeleteUserTx(ctx context.Context, userID int64) (Soft
 		if err != nil {
 			// if 'not found' return error since we cannot return missing user's details
 			if errors.Is(err, pgx.ErrNoRows) {
-				return notFoundError(opSoftDeleteUser, entUser, userID)
+				return notFoundError(opSoftDeleteUser, entUser, fmt.Sprint(userID))
 			}
 
 			// else check for sql errors
 			return sqlError(
 				opSoftDeleteUser,
-				opDetails{userID: userID, entity: entUser},
+				opDetails{userID: fmt.Sprint(userID), entity: entUser},
 				err,
 			)
 		}
@@ -88,7 +88,7 @@ func (store *SQLStore) SoftDeleteUserTx(ctx context.Context, userID int64) (Soft
 			KindInternal,
 			entUser,
 			fmt.Errorf("failed to delete user with id %d", userID),
-			withEntityID(userID),
+			withEntityID(fmt.Sprint(userID)),
 		)
 	})
 

@@ -51,7 +51,7 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 					KindNotFound,
 					entComment,
 					fmt.Errorf("cannot reply to the comment with id [%d]: the comment doesn't exist", parentID),
-					withRelated(entComment, parentID),
+					withRelated(entComment, fmt.Sprint(parentID)),
 				)
 			}
 
@@ -60,9 +60,9 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 				return sqlError(
 					opInsertComment,
 					opDetails{
-						userID:    arg.UserID,
-						postID:    arg.PostID,
-						commentID: parentID,
+						userID:    fmt.Sprint(arg.UserID),
+						postID:    fmt.Sprint(arg.PostID),
+						commentID: fmt.Sprint(parentID),
 						entity:    entComment,
 					},
 					err,
@@ -83,7 +83,7 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 						arg.PostID,
 						parent.PostID,
 					),
-					withRelated(entComment, parentID),
+					withRelated(entComment, fmt.Sprint(parentID)),
 					withField("post_id"),
 				)
 			}
@@ -97,7 +97,7 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 					KindDeleted,
 					entComment,
 					fmt.Errorf("cannot reply to the deleted comment with id [%d]", parentID),
-					withEntityID(parentID),
+					withEntityID(fmt.Sprint(parentID)),
 				)
 			}
 
@@ -109,7 +109,7 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 					KindConstraint,
 					entComment,
 					fmt.Errorf("cannot reply to the comment with id [%d]: maximum comment depth reached", parentID),
-					withEntityID(parentID),
+					withEntityID(fmt.Sprint(parentID)),
 				)
 			}
 
@@ -120,7 +120,7 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 					KindConstraint,
 					entComment,
 					fmt.Errorf("user with ID [%d] cannot reply to his own comment with ID [%d]", arg.UserID, parentID),
-					withUser(arg.UserID),
+					withUser(fmt.Sprint(arg.UserID)),
 				)
 			}
 
@@ -140,8 +140,8 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 				return sqlError(
 					opInsertComment,
 					opDetails{
-						userID: arg.UserID,
-						postID: arg.PostID,
+						userID: fmt.Sprint(arg.UserID),
+						postID: fmt.Sprint(arg.PostID),
 						entity: entComment,
 					},
 					err,
@@ -154,8 +154,8 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 					KindConstraint,
 					entComment,
 					fmt.Errorf("user with ID [%d] cannot add anymore new root comments to the post with ID [%d]", arg.UserID, arg.PostID),
-					withUser(arg.UserID),
-					withRelated(entPost, arg.PostID),
+					withUser(fmt.Sprint(arg.UserID)),
+					withRelated(entPost, fmt.Sprint(arg.PostID)),
 				)
 			}
 		}
@@ -174,9 +174,9 @@ func (s *SQLStore) InsertCommentTx(ctx context.Context, arg InsertCommentTxParam
 			return sqlError(
 				opInsertComment,
 				opDetails{
-					userID:    arg.UserID,
-					postID:    arg.PostID,
-					commentID: arg.ParentID.Int64,
+					userID:    fmt.Sprint(arg.UserID),
+					postID:    fmt.Sprint(arg.PostID),
+					commentID: fmt.Sprint(arg.ParentID.Int64),
 					entity:    entComment,
 				},
 				err,

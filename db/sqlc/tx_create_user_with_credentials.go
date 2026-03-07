@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -89,7 +90,7 @@ func (store *SQLStore) CreateUserWithCredentialsTx(ctx context.Context, arg Crea
 		if err != nil {
 			return sqlError(
 				opCreateUserWithCredentials,
-				opDetails{entity: entWauthnCred, userID: user.ID},
+				opDetails{entity: entWauthnCred, userID: fmt.Sprint(user.ID)},
 				err,
 			)
 		}

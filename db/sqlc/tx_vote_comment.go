@@ -49,8 +49,8 @@ func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (
 			return sqlError(
 				opVoteComment,
 				opDetails{
-					userID:    arg.UserID,
-					commentID: arg.CommentID,
+					userID:    fmt.Sprint(arg.UserID),
+					commentID: fmt.Sprint(arg.CommentID),
 					entity:    entCommentVote,
 					input:     voteStr,
 				},
@@ -69,7 +69,7 @@ func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (
 				entCommentVote,
 				fmt.Errorf("repeated voting value: %d", arg.Vote),
 				withField("vote"),
-				withEntityID(row.ID),
+				withEntityID(fmt.Sprint(row.ID)),
 			)
 		}
 
@@ -105,7 +105,7 @@ func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (
 				KindDeleted,
 				entComment,
 				fmt.Errorf("comment with id %d is deleted and cannot be voted", arg.CommentID),
-				withEntityID(arg.CommentID),
+				withEntityID(fmt.Sprint(arg.CommentID)),
 			)
 		}
 
@@ -113,8 +113,8 @@ func (s *SQLStore) VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (
 			return sqlError(
 				opVoteComment,
 				opDetails{
-					userID:    arg.UserID,
-					commentID: arg.CommentID,
+					userID:    fmt.Sprint(arg.UserID),
+					commentID: fmt.Sprint(arg.CommentID),
 					entity:    entCommentVote,
 					input:     voteStr,
 				},

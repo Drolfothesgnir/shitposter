@@ -48,14 +48,14 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 		// otherwise return "not found"
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return notFoundError(opDeleteComment, entComment, arg.CommentID)
+				return notFoundError(opDeleteComment, entComment, fmt.Sprint(arg.CommentID))
 			}
 			return sqlError(
 				opDeleteComment,
 				opDetails{
-					userID:    arg.UserID,
-					postID:    arg.PostID,
-					commentID: arg.CommentID,
+					userID:    fmt.Sprint(arg.UserID),
+					postID:    fmt.Sprint(arg.PostID),
+					commentID: fmt.Sprint(arg.CommentID),
 					entity:    entComment,
 				},
 				err,
@@ -69,9 +69,9 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 				KindPermission,
 				entComment,
 				fmt.Errorf("comment with id %d does not belong to user with id %d", arg.CommentID, arg.UserID),
-				withRelated(entUser, arg.UserID),
-				withUser(arg.UserID),
-				withEntityID(arg.CommentID),
+				withRelated(entUser, fmt.Sprint(arg.UserID)),
+				withUser(fmt.Sprint(arg.UserID)),
+				withEntityID(fmt.Sprint(arg.CommentID)),
 				withField("user_id"),
 			)
 		}
@@ -83,8 +83,8 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 				KindRelation,
 				entComment,
 				fmt.Errorf("comment with id %d does not belong to post with id %d", arg.CommentID, arg.PostID),
-				withRelated(entPost, arg.PostID),
-				withEntityID(arg.CommentID),
+				withRelated(entPost, fmt.Sprint(arg.PostID)),
+				withEntityID(fmt.Sprint(arg.CommentID)),
 				withField("post_id"),
 			)
 		}
@@ -104,9 +104,9 @@ func (s *SQLStore) DeleteCommentTx(ctx context.Context, arg DeleteCommentTxParam
 				return sqlError(
 					opDeleteComment,
 					opDetails{
-						userID:    arg.UserID,
-						postID:    arg.PostID,
-						commentID: arg.CommentID,
+						userID:    fmt.Sprint(arg.UserID),
+						postID:    fmt.Sprint(arg.PostID),
+						commentID: fmt.Sprint(arg.CommentID),
 						entity:    entComment,
 					},
 					err,

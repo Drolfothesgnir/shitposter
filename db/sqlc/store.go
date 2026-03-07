@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Drolfothesgnir/shitposter/util"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -117,6 +118,13 @@ type Store interface {
 	//   - KindDeleted  – comment has been soft-deleted
 	//   - KindInternal – database or transaction error
 	VoteCommentTx(ctx context.Context, arg VoteCommentTxParams) (Comment, error)
+
+	// GetSession retrieves the session with the provided ID.
+	//
+	// Errors returned (*OpError):
+	//   - KindNotFound – no session with the given ID exists
+	//   - KindInternal – database error
+	GetSession(ctx context.Context, id uuid.UUID) (Session, error)
 }
 
 type SQLStore struct {

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -49,38 +50,46 @@ func (s *Service) createComment(ctx *gin.Context) {
 	}
 
 	comment, err := s.store.InsertCommentTx(ctx, arg)
-	if err != nil {
-		switch err {
-		case db.ErrInvalidPostID:
-			errField := ErrorField{"post_id", fmt.Sprintf("Invalid post id: %d", postID)}
-			ctx.JSON(
-				http.StatusBadRequest,
-				NewErrorResponse(ErrInvalidPostID, errField),
-			)
-			return
-		case db.ErrParentCommentNotFound, db.ErrParentCommentPostIDMismatch:
-			errField := ErrorField{"comment_id", fmt.Sprintf("Cannot reply to the comment with id: %s", desc.rawValue)}
-			ctx.JSON(
-				http.StatusBadRequest,
-				NewErrorResponse(ErrInvalidParentCommentId, errField),
-			)
-			return
-		case db.ErrParentCommentDeleted:
-			errField := ErrorField{
-				"comment_id",
-				fmt.Sprintf(
-					"Comment with id [%s] is deleted. Can't reply to a deleted comment",
-					desc.rawValue,
-				)}
-			ctx.JSON(
-				http.StatusBadRequest,
-				NewErrorResponse(ErrInvalidParentCommentId, errField),
-			)
-			return
-		default:
-			ctx.JSON(http.StatusInternalServerError, err)
-			return
+
+	var opErr *db.OpError
+	if errors.As(err, &opErr) {
+		switch opErr.Kind {
+
 		}
+	}
+
+	if err != nil {
+		// switch err {
+		// case db.ErrInvalidPostID:
+		// 	errField := ErrorField{"post_id", fmt.Sprintf("Invalid post id: %d", postID)}
+		// 	ctx.JSON(
+		// 		http.StatusBadRequest,
+		// 		NewErrorResponse(ErrInvalidPostID, errField),
+		// 	)
+		// 	return
+		// case db.ErrParentCommentNotFound, db.ErrParentCommentPostIDMismatch:
+		// 	errField := ErrorField{"comment_id", fmt.Sprintf("Cannot reply to the comment with id: %s", desc.rawValue)}
+		// 	ctx.JSON(
+		// 		http.StatusBadRequest,
+		// 		NewErrorResponse(ErrInvalidParentCommentId, errField),
+		// 	)
+		// 	return
+		// case db.ErrParentCommentDeleted:
+		// 	errField := ErrorField{
+		// 		"comment_id",
+		// 		fmt.Sprintf(
+		// 			"Comment with id [%s] is deleted. Can't reply to a deleted comment",
+		// 			desc.rawValue,
+		// 		)}
+		// 	ctx.JSON(
+		// 		http.StatusBadRequest,
+		// 		NewErrorResponse(ErrInvalidParentCommentId, errField),
+		// 	)
+		// 	return
+		// default:
+		// 	ctx.JSON(http.StatusInternalServerError, err)
+		// 	return
+		// }
 	}
 
 	ctx.JSON(http.StatusOK, comment)

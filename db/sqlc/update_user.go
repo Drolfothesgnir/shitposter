@@ -62,13 +62,13 @@ func (s *SQLStore) UpdateUser(ctx context.Context, arg UpdateUserParams) (Update
 	if err != nil {
 		// if 'not found' is returned it means the target user doesn't exist
 		if errors.Is(err, pgx.ErrNoRows) {
-			return UpdateUserResult{}, notFoundError(opUpdateUser, entUser, arg.ID)
+			return UpdateUserResult{}, notFoundError(opUpdateUser, entUser, fmt.Sprint(arg.ID))
 		}
 
 		// else return internal/fk-violation error
 		opErr := sqlError(
 			opUpdateUser,
-			opDetails{userID: arg.ID, entity: entUser},
+			opDetails{userID: fmt.Sprint(arg.ID), entity: entUser},
 			err,
 		)
 
@@ -95,7 +95,7 @@ func (s *SQLStore) UpdateUser(ctx context.Context, arg UpdateUserParams) (Update
 			KindDeleted,
 			entUser,
 			fmt.Errorf("user with id %d is deleted and cannot be updated", arg.ID),
-			withEntityID(arg.ID),
+			withEntityID(fmt.Sprint(arg.ID)),
 		)
 
 		return UpdateUserResult{}, opErr
@@ -107,7 +107,7 @@ func (s *SQLStore) UpdateUser(ctx context.Context, arg UpdateUserParams) (Update
 		KindInternal,
 		entUser,
 		fmt.Errorf("failed to update user with id %d", arg.ID),
-		withEntityID(arg.ID),
+		withEntityID(fmt.Sprint(arg.ID)),
 	)
 
 	return UpdateUserResult{}, opErr

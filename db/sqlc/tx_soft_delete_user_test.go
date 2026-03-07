@@ -48,7 +48,7 @@ func TestSoftDeleteUserTx_Success(t *testing.T) {
 	require.Equal(t, opGetUser, opErr.Op)
 	require.Equal(t, KindDeleted, opErr.Kind)
 	require.Equal(t, entUser, opErr.Entity)
-	require.EqualValues(t, u.ID, opErr.EntityID)
+	require.EqualValues(t, fmt.Sprint(u.ID), opErr.EntityID)
 }
 
 // Non-existing user: SoftDeleteUserTx should return KindNotFound.
@@ -66,7 +66,7 @@ func TestSoftDeleteUserTx_NotFound(t *testing.T) {
 	require.Equal(t, opSoftDeleteUser, opErr.Op)
 	require.Equal(t, KindNotFound, opErr.Kind)
 	require.Equal(t, entUser, opErr.Entity)
-	require.EqualValues(t, nonExistingID, opErr.EntityID)
+	require.EqualValues(t, fmt.Sprint(nonExistingID), opErr.EntityID)
 }
 
 // Idempotency: calling SoftDeleteUserTx twice should still succeed and keep user deleted.

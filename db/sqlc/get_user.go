@@ -17,12 +17,12 @@ func (s *SQLStore) GetUser(ctx context.Context, userID int64) (User, error) {
 	user, err := s.getUser(ctx, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return User{}, notFoundError(opGetUser, entUser, userID)
+			return User{}, notFoundError(opGetUser, entUser, fmt.Sprint(userID))
 		}
 
 		opErr := sqlError(
 			opGetUser,
-			opDetails{userID: userID, entity: entUser},
+			opDetails{userID: fmt.Sprint(userID), entity: entUser},
 			err,
 		)
 
@@ -36,7 +36,7 @@ func (s *SQLStore) GetUser(ctx context.Context, userID int64) (User, error) {
 			KindDeleted,
 			entUser,
 			fmt.Errorf("user with id %d is deleted", userID),
-			withEntityID(userID),
+			withEntityID(fmt.Sprint(userID)),
 		)
 
 		return User{}, opErr

@@ -78,7 +78,7 @@ func (s *SQLStore) QueryComments(ctx context.Context, q CommentQuery) ([]Comment
 	if err != nil {
 		opErr := sqlError(
 			opQueryComments,
-			opDetails{postID: q.PostID, entity: entComment},
+			opDetails{postID: fmt.Sprint(q.PostID), entity: entComment},
 			err,
 		)
 		return result, opErr

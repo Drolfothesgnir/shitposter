@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -130,7 +131,7 @@ func TestDeleteCommentTx_NonExistingComment_NotFound(t *testing.T) {
 	require.Equal(t, "delete-comment", opErr.Op)
 	require.Equal(t, KindNotFound, opErr.Kind)
 	require.Equal(t, "comment", opErr.Entity)
-	require.Equal(t, nonexistentID, opErr.EntityID)
+	require.Equal(t, fmt.Sprint(nonexistentID), opErr.EntityID)
 	require.False(t, result.Success)
 }
 
@@ -167,7 +168,7 @@ func TestDeleteCommentTx_LeafDeleteThenNotFound(t *testing.T) {
 	require.Equal(t, "delete-comment", opErr.Op)
 	require.Equal(t, KindNotFound, opErr.Kind)
 	require.Equal(t, "comment", opErr.Entity)
-	require.Equal(t, comment.ID, opErr.EntityID)
+	require.Equal(t, fmt.Sprint(comment.ID), opErr.EntityID)
 	require.False(t, result2.Success)
 }
 
@@ -194,8 +195,8 @@ func TestDeleteCommentTx_ForeignUserForbidden(t *testing.T) {
 	require.Equal(t, "delete-comment", opErr.Op)
 	require.Equal(t, KindPermission, opErr.Kind)
 	require.Equal(t, "comment", opErr.Entity)
-	require.Equal(t, ownerComment.ID, opErr.EntityID)
-	require.Equal(t, foreignUser.ID, opErr.UserID)
+	require.Equal(t, fmt.Sprint(ownerComment.ID), opErr.EntityID)
+	require.Equal(t, fmt.Sprint(foreignUser.ID), opErr.UserID)
 	require.False(t, result.Success)
 
 	// ensure original comment still exists and not deleted
@@ -227,7 +228,7 @@ func TestDeleteCommentTx_WrongPostID(t *testing.T) {
 	require.Equal(t, "delete-comment", opErr.Op)
 	require.Equal(t, KindRelation, opErr.Kind)
 	require.Equal(t, "comment", opErr.Entity)
-	require.Equal(t, comment.ID, opErr.EntityID)
+	require.Equal(t, fmt.Sprint(comment.ID), opErr.EntityID)
 	require.False(t, result.Success)
 
 	// ensure comment still exists and not deleted

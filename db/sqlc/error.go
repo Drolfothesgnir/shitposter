@@ -77,11 +77,11 @@ type OpError struct {
 	Op              string // logical operation: "insert-comment", "delete-comment", etc.
 	Kind            Kind   // classification of the failure
 	Entity          string // entity involved: "comment", "post", "user", etc.
-	EntityID        int64  // optional ID of the entity involved
+	EntityID        string // optional ID of the entity involved
 	RelatedEntity   string // optional other entity involved, for example parent comment or post
-	RelatedEntityID int64  // optional other entity ID
+	RelatedEntityID string // optional other entity ID
 	FailingField    string // optional name of the failing field: "email", "username", etc.
-	UserID          int64  // optional acting user
+	UserID          string // optional acting user
 	Err             error  // underlying error
 }
 
@@ -92,20 +92,20 @@ func (e *OpError) Error() string {
 		"entity=" + e.Entity,
 	}
 
-	if e.EntityID != 0 {
-		parts = append(parts, fmt.Sprintf("entity_id=%d", e.EntityID))
+	if e.EntityID != "" {
+		parts = append(parts, "entity_id="+e.EntityID)
 	}
 	if e.RelatedEntity != "" {
 		parts = append(parts, "related_entity="+e.RelatedEntity)
 	}
-	if e.RelatedEntityID != 0 {
-		parts = append(parts, fmt.Sprintf("related_entity_id=%d", e.RelatedEntityID))
+	if e.RelatedEntityID != "" {
+		parts = append(parts, "related_entity_id="+e.RelatedEntityID)
 	}
 	if e.FailingField != "" {
 		parts = append(parts, "field="+e.FailingField)
 	}
-	if e.UserID != 0 {
-		parts = append(parts, fmt.Sprintf("user_id=%d", e.UserID))
+	if e.UserID != "" {
+		parts = append(parts, "user_id="+e.UserID)
 	}
 	if e.Err != nil {
 		parts = append(parts, "err="+e.Err.Error())
@@ -132,17 +132,17 @@ func newOpError(op string, kind Kind, entity string, err error, opts ...errDecor
 }
 
 // withEntityID augments base OpError with provided entity ID.
-func withEntityID(entityID int64) errDecorator {
+func withEntityID(entityID string) errDecorator {
 	return func(be *OpError) { be.EntityID = entityID }
 }
 
 // withUser augments base OpError with provided user ID.
-func withUser(userID int64) errDecorator {
+func withUser(userID string) errDecorator {
 	return func(be *OpError) { be.UserID = userID }
 }
 
 // withRelated augments base OpError with provided related entity info.
-func withRelated(entity string, entityID int64) errDecorator {
+func withRelated(entity string, entityID string) errDecorator {
 	return func(be *OpError) {
 		be.RelatedEntity = entity
 		be.RelatedEntityID = entityID
@@ -155,20 +155,20 @@ func withField(failingField string) errDecorator {
 }
 
 // notFoundError builds *OpError for the common "entity not found" case.
-func notFoundError(op string, entity string, entityID int64) *OpError {
+func notFoundError(op string, entity string, entityID string) *OpError {
 	return newOpError(
 		op,
 		KindNotFound,
 		entity,
-		fmt.Errorf("%s with id %d not found", entity, entityID),
+		fmt.Errorf("%s with id %s not found", entity, entityID),
 		withEntityID(entityID),
 	)
 }
 
 type opDetails struct {
-	userID    int64
-	postID    int64
-	commentID int64
+	userID    string
+	postID    string
+	commentID string
 	input     string
 	entity    string
 }
@@ -190,7 +190,7 @@ func sqlError(op string, det opDetails, err error) *OpError {
 					op,
 					KindRelation,
 					entComment,
-					fmt.Errorf("attempt to create comment for a non-existent post with id [%d]: %w", det.postID, pgError),
+					fmt.Errorf("attempt to create comment for a non-existent post with id [%s]: %w", det.postID, pgError),
 					withRelated(entPost, det.postID),
 				)
 
@@ -200,7 +200,7 @@ func sqlError(op string, det opDetails, err error) *OpError {
 					op,
 					KindRelation,
 					entCommentVote,
-					fmt.Errorf("attempt to vote for a non-existent comment with id [%d]: %w", det.commentID, pgError),
+					fmt.Errorf("attempt to vote for a non-existent comment with id [%s]: %w", det.commentID, pgError),
 					withRelated(entComment, det.commentID),
 				)
 
@@ -210,7 +210,7 @@ func sqlError(op string, det opDetails, err error) *OpError {
 					op,
 					KindRelation,
 					entCommentVote,
-					fmt.Errorf("attempt to vote as a non-existent user with id [%d]: %w", det.userID, pgError),
+					fmt.Errorf("attempt to vote as a non-existent user with id [%s]: %w", det.userID, pgError),
 					withRelated(entUser, det.userID),
 				)
 

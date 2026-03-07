@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -68,7 +69,7 @@ func TestUpdateComment_NotFound(t *testing.T) {
 	require.Equal(t, opUpdateComment, opErr.Op)
 	require.Equal(t, KindNotFound, opErr.Kind)
 	require.Equal(t, entComment, opErr.Entity)
-	require.EqualValues(t, nonExistingCommentID, opErr.EntityID)
+	require.EqualValues(t, fmt.Sprint(nonExistingCommentID), opErr.EntityID)
 }
 
 // Comment exists but belongs to a different user.
@@ -100,8 +101,8 @@ func TestUpdateComment_PermissionDenied(t *testing.T) {
 	require.Equal(t, opUpdateComment, opErr.Op)
 	require.Equal(t, KindPermission, opErr.Kind)
 	require.Equal(t, entComment, opErr.Entity)
-	require.EqualValues(t, ownerComment.ID, opErr.EntityID)
-	require.EqualValues(t, otherUser.ID, opErr.UserID)
+	require.EqualValues(t, fmt.Sprint(ownerComment.ID), opErr.EntityID)
+	require.EqualValues(t, fmt.Sprint(otherUser.ID), opErr.UserID)
 
 	// Ensure DB was not updated
 	reloaded, err := testStore.getCommentWithLock(ctx, ownerComment.ID)
@@ -137,7 +138,7 @@ func TestUpdateComment_DeletedComment(t *testing.T) {
 	require.Equal(t, opUpdateComment, opErr.Op)
 	require.Equal(t, KindDeleted, opErr.Kind)
 	require.Equal(t, entComment, opErr.Entity)
-	require.EqualValues(t, comment.ID, opErr.EntityID)
+	require.EqualValues(t, fmt.Sprint(comment.ID), opErr.EntityID)
 
 	// Body should stay "[deleted]" after failed update
 	reloaded, err := testStore.getCommentWithLock(ctx, comment.ID)
@@ -176,9 +177,9 @@ func TestUpdateComment_PostMismatch(t *testing.T) {
 	require.Equal(t, opUpdateComment, opErr.Op)
 	require.Equal(t, KindRelation, opErr.Kind)
 	require.Equal(t, entComment, opErr.Entity)
-	require.EqualValues(t, comment.ID, opErr.EntityID)
+	require.EqualValues(t, fmt.Sprint(comment.ID), opErr.EntityID)
 	require.Equal(t, entPost, opErr.RelatedEntity)
-	require.EqualValues(t, otherPost.ID, opErr.RelatedEntityID)
+	require.EqualValues(t, fmt.Sprint(otherPost.ID), opErr.RelatedEntityID)
 
 	// Ensure DB was not updated
 	reloaded, err := testStore.getCommentWithLock(ctx, comment.ID)

@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -207,7 +208,7 @@ func TestVoteCommentTx_InvalidUserID(t *testing.T) {
 	require.Equal(t, KindRelation, opErr.Kind)
 	require.Equal(t, entCommentVote, opErr.Entity)
 	require.Equal(t, entUser, opErr.RelatedEntity)
-	require.EqualValues(t, invalidUserID, opErr.RelatedEntityID)
+	require.EqualValues(t, fmt.Sprint(invalidUserID), opErr.RelatedEntityID)
 
 	// Ensure counters didn't change.
 	reloaded, err := testStore.getCommentWithLock(ctx, comment.ID)
@@ -236,7 +237,7 @@ func TestVoteCommentTx_InvalidCommentID(t *testing.T) {
 	require.Equal(t, KindRelation, opErr.Kind)
 	require.Equal(t, entCommentVote, opErr.Entity)
 	require.Equal(t, entComment, opErr.RelatedEntity)
-	require.EqualValues(t, invalidCommentID, opErr.RelatedEntityID)
+	require.EqualValues(t, fmt.Sprint(invalidCommentID), opErr.RelatedEntityID)
 }
 
 // Soft-deleted comment cannot be voted -> OpError KindDeleted, entity=comment, EntityID=commentID.
@@ -262,7 +263,7 @@ func TestVoteCommentTx_DeletedComment(t *testing.T) {
 	require.Equal(t, opVoteComment, opErr.Op)
 	require.Equal(t, KindDeleted, opErr.Kind)
 	require.Equal(t, entComment, opErr.Entity)
-	require.EqualValues(t, comment.ID, opErr.EntityID)
+	require.EqualValues(t, fmt.Sprint(comment.ID), opErr.EntityID)
 
 	// Ensure counters are unchanged after failed vote.
 	reloaded, err := testStore.getCommentWithLock(ctx, comment.ID)

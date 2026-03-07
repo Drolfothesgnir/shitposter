@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -44,7 +45,7 @@ func TestGetUser_NotFound(t *testing.T) {
 	require.Equal(t, opGetUser, opErr.Op)
 	require.Equal(t, KindNotFound, opErr.Kind)
 	require.Equal(t, entUser, opErr.Entity)
-	require.EqualValues(t, nonExistingID, opErr.EntityID)
+	require.EqualValues(t, fmt.Sprint(nonExistingID), opErr.EntityID)
 }
 
 // Soft-deleted user: GetUser should return KindDeleted.
@@ -72,5 +73,5 @@ func TestGetUser_DeletedUser(t *testing.T) {
 	require.Equal(t, opGetUser, opErr.Op)
 	require.Equal(t, KindDeleted, opErr.Kind)
 	require.Equal(t, entUser, opErr.Entity)
-	require.EqualValues(t, u.ID, opErr.EntityID)
+	require.EqualValues(t, fmt.Sprint(u.ID), opErr.EntityID)
 }

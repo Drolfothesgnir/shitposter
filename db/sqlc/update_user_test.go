@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -92,7 +93,7 @@ func TestUpdateUser_NotFound(t *testing.T) {
 	require.Equal(t, opUpdateUser, opErr.Op)
 	require.Equal(t, KindNotFound, opErr.Kind)
 	require.Equal(t, entUser, opErr.Entity)
-	require.EqualValues(t, nonExistingID, opErr.EntityID)
+	require.EqualValues(t, fmt.Sprint(nonExistingID), opErr.EntityID)
 }
 
 // Soft-deleted user cannot be updated -> KindDeleted.
@@ -121,7 +122,7 @@ func TestUpdateUser_DeletedUser(t *testing.T) {
 	require.Equal(t, opUpdateUser, opErr.Op)
 	require.Equal(t, KindDeleted, opErr.Kind)
 	require.Equal(t, entUser, opErr.Entity)
-	require.EqualValues(t, u.ID, opErr.EntityID)
+	require.EqualValues(t, fmt.Sprint(u.ID), opErr.EntityID)
 
 	// Ensure nothing was changed in DB
 	_, err = testStore.GetUser(ctx, u.ID)

@@ -34,7 +34,7 @@ func (service *Service) setupRouter(server *http.Server) {
 	publicPostGroup.GET("/:post_id/comments", service.getComments)
 
 	// protected routes
-	authGroup := router.Group("/").Use(authMiddleware(service.tokenMaker))
+	authGroup := router.Group("/").Use(service.authMiddleware)
 	authGroup.DELETE("/users", service.deleteUser)
 	authGroup.PATCH("/users", service.updateUser)
 

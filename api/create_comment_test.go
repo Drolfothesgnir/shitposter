@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,7 +14,6 @@ import (
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -44,12 +44,13 @@ func TestCreateComment(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp PayloadError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, ErrInvalidParams.Error(), res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, "body", res.Fields[0].FieldName)
-				require.Equal(t, getBindingErrorMessage("required", "", ""), res.Fields[0].ErrorMessage)
+				require.Equal(t, KindPayload, resp.Kind)
+				require.Len(t, resp.Issues, 1)
+				require.Equal(t, "Body", resp.Issues[0].FieldName)
+				require.Equal(t, "required", resp.Issues[0].Reason)
 			},
 		},
 		{
@@ -66,12 +67,13 @@ func TestCreateComment(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp PayloadError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, ErrInvalidParams.Error(), res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, "body", res.Fields[0].FieldName)
-				require.Equal(t, getBindingErrorMessage("max", strings.Repeat("too long", 100), "500"), res.Fields[0].ErrorMessage)
+				require.Equal(t, KindPayload, resp.Kind)
+				require.Len(t, resp.Issues, 1)
+				require.Equal(t, "Body", resp.Issues[0].FieldName)
+				require.Equal(t, "max", resp.Issues[0].Reason)
 			},
 		},
 		{
@@ -88,16 +90,15 @@ func TestCreateComment(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp PayloadError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, ErrInvalidParentCommentId.Error(), res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, "comment_id", res.Fields[0].FieldName)
-				require.Equal(t, "Cannot reply to the comment with id: inv_par_id", res.Fields[0].ErrorMessage)
+				require.Equal(t, KindPayload, resp.Kind)
+				require.Contains(t, resp.Error, "inv_par_id")
 			},
 		},
 		{
-			name: "InvalidPostID",
+			name: "PostNotFound",
 			url:  "/posts/1/comments",
 			body: gin.H{
 				"body": "test",
@@ -108,19 +109,29 @@ func TestCreateComment(t *testing.T) {
 					PostID: 1,
 					Body:   "test",
 				}
-				store.EXPECT().InsertCommentTx(gomock.Any(), arg).Times(1).Return(db.Comment{}, db.ErrInvalidPostID)
+				store.EXPECT().InsertCommentTx(gomock.Any(), arg).Times(1).Return(
+					db.Comment{},
+					&db.OpError{
+						Op:              "insert-comment",
+						Kind:            db.KindRelation,
+						Entity:          "comment",
+						RelatedEntity:   "post",
+						RelatedEntityID: "1",
+						Err:             fmt.Errorf("attempt to create comment for a non-existent post with id [1]"),
+					},
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, user.ID, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp OperationError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, ErrInvalidPostID.Error(), res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, "post_id", res.Fields[0].FieldName)
-				require.Equal(t, "Invalid post id: 1", res.Fields[0].ErrorMessage)
+				require.Equal(t, KindOperation, resp.Kind)
+				require.Equal(t, "relation", resp.Reason)
+				require.Contains(t, resp.Error, "post")
 			},
 		},
 		{
@@ -136,19 +147,27 @@ func TestCreateComment(t *testing.T) {
 					Body:     "test",
 					ParentID: pgtype.Int8{Int64: 1, Valid: true},
 				}
-				store.EXPECT().InsertCommentTx(gomock.Any(), arg).Times(1).Return(db.Comment{}, db.ErrParentCommentNotFound)
+				store.EXPECT().InsertCommentTx(gomock.Any(), arg).Times(1).Return(
+					db.Comment{},
+					&db.OpError{
+						Op:            "insert-comment",
+						Kind:          db.KindNotFound,
+						Entity:        "comment",
+						RelatedEntity: "comment",
+						Err:           fmt.Errorf("cannot reply to the comment with id [1]: the comment doesn't exist"),
+					},
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, user.ID, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				require.Equal(t, http.StatusNotFound, recorder.Code)
+				var resp OperationError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, ErrInvalidParentCommentId.Error(), res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, "comment_id", res.Fields[0].FieldName)
-				require.Equal(t, "Cannot reply to the comment with id: 1", res.Fields[0].ErrorMessage)
+				require.Equal(t, KindOperation, resp.Kind)
+				require.Equal(t, "not_found", resp.Reason)
 			},
 		},
 		{
@@ -164,19 +183,29 @@ func TestCreateComment(t *testing.T) {
 					Body:     "test",
 					ParentID: pgtype.Int8{Int64: 1, Valid: true},
 				}
-				store.EXPECT().InsertCommentTx(gomock.Any(), arg).Times(1).Return(db.Comment{}, db.ErrParentCommentPostIDMismatch)
+				store.EXPECT().InsertCommentTx(gomock.Any(), arg).Times(1).Return(
+					db.Comment{},
+					&db.OpError{
+						Op:              "insert-comment",
+						Kind:            db.KindRelation,
+						Entity:          "comment",
+						RelatedEntity:   "comment",
+						RelatedEntityID: "1",
+						FailingField:    "post_id",
+						Err:             fmt.Errorf("cannot reply to comment with ID [1] for post with ID [1]: parent comment belongs to post with ID [2]"),
+					},
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, user.ID, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp OperationError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, ErrInvalidParentCommentId.Error(), res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, "comment_id", res.Fields[0].FieldName)
-				require.Equal(t, "Cannot reply to the comment with id: 1", res.Fields[0].ErrorMessage)
+				require.Equal(t, KindOperation, resp.Kind)
+				require.Equal(t, "relation", resp.Reason)
 			},
 		},
 		{
@@ -192,19 +221,27 @@ func TestCreateComment(t *testing.T) {
 					Body:     "test",
 					ParentID: pgtype.Int8{Int64: 1, Valid: true},
 				}
-				store.EXPECT().InsertCommentTx(gomock.Any(), arg).Times(1).Return(db.Comment{}, db.ErrParentCommentDeleted)
+				store.EXPECT().InsertCommentTx(gomock.Any(), arg).Times(1).Return(
+					db.Comment{},
+					&db.OpError{
+						Op:       "insert-comment",
+						Kind:     db.KindDeleted,
+						Entity:   "comment",
+						EntityID: "1",
+						Err:      fmt.Errorf("cannot reply to the deleted comment with id [1]"),
+					},
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, user.ID, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				require.Equal(t, http.StatusGone, recorder.Code)
+				var resp OperationError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, ErrInvalidParentCommentId.Error(), res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, "comment_id", res.Fields[0].FieldName)
-				require.Equal(t, "Comment with id [1] is deleted. Can't reply to a deleted comment", res.Fields[0].ErrorMessage)
+				require.Equal(t, KindOperation, resp.Kind)
+				require.Equal(t, "deleted", resp.Reason)
 			},
 		},
 		{
@@ -220,13 +257,27 @@ func TestCreateComment(t *testing.T) {
 					Body:     "test",
 					ParentID: pgtype.Int8{Int64: 1, Valid: true},
 				}
-				store.EXPECT().InsertCommentTx(gomock.Any(), arg).Times(1).Return(db.Comment{}, pgx.ErrTxClosed)
+				store.EXPECT().InsertCommentTx(gomock.Any(), arg).Times(1).Return(
+					db.Comment{},
+					&db.OpError{
+						Op:     "insert-comment",
+						Kind:   db.KindInternal,
+						Entity: "comment",
+						Err:    fmt.Errorf("tx closed"),
+					},
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, user.ID, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+				var resp OperationError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindOperation, resp.Kind)
+				require.Equal(t, "internal", resp.Reason)
+				require.Equal(t, "an internal error occurred", resp.Error)
 			},
 		},
 		{

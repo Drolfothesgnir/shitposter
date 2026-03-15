@@ -7,7 +7,7 @@ type Kind string
 const (
 	KindAuth      Kind = "auth"
 	KindPayload   Kind = "payload"
-	KindOperation Kind = "operation"
+	KindResource Kind = "resource"
 )
 
 type APIError interface {

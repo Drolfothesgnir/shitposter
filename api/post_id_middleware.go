@@ -20,10 +20,10 @@ func (s *Service) postIDMiddleware() gin.HandlerFunc {
 
 		postID, err := strconv.ParseInt(postIDRaw, 10, 64)
 		if err != nil {
-			errField := ErrorField{"post_id", fmt.Sprintf("Invalid post id: %s", postIDRaw)}
+			msg := fmt.Sprintf("Invalid post id: %s", postIDRaw)
 			ctx.AbortWithStatusJSON(
 				http.StatusBadRequest,
-				NewErrorResponse(ErrInvalidPostID, errField),
+				newPayloadError(msg, nil),
 			)
 			return
 		}

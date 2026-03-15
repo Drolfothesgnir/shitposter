@@ -17,10 +17,10 @@ func (s *Service) commentIDMiddleware() gin.HandlerFunc {
 
 		desc := getCommentIDDescriptor(ctx)
 		if !desc.available() {
-			field := ErrorField{"comment_id", fmt.Sprintf("comment id [%s] is invalid", desc.rawValue)}
+			msg := fmt.Sprintf("comment id [%s] is invalid", desc.rawValue)
 			ctx.AbortWithStatusJSON(
 				http.StatusBadRequest,
-				NewErrorResponse(ErrInvalidCommentID, field),
+				newPayloadError(msg, nil),
 			)
 			return
 		}

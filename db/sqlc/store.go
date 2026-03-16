@@ -125,6 +125,12 @@ type Store interface {
 	//   - KindNotFound – no session with the given ID exists
 	//   - KindInternal – database error
 	GetSession(ctx context.Context, id uuid.UUID) (Session, error)
+
+	// CreateSession creates the session with argument provided in the arg.
+	//
+	// Errors returned (*OpError):
+	//  - KindInternal – database error
+	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 }
 
 type SQLStore struct {

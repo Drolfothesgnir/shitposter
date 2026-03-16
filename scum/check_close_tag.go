@@ -40,6 +40,8 @@ func CheckCloseTag(ctx *ActionContext) {
 	}
 
 	// if the closing Tag exists we check if it's contained in the limited rest of the input
+	// TODO: escape sequences inside greedy tag bodies are not processed — the scan looks
+	// for the raw closing sequence only. Document this as an explicit design choice or add support.
 	scanEnd := min(contentStartIdx+ctx.Dictionary.Limits.MaxPayloadLen+1, n)
 	contained, relStartIdx, w := closeTag.Seq.IsContainedIn(ctx.Input[contentStartIdx:scanEnd])
 

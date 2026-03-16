@@ -1,39 +1,55 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 )
 
-type OperationError struct {
+type ResourceError struct {
 	Kind   Kind   `json:"kind"`
 	Reason string `json:"reason"`
 	Error  string `json:"error"`
 	status int
+	opErr  *db.OpError
 }
 
-func (e OperationError) StatusCode() int {
+func (e ResourceError) StatusCode() int {
 	return e.status
 }
 
-func newOperationError(opErr *db.OpError) OperationError {
-	msg := opErr.Err.Error()
-	if opErr.Kind == db.KindInternal {
-		msg = "an internal error occurred"
+func newResourceError(err error) ResourceError {
+	var opErr *db.OpError
+	if errors.As(err, &opErr) {
+		msg := opErr.Err.Error()
+		if opErr.Kind == db.KindInternal {
+			msg = "an internal error occurred"
+		}
+		return ResourceError{
+			Kind:   KindResource,
+			Reason: opErr.Kind.String(),
+			Error:  msg,
+			status: opKindToHTTPStatus(opErr.Kind),
+			opErr:  opErr,
+		}
 	}
 
-	return OperationError{
-		Kind:   KindOperation,
-		Reason: opErr.Kind.String(),
+	return internalResourceError()
+}
+
+func notFoundResourceError(msg string) ResourceError {
+	return ResourceError{
+		Kind:   KindResource,
+		Reason: db.KindNotFound.String(),
 		Error:  msg,
-		status: opKindToHTTPStatus(opErr.Kind),
+		status: http.StatusNotFound,
 	}
 }
 
-func internalOperationError() OperationError {
-	return OperationError{
-		Kind:   KindOperation,
+func internalResourceError() ResourceError {
+	return ResourceError{
+		Kind:   KindResource,
 		Reason: db.KindInternal.String(),
 		Error:  "an internal error occurred",
 		status: http.StatusInternalServerError,

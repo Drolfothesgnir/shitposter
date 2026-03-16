@@ -9,7 +9,6 @@ import (
 
 	mockdb "github.com/Drolfothesgnir/shitposter/db/mock"
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -32,12 +31,13 @@ func TestGetComments(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp PayloadError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, ErrInvalidParams.Error(), res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, "order", res.Fields[0].FieldName)
-				require.Equal(t, getBindingErrorMessage("comment_order", "", ""), res.Fields[0].ErrorMessage)
+				require.Equal(t, KindPayload, resp.Kind)
+				require.Len(t, resp.Issues, 1)
+				require.Equal(t, "Order", resp.Issues[0].FieldName)
+				require.Equal(t, "comment_order", resp.Issues[0].Reason)
 			},
 		},
 		{
@@ -50,7 +50,7 @@ func TestGetComments(t *testing.T) {
 					Offset: 10,
 					Order:  db.CommentOrderPopular,
 				}
-				store.EXPECT().QueryComments(gomock.Any(), arg).Times(1).Return([]db.CommentsWithAuthor{}, pgx.ErrNoRows)
+				store.EXPECT().QueryComments(gomock.Any(), arg).Times(1).Return([]db.CommentsWithAuthor{}, nil)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
@@ -70,10 +70,24 @@ func TestGetComments(t *testing.T) {
 					Offset: 45,
 					Order:  db.CommentOrderNewest,
 				}
-				store.EXPECT().QueryComments(gomock.Any(), arg).Times(1).Return([]db.CommentsWithAuthor{}, pgx.ErrTxClosed)
+				store.EXPECT().QueryComments(gomock.Any(), arg).Times(1).Return(
+					[]db.CommentsWithAuthor{},
+					&db.OpError{
+						Op:     "query-comments",
+						Kind:   db.KindInternal,
+						Entity: "comment",
+						Err:    fmt.Errorf("tx closed"),
+					},
+				)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, "internal", resp.Reason)
+				require.Equal(t, "an internal error occurred", resp.Error)
 			},
 		},
 		{

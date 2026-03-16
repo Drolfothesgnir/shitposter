@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
 )
 
 type RenewAccessTokenRequest struct {
@@ -20,10 +19,11 @@ type RenewAccessTokenResponse struct {
 func (server *Service) renewAccessToken(ctx *gin.Context) {
 	var req RenewAccessTokenRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, NewErrorResponse(err))
+		ctx.JSON(http.StatusBadRequest, newPayloadError("invalid request parameters", err))
 		return
 	}
 
+	// TODO: create proper token error mapping
 	refreshPayload, err := server.tokenMaker.VerifyToken(req.RefreshToken)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, NewErrorResponse(err))
@@ -32,15 +32,12 @@ func (server *Service) renewAccessToken(ctx *gin.Context) {
 
 	session, err := server.store.GetSession(ctx, refreshPayload.ID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			ctx.JSON(http.StatusNotFound, NewErrorResponse(err))
-			return
-		}
-
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		opErr := newResourceError(err)
+		ctx.JSON(opErr.StatusCode(), opErr)
 		return
 	}
 
+	// TODO: create proper session error
 	if session.IsBlocked {
 		ctx.JSON(http.StatusUnauthorized, NewErrorResponse(ErrSessionBlocked))
 		return

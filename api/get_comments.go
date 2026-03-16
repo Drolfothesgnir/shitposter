@@ -5,7 +5,6 @@ import (
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
 )
 
 type GetCommentsQuery struct {
@@ -31,7 +30,7 @@ func (s *Service) getComments(ctx *gin.Context) {
 	if err := ctx.ShouldBindQuery(&req); err != nil {
 		ctx.JSON(
 			http.StatusBadRequest,
-			NewErrorResponse(ErrInvalidParams, ExtractErrorFields(err)...),
+			newPayloadError("invalid request parameters", err),
 		)
 		return
 	}
@@ -44,14 +43,9 @@ func (s *Service) getComments(ctx *gin.Context) {
 	}
 	comments, err := s.store.QueryComments(ctx, query)
 
-	// return empty response instead of 404 error when no rows found
-	if err == pgx.ErrNoRows {
-		ctx.JSON(http.StatusOK, GetCommentsResponse{})
-		return
-	}
-
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		opErr := newResourceError(err)
+		ctx.JSON(opErr.StatusCode(), opErr)
 		return
 	}
 
@@ -60,7 +54,7 @@ func (s *Service) getComments(ctx *gin.Context) {
 	// in case the tree cannot be formed, then there should be some data corruption in the db
 	// abort with 500
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, internalResourceError())
 		return
 	}
 

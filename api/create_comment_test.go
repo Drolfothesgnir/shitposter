@@ -94,7 +94,7 @@ func TestCreateComment(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindPayload, resp.Kind)
-				require.Contains(t, resp.Error, "inv_par_id")
+				require.Contains(t, resp.Error, "invalid comment id")
 			},
 		},
 		{
@@ -126,10 +126,10 @@ func TestCreateComment(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				var resp OperationError
+				var resp ResourceError
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, KindOperation, resp.Kind)
+				require.Equal(t, KindResource, resp.Kind)
 				require.Equal(t, "relation", resp.Reason)
 				require.Contains(t, resp.Error, "post")
 			},
@@ -163,10 +163,10 @@ func TestCreateComment(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusNotFound, recorder.Code)
-				var resp OperationError
+				var resp ResourceError
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, KindOperation, resp.Kind)
+				require.Equal(t, KindResource, resp.Kind)
 				require.Equal(t, "not_found", resp.Reason)
 			},
 		},
@@ -201,10 +201,10 @@ func TestCreateComment(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				var resp OperationError
+				var resp ResourceError
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, KindOperation, resp.Kind)
+				require.Equal(t, KindResource, resp.Kind)
 				require.Equal(t, "relation", resp.Reason)
 			},
 		},
@@ -237,10 +237,10 @@ func TestCreateComment(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusGone, recorder.Code)
-				var resp OperationError
+				var resp ResourceError
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, KindOperation, resp.Kind)
+				require.Equal(t, KindResource, resp.Kind)
 				require.Equal(t, "deleted", resp.Reason)
 			},
 		},
@@ -272,10 +272,10 @@ func TestCreateComment(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
-				var resp OperationError
+				var resp ResourceError
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, KindOperation, resp.Kind)
+				require.Equal(t, KindResource, resp.Kind)
 				require.Equal(t, "internal", resp.Reason)
 				require.Equal(t, "an internal error occurred", resp.Error)
 			},

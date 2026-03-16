@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -23,7 +22,7 @@ func (s *Service) createComment(ctx *gin.Context) {
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(
 			http.StatusBadRequest,
-			newPayloadError("Create comment: invalid request parameters", err))
+			newPayloadError("invalid request parameters", err))
 		return
 	}
 
@@ -35,7 +34,7 @@ func (s *Service) createComment(ctx *gin.Context) {
 	if !desc.valid && desc.provided {
 		ctx.JSON(
 			http.StatusBadRequest,
-			newPayloadError(fmt.Sprintf("Create comment: cannot reply to the comment with id: %s", desc.rawValue), nil),
+			newPayloadError(fmt.Sprintf("invalid comment id: %s", desc.rawValue), nil),
 		)
 		return
 	}
@@ -50,14 +49,8 @@ func (s *Service) createComment(ctx *gin.Context) {
 
 	comment, err := s.store.InsertCommentTx(ctx, arg)
 	if err != nil {
-		var opErr *db.OpError
-		if errors.As(err, &opErr) {
-			opError := newOperationError(opErr)
-			ctx.JSON(opError.StatusCode(), opError)
-			return
-		}
-
-		ctx.JSON(http.StatusInternalServerError, internalOperationError())
+		opErr := newResourceError(err)
+		ctx.JSON(opErr.StatusCode(), opErr)
 		return
 	}
 

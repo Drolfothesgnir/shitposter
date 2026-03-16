@@ -94,6 +94,7 @@ func (w *Warnings) Add(item Warning) {
 	case WarnOverflowNoRec:
 		return
 	case WarnOverflowNoCap:
+		// TODO: unbounded append — consider pre-allocating or capping to reduce GC pressure
 		w.list = append(w.list, item)
 		return
 	}

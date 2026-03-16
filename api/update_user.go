@@ -1,15 +1,10 @@
 package api
 
 import (
-	"errors"
-	"fmt"
 	"net/http"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
-	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // CAUTION: bindings order matters in gin validator v10!
@@ -32,50 +27,29 @@ func (service *Service) updateUser(ctx *gin.Context) {
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(
 			http.StatusBadRequest,
-			NewErrorResponse(ErrInvalidParams, ExtractErrorFields(err)...))
+			newPayloadError("invalid request parameters", err))
 		return
 	}
 
 	if !req.isValid() {
-		ctx.JSON(http.StatusBadRequest, NewErrorResponse(errors.New("request body is empty")))
+		ctx.JSON(http.StatusBadRequest, newPayloadError("request body is empty", nil))
 		return
 	}
 
 	arg := db.UpdateUserParams{
 		ID:            authPayload.UserID,
-		Username:      util.StringToPgxText(req.Username),
-		Email:         util.StringToPgxText(req.Email),
-		ProfileImgUrl: util.StringToPgxText(req.ProfileImgURL),
+		Username:      req.Username,
+		Email:         req.Email,
+		ProfileImgURL: req.ProfileImgURL,
 	}
 
 	user, err := service.store.UpdateUser(ctx, arg)
 
 	if err != nil {
-		// 404 when no row (nonexistent or soft-deleted)
-		if errors.Is(err, pgx.ErrNoRows) {
-			ctx.JSON(http.StatusNotFound, NewErrorResponse(fmt.Errorf("user with id [%d] not found", authPayload.UserID)))
-			return
-		}
-		// 409 on unique conflicts
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			var field string
-			switch pgErr.ConstraintName {
-			case "uniq_users_username_active":
-				field = "username"
-			case "uniq_users_email_active":
-				field = "email"
-			}
-
-			ctx.JSON(http.StatusConflict, NewErrorResponse(
-				fmt.Errorf("%s already in use", field),
-				ErrorField{FieldName: field, ErrorMessage: "already in use"},
-			))
-			return
-		}
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		opErr := newResourceError(err)
+		ctx.JSON(opErr.StatusCode(), opErr)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, createPrivateUserResponse(user))
+	ctx.JSON(http.StatusOK, user)
 }

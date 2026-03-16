@@ -158,6 +158,8 @@ func newParserState(input string, out TokenizerOutput) parserState {
 		Attributes: make([]Attribute, 0, out.Attributes),
 	}
 
+	// TODO: breadcrumbs/cumWidth/stack are unbounded — consider enforcing a max nesting depth
+	// to prevent pathological input from causing excessive stack growth
 	return parserState{
 		ast:         ast,
 		breadcrumbs: []int{0},  // root is always present

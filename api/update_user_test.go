@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,29 +14,22 @@ import (
 	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/gin-gonic/gin"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
-
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
 func TestUpdateUser(t *testing.T) {
 
-	user := db.User{
-		ID:            util.RandomInt(1, 1000),
-		Username:      util.RandomOwner(),
-		Email:         util.RandomEmail(),
-		ProfileImgUrl: pgtype.Text{String: util.RandomURL(), Valid: true},
-	}
+	imgURL := util.RandomURL()
+	userID := util.RandomInt(1, 1000)
+	username := util.RandomOwner()
+	email := util.RandomEmail()
 
 	arg := db.UpdateUserParams{
-		ID:            user.ID,
-		Username:      util.StringToPgxText(&user.Username),
-		Email:         util.StringToPgxText(&user.Email),
-		ProfileImgUrl: user.ProfileImgUrl,
+		ID:            userID,
+		Username:      &username,
+		Email:         &email,
+		ProfileImgURL: &imgURL,
 	}
 
 	testCases := []struct {
@@ -54,16 +48,17 @@ func TestUpdateUser(t *testing.T) {
 				store.EXPECT().UpdateUser(gomock.Any(), gomock.Any()).Times(0)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
-				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, user.ID, time.Minute, request)
+				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, userID, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp PayloadError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, "invalid params", res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, res.Fields[0].FieldName, "username")
-				require.Equal(t, res.Fields[0].ErrorMessage, getBindingErrorMessage("alphanum", "./1", ""))
+				require.Equal(t, KindPayload, resp.Kind)
+				require.Len(t, resp.Issues, 1)
+				require.Equal(t, "Username", resp.Issues[0].FieldName)
+				require.Equal(t, "alphanum", resp.Issues[0].Reason)
 			},
 		},
 		{
@@ -73,116 +68,165 @@ func TestUpdateUser(t *testing.T) {
 				store.EXPECT().UpdateUser(gomock.Any(), gomock.Any()).Times(0)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
-				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, user.ID, time.Minute, request)
+				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, userID, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
+				var resp PayloadError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindPayload, resp.Kind)
+				require.Equal(t, "request body is empty", resp.Error)
 			},
 		},
 		{
 			name: "UserNotFound",
 			body: gin.H{
-				"username": user.Username,
-				"email":    user.Email,
+				"username": username,
+				"email":    email,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				arg := db.UpdateUserParams{
-					ID:       user.ID,
-					Username: arg.Username,
-					Email:    arg.Email,
-				}
-				store.EXPECT().UpdateUser(gomock.Any(), arg).Times(1).Return(db.User{}, pgx.ErrNoRows)
+				store.EXPECT().UpdateUser(gomock.Any(), db.UpdateUserParams{
+					ID:       userID,
+					Username: &username,
+					Email:    &email,
+				}).Times(1).Return(
+					db.UpdateUserResult{},
+					&db.OpError{
+						Op:       "update-user",
+						Kind:     db.KindNotFound,
+						Entity:   "user",
+						EntityID: fmt.Sprint(userID),
+						Err:      fmt.Errorf("user with id %d not found", userID),
+					},
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
-				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, user.ID, time.Minute, request)
+				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, userID, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusNotFound, recorder.Code)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, "not_found", resp.Reason)
 			},
 		},
 		{
 			name: "DuplicateUsername",
 			body: gin.H{
-				"username":        user.Username,
-				"email":           user.Email,
-				"profile_img_url": arg.ProfileImgUrl.String,
+				"username":        username,
+				"email":           email,
+				"profile_img_url": imgURL,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				err := &pgconn.PgError{
-					Code:           "23505",
-					ConstraintName: "uniq_users_username_active",
-				}
-				store.EXPECT().UpdateUser(gomock.Any(), arg).Times(1).Return(db.User{}, err)
+				store.EXPECT().UpdateUser(gomock.Any(), arg).Times(1).Return(
+					db.UpdateUserResult{},
+					&db.OpError{
+						Op:           "update-user",
+						Kind:         db.KindConflict,
+						Entity:       "user",
+						EntityID:     fmt.Sprint(userID),
+						FailingField: "username",
+						Err:          fmt.Errorf("user with username '%s' exists", username),
+					},
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
-				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, user.ID, time.Minute, request)
+				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, userID, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusConflict, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, "username already in use", res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, res.Fields[0].FieldName, "username")
-				require.Equal(t, res.Fields[0].ErrorMessage, "already in use")
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, "conflict", resp.Reason)
 			},
 		},
 		{
 			name: "DuplicateEmail",
 			body: gin.H{
-				"username":        user.Username,
-				"email":           user.Email,
-				"profile_img_url": arg.ProfileImgUrl.String,
+				"username":        username,
+				"email":           email,
+				"profile_img_url": imgURL,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				err := &pgconn.PgError{
-					Code:           "23505",
-					ConstraintName: "uniq_users_email_active",
-				}
-				store.EXPECT().UpdateUser(gomock.Any(), arg).Times(1).Return(db.User{}, err)
+				store.EXPECT().UpdateUser(gomock.Any(), arg).Times(1).Return(
+					db.UpdateUserResult{},
+					&db.OpError{
+						Op:           "update-user",
+						Kind:         db.KindConflict,
+						Entity:       "user",
+						EntityID:     fmt.Sprint(userID),
+						FailingField: "email",
+						Err:          fmt.Errorf("user with email '%s' exists", email),
+					},
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
-				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, user.ID, time.Minute, request)
+				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, userID, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusConflict, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, "email already in use", res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, res.Fields[0].FieldName, "email")
-				require.Equal(t, res.Fields[0].ErrorMessage, "already in use")
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, "conflict", resp.Reason)
 			},
 		},
 		{
 			name: "UpdateUserErr",
 			body: gin.H{
-				"username":        user.Username,
-				"email":           user.Email,
-				"profile_img_url": arg.ProfileImgUrl.String,
+				"username":        username,
+				"email":           email,
+				"profile_img_url": imgURL,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().UpdateUser(gomock.Any(), arg).Times(1).Return(db.User{}, pgx.ErrTxClosed)
+				store.EXPECT().UpdateUser(gomock.Any(), arg).Times(1).Return(
+					db.UpdateUserResult{},
+					&db.OpError{
+						Op:     "update-user",
+						Kind:   db.KindInternal,
+						Entity: "user",
+						Err:    fmt.Errorf("tx closed"),
+					},
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
-				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, user.ID, time.Minute, request)
+				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, userID, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, "internal", resp.Reason)
+				require.Equal(t, "an internal error occurred", resp.Error)
 			},
 		},
 		{
 			name: "OK",
 			body: gin.H{
-				"username":        user.Username,
-				"email":           user.Email,
-				"profile_img_url": arg.ProfileImgUrl.String,
+				"username":        username,
+				"email":           email,
+				"profile_img_url": imgURL,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().UpdateUser(gomock.Any(), arg).Times(1).Return(user, nil)
+				store.EXPECT().UpdateUser(gomock.Any(), arg).Times(1).Return(
+					db.UpdateUserResult{
+						ID:       userID,
+						Username: username,
+						Email:    email,
+					},
+					nil,
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
-				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, user.ID, time.Minute, request)
+				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, userID, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)

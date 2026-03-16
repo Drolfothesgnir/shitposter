@@ -30,40 +30,44 @@ type SignupStartResponse struct {
 func (service *Service) signupStart(ctx *gin.Context) {
 	var req SignupStartRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, NewErrorResponse(err, ExtractErrorFields(err)...))
+		ctx.JSON(http.StatusBadRequest, newPayloadError("invalid request parameters", err))
 		return
 	}
 
 	// 1) check if provided username and email are unique, reject with 400 otherwise
 	usernameExists, err := service.store.UsernameExists(ctx, req.Username)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		opErr := newResourceError(err)
+		ctx.JSON(opErr.StatusCode(), opErr)
 		return
 	}
 
 	if usernameExists {
-		err := fmt.Errorf("user with username [%s] already exists", req.Username)
-		field := ErrorField{
-			FieldName:    "username",
-			ErrorMessage: "already in use",
-		}
-		ctx.JSON(http.StatusConflict, NewErrorResponse(err, field))
+		ctx.JSON(
+			http.StatusConflict,
+			newPayloadError(
+				fmt.Sprintf(
+					"user with username [%s] already exists",
+					req.Username,
+				), nil))
 		return
 	}
 
 	emailExists, err := service.store.EmailExists(ctx, req.Email)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		opErr := newResourceError(err)
+		ctx.JSON(opErr.StatusCode(), opErr)
 		return
 	}
 
 	if emailExists {
-		err := fmt.Errorf("user with email [%s] already exists", req.Email)
-		field := ErrorField{
-			FieldName:    "email",
-			ErrorMessage: "already in use",
-		}
-		ctx.JSON(http.StatusConflict, NewErrorResponse(err, field))
+		ctx.JSON(
+			http.StatusConflict,
+			newPayloadError(
+				fmt.Sprintf(
+					"user with email [%s] already exists",
+					req.Email,
+				), nil))
 		return
 	}
 

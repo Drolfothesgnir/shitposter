@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,7 +13,6 @@ import (
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -20,10 +20,10 @@ import (
 func TestUpdateComment(t *testing.T) {
 
 	arg := db.UpdateCommentParams{
-		PCommentID: 1,
-		PUserID:    1,
-		PPostID:    1,
-		PBody:      "test",
+		CommentID: 1,
+		UserID:    1,
+		PostID:    1,
+		Body:      "test",
 	}
 
 	testCases := []struct {
@@ -44,12 +44,14 @@ func TestUpdateComment(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp PayloadError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, ErrInvalidParams.Error(), res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, "body", res.Fields[0].FieldName)
-				require.Equal(t, getBindingErrorMessage("required", "", ""), res.Fields[0].ErrorMessage)
+				require.Equal(t, KindPayload, resp.Kind)
+				require.Equal(t, "invalid request parameters", resp.Error)
+				require.Len(t, resp.Issues, 1)
+				require.Equal(t, "Body", resp.Issues[0].FieldName)
+				require.Equal(t, "required", resp.Issues[0].Reason)
 			},
 		},
 		{
@@ -58,19 +60,27 @@ func TestUpdateComment(t *testing.T) {
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().UpdateComment(gomock.Any(), arg).Times(1).Return(db.UpdateCommentRow{}, pgx.ErrNoRows)
+				store.EXPECT().UpdateComment(gomock.Any(), arg).Times(1).Return(
+					db.UpdateCommentResult{},
+					&db.OpError{
+						Op:       "update-comment",
+						Kind:     db.KindNotFound,
+						Entity:   "comment",
+						EntityID: "1",
+						Err:      fmt.Errorf("comment with id 1 not found"),
+					},
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, 1, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusNotFound, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, ErrInvalidCommentID.Error(), res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, "comment_id", res.Fields[0].FieldName)
-				require.Equal(t, "Comment with ID [1] does not exist", res.Fields[0].ErrorMessage)
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, "not_found", resp.Reason)
 			},
 		},
 		{
@@ -79,13 +89,27 @@ func TestUpdateComment(t *testing.T) {
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().UpdateComment(gomock.Any(), arg).Times(1).Return(db.UpdateCommentRow{}, pgx.ErrTxClosed)
+				store.EXPECT().UpdateComment(gomock.Any(), arg).Times(1).Return(
+					db.UpdateCommentResult{},
+					&db.OpError{
+						Op:     "update-comment",
+						Kind:   db.KindInternal,
+						Entity: "comment",
+						Err:    fmt.Errorf("tx closed"),
+					},
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, 1, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, "internal", resp.Reason)
+				require.Equal(t, "an internal error occurred", resp.Error)
 			},
 		},
 		{
@@ -94,22 +118,27 @@ func TestUpdateComment(t *testing.T) {
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				res := db.UpdateCommentRow{
-					IsDeleted: true,
-				}
-				store.EXPECT().UpdateComment(gomock.Any(), arg).Times(1).Return(res, nil)
+				store.EXPECT().UpdateComment(gomock.Any(), arg).Times(1).Return(
+					db.UpdateCommentResult{},
+					&db.OpError{
+						Op:       "update-comment",
+						Kind:     db.KindDeleted,
+						Entity:   "comment",
+						EntityID: "1",
+						Err:      fmt.Errorf("comment with id 1 is deleted and cannot be updated"),
+					},
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, 1, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusGone, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, ErrCommentDeleted.Error(), res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, "comment_id", res.Fields[0].FieldName)
-				require.Equal(t, "Comment with ID [1] is deleted and cannot be updated", res.Fields[0].ErrorMessage)
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, "deleted", resp.Reason)
 			},
 		},
 		{
@@ -118,22 +147,28 @@ func TestUpdateComment(t *testing.T) {
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				res := db.UpdateCommentRow{
-					UserID: 2,
-				}
-				store.EXPECT().UpdateComment(gomock.Any(), arg).Times(1).Return(res, nil)
+				store.EXPECT().UpdateComment(gomock.Any(), arg).Times(1).Return(
+					db.UpdateCommentResult{},
+					&db.OpError{
+						Op:       "update-comment",
+						Kind:     db.KindPermission,
+						Entity:   "comment",
+						EntityID: "1",
+						UserID:   "1",
+						Err:      fmt.Errorf("comment with id 1 does not belong to user with id 1"),
+					},
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, 1, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusForbidden, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, ErrCannotUpdate.Error(), res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, "user_id", res.Fields[0].FieldName)
-				require.Equal(t, "This comment does not belong to the authenticated user", res.Fields[0].ErrorMessage)
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, "permission", resp.Reason)
 			},
 		},
 		{
@@ -142,23 +177,27 @@ func TestUpdateComment(t *testing.T) {
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				res := db.UpdateCommentRow{
-					UserID: 1,
-					PostID: 2,
-				}
-				store.EXPECT().UpdateComment(gomock.Any(), arg).Times(1).Return(res, nil)
+				store.EXPECT().UpdateComment(gomock.Any(), arg).Times(1).Return(
+					db.UpdateCommentResult{},
+					&db.OpError{
+						Op:       "update-comment",
+						Kind:     db.KindRelation,
+						Entity:   "comment",
+						EntityID: "1",
+						Err:      fmt.Errorf("comment with id 1 does not belong to post with id 1"),
+					},
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, 1, time.Minute, request)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusConflict, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				require.Equal(t, http.StatusBadRequest, recorder.Code)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, ErrInvalidPostID.Error(), res.Error)
-				require.Len(t, res.Fields, 1)
-				require.Equal(t, "post_id", res.Fields[0].FieldName)
-				require.Equal(t, "Comment with ID [1] does not belong to post with ID [1]", res.Fields[0].ErrorMessage)
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, "relation", resp.Reason)
 			},
 		},
 		{
@@ -167,10 +206,13 @@ func TestUpdateComment(t *testing.T) {
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				res := db.UpdateCommentRow{
-					Updated: true,
-				}
-				store.EXPECT().UpdateComment(gomock.Any(), arg).Times(1).Return(res, nil)
+				store.EXPECT().UpdateComment(gomock.Any(), arg).Times(1).Return(
+					db.UpdateCommentResult{
+						ID:   1,
+						Body: "test",
+					},
+					nil,
+				)
 			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				setAuthorizationHeader(t, tokenMaker, authorizationTypeBearer, 1, time.Minute, request)

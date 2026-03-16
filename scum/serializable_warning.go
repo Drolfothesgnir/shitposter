@@ -42,7 +42,7 @@ func init() {
 	mapIssueToName[IssueUnprintableChar] = "Unprintable Character"
 	mapIssueToName[IssueWarningsTruncated] = "Warnings Truncated"
 	mapIssueToName[IssueInvalidRule] = "Invalid Rule"
-	mapIssueToName[IssueInvalidTagNameLen] = "Invalud Tag Name Length"
+	mapIssueToName[IssueInvalidTagNameLen] = "Invalid Tag Name Length"
 
 	serializers[IssueUnexpectedEOL] = serializeUnexpectedEOL
 	serializers[IssueUnexpectedSymbol] = serializeUnexpectedSymbol

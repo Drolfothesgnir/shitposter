@@ -9,9 +9,10 @@ import (
 func (service *Service) deleteUser(ctx *gin.Context) {
 	authPayload := extractAuthPayloadFromCtx(ctx)
 
-	err := service.store.SoftDeleteUserTx(ctx, authPayload.UserID)
+	_, err := service.store.SoftDeleteUserTx(ctx, authPayload.UserID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		opErr := newResourceError(err)
+		ctx.JSON(opErr.StatusCode(), opErr)
 		return
 	}
 

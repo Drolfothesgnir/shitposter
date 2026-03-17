@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,7 +16,6 @@ import (
 	mocktk "github.com/Drolfothesgnir/shitposter/token/mock"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -72,6 +72,11 @@ func TestRenewAccess(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+				var resp AuthError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindAuth, resp.Kind)
+				require.Equal(t, token.ErrInvalidToken.Error(), resp.Error)
 			},
 		},
 		{
@@ -85,13 +90,27 @@ func TestRenewAccess(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+				var resp AuthError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindAuth, resp.Kind)
+				require.Equal(t, token.ErrTokenExpired.Error(), resp.Error)
 			},
 		},
 		{
 			name: "GetSessionNotFound",
 			buildStubs: func(store *mockdb.MockStore, tokenMaker *mocktk.MockMaker) {
 				tokenMaker.EXPECT().VerifyToken(refreshToken).Times(1).Return(payload, nil)
-				store.EXPECT().GetSession(gomock.Any(), payload.ID).Times(1).Return(db.Session{}, pgx.ErrNoRows)
+				store.EXPECT().GetSession(gomock.Any(), payload.ID).Times(1).Return(
+					db.Session{},
+					&db.OpError{
+						Op:       "get-session",
+						Kind:     db.KindNotFound,
+						Entity:   "session",
+						EntityID: payload.ID.String(),
+						Err:      fmt.Errorf("session not found"),
+					},
+				)
 				tokenMaker.EXPECT().CreateToken(gomock.Any(), gomock.Any()).Times(0)
 			},
 			body: gin.H{
@@ -99,13 +118,26 @@ func TestRenewAccess(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusNotFound, recorder.Code)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, "not_found", resp.Reason)
 			},
 		},
 		{
 			name: "GetSessionErr",
 			buildStubs: func(store *mockdb.MockStore, tokenMaker *mocktk.MockMaker) {
 				tokenMaker.EXPECT().VerifyToken(refreshToken).Times(1).Return(payload, nil)
-				store.EXPECT().GetSession(gomock.Any(), payload.ID).Times(1).Return(db.Session{}, pgx.ErrTxClosed)
+				store.EXPECT().GetSession(gomock.Any(), payload.ID).Times(1).Return(
+					db.Session{},
+					&db.OpError{
+						Op:     "get-session",
+						Kind:   db.KindInternal,
+						Entity: "session",
+						Err:    fmt.Errorf("tx closed"),
+					},
+				)
 				tokenMaker.EXPECT().CreateToken(gomock.Any(), gomock.Any()).Times(0)
 			},
 			body: gin.H{
@@ -113,6 +145,11 @@ func TestRenewAccess(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, "internal", resp.Reason)
 			},
 		},
 		{
@@ -136,9 +173,11 @@ func TestRenewAccess(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusUnauthorized, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp AuthError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, res.Error, ErrSessionBlocked.Error())
+				require.Equal(t, KindAuth, resp.Kind)
+				require.Equal(t, ErrSessionBlocked.Error(), resp.Error)
 			},
 		},
 		{
@@ -161,9 +200,11 @@ func TestRenewAccess(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusUnauthorized, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp AuthError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, res.Error, ErrSessionUserMismatch.Error())
+				require.Equal(t, KindAuth, resp.Kind)
+				require.Equal(t, ErrSessionUserMismatch.Error(), resp.Error)
 			},
 		},
 		{
@@ -186,9 +227,11 @@ func TestRenewAccess(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusUnauthorized, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp AuthError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, res.Error, ErrSessionRefreshTokenMismatch.Error())
+				require.Equal(t, KindAuth, resp.Kind)
+				require.Equal(t, ErrSessionRefreshTokenMismatch.Error(), resp.Error)
 			},
 		},
 		{
@@ -211,9 +254,11 @@ func TestRenewAccess(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusUnauthorized, recorder.Code)
-				res, err := extractErrorFromBuffer(recorder.Body)
+				var resp AuthError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
-				require.Equal(t, res.Error, ErrSessionExpired.Error())
+				require.Equal(t, KindAuth, resp.Kind)
+				require.Equal(t, ErrSessionExpired.Error(), resp.Error)
 			},
 		},
 		{
@@ -228,6 +273,11 @@ func TestRenewAccess(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, "internal", resp.Reason)
 			},
 		},
 		{

@@ -23,10 +23,10 @@ func (server *Service) renewAccessToken(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: create proper token error mapping
 	refreshPayload, err := server.tokenMaker.VerifyToken(req.RefreshToken)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, NewErrorResponse(err))
+		authErr := newAuthError(err.Error())
+		ctx.JSON(authErr.StatusCode(), authErr)
 		return
 	}
 
@@ -37,30 +37,33 @@ func (server *Service) renewAccessToken(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: create proper session error
 	if session.IsBlocked {
-		ctx.JSON(http.StatusUnauthorized, NewErrorResponse(ErrSessionBlocked))
+		authErr := newAuthError(ErrSessionBlocked.Error())
+		ctx.JSON(authErr.StatusCode(), authErr)
 		return
 	}
 
 	if session.UserID != refreshPayload.UserID {
-		ctx.JSON(http.StatusUnauthorized, NewErrorResponse(ErrSessionUserMismatch))
+		authErr := newAuthError(ErrSessionUserMismatch.Error())
+		ctx.JSON(authErr.StatusCode(), authErr)
 		return
 	}
 
 	if req.RefreshToken != session.RefreshToken {
-		ctx.JSON(http.StatusUnauthorized, NewErrorResponse(ErrSessionRefreshTokenMismatch))
+		authErr := newAuthError(ErrSessionRefreshTokenMismatch.Error())
+		ctx.JSON(authErr.StatusCode(), authErr)
 		return
 	}
 
 	if time.Now().After(session.ExpiresAt) {
-		ctx.JSON(http.StatusUnauthorized, NewErrorResponse(ErrSessionExpired))
+		authErr := newAuthError(ErrSessionExpired.Error())
+		ctx.JSON(authErr.StatusCode(), authErr)
 		return
 	}
 
 	accessToken, accessPayload, err := server.tokenMaker.CreateToken(refreshPayload.UserID, server.config.AccessTokenDuration)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, internalResourceError())
 		return
 	}
 

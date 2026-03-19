@@ -73,13 +73,13 @@ type UserWithCredentials struct {
 }
 
 // UserWithCredentials factory which takes raw db.User and db.WebauthnCredentials
-func NewUserWithCredentials(user db.User, creds []db.WebauthnCredential) (*UserWithCredentials, error) {
+func NewUserWithCredentials(user db.User, creds []db.WebauthnCredential) (UserWithCredentials, error) {
 	parsedCreds := make([]webauthn.Credential, len(creds))
 
 	for i, cred := range creds {
 		parsedTransport := []protocol.AuthenticatorTransport{}
 		if err := json.Unmarshal(cred.Transports, &parsedTransport); err != nil {
-			return nil, fmt.Errorf("failed to parse transports for credential %x: %w", cred.ID, err)
+			return UserWithCredentials{}, fmt.Errorf("failed to parse transports for credential %x: %w", cred.ID, err)
 		}
 
 		parsedCred := webauthn.Credential{
@@ -108,7 +108,7 @@ func NewUserWithCredentials(user db.User, creds []db.WebauthnCredential) (*UserW
 		parsedCreds[i] = parsedCred
 	}
 
-	result := &UserWithCredentials{
+	result := UserWithCredentials{
 		user,
 		parsedCreds,
 	}
@@ -118,19 +118,19 @@ func NewUserWithCredentials(user db.User, creds []db.WebauthnCredential) (*UserW
 
 // following methods are required by webauthn.User interface
 
-func (user *UserWithCredentials) WebAuthnID() []byte {
+func (user UserWithCredentials) WebAuthnID() []byte {
 	return user.WebauthnUserHandle
 }
 
-func (user *UserWithCredentials) WebAuthnName() string {
+func (user UserWithCredentials) WebAuthnName() string {
 	return user.Email
 }
 
-func (user *UserWithCredentials) WebAuthnDisplayName() string {
+func (user UserWithCredentials) WebAuthnDisplayName() string {
 	return user.Username
 }
 
-func (user *UserWithCredentials) WebAuthnCredentials() []webauthn.Credential {
+func (user UserWithCredentials) WebAuthnCredentials() []webauthn.Credential {
 	return user.Credentials
 }
 
@@ -143,7 +143,7 @@ type TempUser struct {
 }
 
 // Implement webauthn.User interface
-func (u *TempUser) WebAuthnID() []byte                         { return u.WebauthnUserHandle }
-func (u *TempUser) WebAuthnName() string                       { return u.Email }
-func (u *TempUser) WebAuthnDisplayName() string                { return u.Username }
-func (u *TempUser) WebAuthnCredentials() []webauthn.Credential { return []webauthn.Credential{} } // Empty for new user
+func (u TempUser) WebAuthnID() []byte                         { return u.WebauthnUserHandle }
+func (u TempUser) WebAuthnName() string                       { return u.Email }
+func (u TempUser) WebAuthnDisplayName() string                { return u.Username }
+func (u TempUser) WebAuthnCredentials() []webauthn.Credential { return []webauthn.Credential{} } // Empty for new user

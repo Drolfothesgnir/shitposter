@@ -132,6 +132,36 @@ func (mr *MockStoreMockRecorder) GetUser(ctx, userID any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUser", reflect.TypeOf((*MockStore)(nil).GetUser), ctx, userID)
 }
 
+// GetUserByUsername mocks base method.
+func (m *MockStore) GetUserByUsername(ctx context.Context, username string) (db.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserByUsername", ctx, username)
+	ret0, _ := ret[0].(db.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserByUsername indicates an expected call of GetUserByUsername.
+func (mr *MockStoreMockRecorder) GetUserByUsername(ctx, username any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByUsername", reflect.TypeOf((*MockStore)(nil).GetUserByUsername), ctx, username)
+}
+
+// GetUserCredentials mocks base method.
+func (m *MockStore) GetUserCredentials(ctx context.Context, userID int64) ([]db.WebauthnCredential, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserCredentials", ctx, userID)
+	ret0, _ := ret[0].([]db.WebauthnCredential)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserCredentials indicates an expected call of GetUserCredentials.
+func (mr *MockStoreMockRecorder) GetUserCredentials(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserCredentials", reflect.TypeOf((*MockStore)(nil).GetUserCredentials), ctx, userID)
+}
+
 // InsertCommentTx mocks base method.
 func (m *MockStore) InsertCommentTx(ctx context.Context, arg db.InsertCommentTxParams) (db.Comment, error) {
 	m.ctrl.T.Helper()

@@ -32,6 +32,14 @@ type Store interface {
 	//   - KindInternal – database error
 	GetUser(ctx context.Context, userID int64) (User, error)
 
+	// GetUserByUsername retrieves the user with the provided username.
+	//
+	// Errors returned (*OpError):
+	//   - KindNotFound – no user with the given username exists
+	//   - KindDeleted  – user exists but has been soft-deleted
+	//   - KindInternal – database error
+	GetUserByUsername(ctx context.Context, username string) (User, error)
+
 	// UpdateUser applies the non-nil fields in arg to the user record.
 	// At least one optional field (Username, Email, ProfileImgURL) must be set.
 	//
@@ -62,6 +70,12 @@ type Store interface {
 	// Errors returned (*OpError):
 	//   - KindInternal – database error
 	EmailExists(ctx context.Context, email string) (bool, error)
+
+	// GetUserCredentials
+	//
+	//   - KindNotFound – no user with the given ID exists
+	//   - KindInternal – database error
+	GetUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error)
 
 	// InsertCommentTx creates a new comment, either a root comment or a reply
 	// to an existing comment, within a transaction.

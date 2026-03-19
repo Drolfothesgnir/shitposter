@@ -9,6 +9,7 @@ import (
 	"github.com/Drolfothesgnir/shitposter/tmpstore"
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/google/uuid"
 )
 
 // Passkey registration process outline:
@@ -75,8 +76,7 @@ func (service *Service) signupStart(ctx *gin.Context) {
 	userHandle := make([]byte, 32)
 	_, err = rand.Read(userHandle)
 	if err != nil {
-		err := fmt.Errorf("failed to generate handle")
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
@@ -90,11 +90,12 @@ func (service *Service) signupStart(ctx *gin.Context) {
 	// 3) init registration process with temporary user
 	create, session, err := service.webauthnConfig.BeginRegistration(tempUser)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
 	// 4) Store registration session in Redis
+	sessionID := uuid.NewString()
 	registrationData := tmpstore.PendingRegistration{
 		Email:              req.Email,
 		Username:           req.Username,
@@ -105,17 +106,18 @@ func (service *Service) signupStart(ctx *gin.Context) {
 
 	err = service.redisStore.SaveUserRegSession(
 		ctx,
-		session.Challenge,
+		sessionID,
 		registrationData,
 		service.config.RegistrationSessionTTL,
 	)
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
-	// 5) return challenge and options to the user
+	// 5) Set session cookie and return challenge options to the client
+	service.setWebauthnSessionCookie(ctx, sessionID, int(service.config.RegistrationSessionTTL.Seconds()))
 	ctx.JSON(http.StatusOK, SignupStartResponse{
 		CredentialCreation: create,
 	})

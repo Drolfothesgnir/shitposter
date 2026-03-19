@@ -1,14 +1,13 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/Drolfothesgnir/shitposter/tmpstore"
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/protocol"
-	"github.com/jackc/pgx/v5"
+	"github.com/google/uuid"
 )
 
 type SigninStartRequest struct {
@@ -23,50 +22,42 @@ type SigninStartResponse struct {
 func (service *Service) signinStart(ctx *gin.Context) {
 	var req SigninStartRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, NewErrorResponse(err))
+		ctx.JSON(http.StatusBadRequest, newPayloadError("invalid request parameters", err))
 		return
 	}
 
 	// 1) Get user from the database, reject if not found
 	user, err := service.store.GetUserByUsername(ctx, req.Username)
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			// Don't reveal if user exists or not
-			// TODO: rethink this
-			field := ErrorField{
-				FieldName:    "username",
-				ErrorMessage: "invalid input",
-			}
-			ctx.JSON(http.StatusBadRequest, NewErrorResponse(fmt.Errorf("invalid credentials"), field))
-			return
-		}
-
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		opErr := newResourceError(err)
+		ctx.JSON(opErr.StatusCode(), opErr)
 		return
 	}
 
 	// 2) Get users creds
 	creds, err := service.store.GetUserCredentials(ctx, user.ID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		opErr := newResourceError(err)
+		ctx.JSON(opErr.StatusCode(), opErr)
 		return
 	}
 
 	// 3) Creating user with creds struct to begin the auth process
 	userWithCreds, err := NewUserWithCredentials(user, creds)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
 	// 4) Begin authentication
 	assertion, session, err := service.webauthnConfig.BeginLogin(userWithCreds)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
-	// 5) Saving session in the Redis
+	// 5) Saving session in Redis
+	sessionID := uuid.NewString()
 	pendingAuth := tmpstore.PendingAuthentication{
 		UserID:      user.ID,
 		Username:    req.Username,
@@ -76,17 +67,18 @@ func (service *Service) signinStart(ctx *gin.Context) {
 
 	err = service.redisStore.SaveUserAuthSession(
 		ctx,
-		session.Challenge,
+		sessionID,
 		pendingAuth,
 		service.config.AuthenticationSessionTTL,
 	)
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
-	// 6) Returning credential assertion to the user
+	// 6) Set session cookie and return credential assertion to the client
+	service.setWebauthnSessionCookie(ctx, sessionID, int(service.config.AuthenticationSessionTTL.Seconds()))
 	ctx.JSON(http.StatusOK, SigninStartResponse{
 		CredentialAssertion: assertion,
 	})

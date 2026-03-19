@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	WebauthnChallengeHeader = "X-Webauthn-Challenge"
 	WebauthnTransportHeader = "X-Webauthn-Transports"
+	webauthnSessionCookie   = "webauthn_session"
 )
 
 // keys for values parsed from the uri and set into the request context
@@ -98,6 +98,19 @@ func NewService(
 // Start runs the HTTP server
 func (service *Service) Start() error {
 	return service.server.ListenAndServe()
+}
+
+func (s *Service) setWebauthnSessionCookie(ctx *gin.Context, sessionID string, maxAge int) {
+	secure := s.config.Environment != "development"
+	ctx.SetCookie(webauthnSessionCookie, sessionID, maxAge, "/", "", secure, true)
+}
+
+func getWebauthnSessionCookie(ctx *gin.Context) (string, error) {
+	return ctx.Cookie(webauthnSessionCookie)
+}
+
+func clearWebauthnSessionCookie(ctx *gin.Context, secure bool) {
+	ctx.SetCookie(webauthnSessionCookie, "", -1, "/", "", secure, true)
 }
 
 // TODO: shutdown db store and other sub-services

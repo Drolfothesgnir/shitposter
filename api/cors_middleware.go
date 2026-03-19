@@ -9,18 +9,23 @@ import (
 
 // handling CORS
 func (s *Service) corsMiddleware() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		// since I want my service as a REST API I will allow connection from every origin
-		ctx.Header("Access-Control-Allow-Origin", "*")
+	allowedSet := make(map[string]bool, len(s.config.AllowedOrigins))
+	for _, o := range s.config.AllowedOrigins {
+		allowedSet[o] = true
+	}
 
-		// for every method
+	return func(ctx *gin.Context) {
+		origin := ctx.GetHeader("Origin")
+		if allowedSet[origin] {
+			ctx.Header("Access-Control-Allow-Origin", origin)
+			ctx.Header("Access-Control-Allow-Credentials", "true")
+		}
+
 		ctx.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 
-		// X-Webauthn-Challenge and X-Webauthn-Transports — my headers for passkey auth
 		allowedHeaders := []string{
 			"Content-Type",
 			"Authorization",
-			WebauthnChallengeHeader,
 			WebauthnTransportHeader,
 		}
 		ctx.Header("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ","))

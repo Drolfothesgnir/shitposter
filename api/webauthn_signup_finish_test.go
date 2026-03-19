@@ -43,11 +43,12 @@ func TestSignupFinish(t *testing.T) {
 	require.NoError(t, err)
 
 	txArg := db.CreateUserWithCredentialsTxParams{
-		User: db.CreateUserParams{
-			Username:           util.RandomOwner(),
-			Email:              util.RandomEmail(),
-			WebauthnUserHandle: userHandle,
-		},
+		User: db.NewCreateUserParams(
+			util.RandomOwner(),
+			util.RandomEmail(),
+			nil,
+			userHandle,
+		),
 		Cred: db.CreateCredentialsTxParams{
 			ID:                      userHandle,
 			PublicKey:               util.RandomByteArray(16),
@@ -122,6 +123,13 @@ func TestSignupFinish(t *testing.T) {
 		ExpiresAt:    tokenPayload.ExpiredAt,
 	}
 
+	addCookie := func(req *http.Request) {
+		req.AddCookie(&http.Cookie{
+			Name:  webauthnSessionCookie,
+			Value: sessionID,
+		})
+	}
+
 	testCases := []struct {
 		name       string
 		buildStubs func(
@@ -130,11 +138,11 @@ func TestSignupFinish(t *testing.T) {
 			wa *mockwa.MockWebAuthnConfig,
 			tokenMaker *mocktk.MockMaker,
 		)
-		setupHeaders  func(req *http.Request)
+		setupRequest  func(req *http.Request)
 		checkResponse func(t *testing.T, recorder *httptest.ResponseRecorder)
 	}{
 		{
-			name: "MissingHeader",
+			name: "MissingCookie",
 			buildStubs: func(
 				store *mockdb.MockStore,
 				rs *mockst.MockStore,
@@ -143,7 +151,9 @@ func TestSignupFinish(t *testing.T) {
 			) {
 				rs.EXPECT().GetUserRegSession(gomock.Any(), gomock.Any()).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {},
+			setupRequest: func(req *http.Request) {
+				// no cookie — test the missing cookie path
+			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
 			},
@@ -160,9 +170,7 @@ func TestSignupFinish(t *testing.T) {
 				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(session, errors.New(""))
 				wa.EXPECT().FinishRegistration(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, sessionID)
-			},
+			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
 			},
@@ -181,9 +189,7 @@ func TestSignupFinish(t *testing.T) {
 				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(session, nil)
 				wa.EXPECT().FinishRegistration(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, sessionID)
-			},
+			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
 			},
@@ -200,9 +206,7 @@ func TestSignupFinish(t *testing.T) {
 				wa.EXPECT().FinishRegistration(tmpUser, *pending.SessionData, gomock.Any()).Times(1).Return(&webauthn.Credential{}, errors.New(""))
 				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), gomock.Any()).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, sessionID)
-			},
+			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
 			},
@@ -217,12 +221,10 @@ func TestSignupFinish(t *testing.T) {
 			) {
 				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(pending, nil)
 				wa.EXPECT().FinishRegistration(tmpUser, *pending.SessionData, gomock.Any()).Times(1).Return(waCred, nil)
-				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(db.CreateUserWithCredentialsTxResult{}, pgx.ErrTxClosed)
+				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(db.User{}, pgx.ErrTxClosed)
 				rs.EXPECT().DeleteUserRegSession(gomock.Any(), sessionID).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, sessionID)
-			},
+			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
@@ -237,16 +239,12 @@ func TestSignupFinish(t *testing.T) {
 			) {
 				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(pending, nil)
 				wa.EXPECT().FinishRegistration(tmpUser, *pending.SessionData, gomock.Any()).Times(1).Return(waCred, nil)
-				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(db.CreateUserWithCredentialsTxResult{
-					User: user,
-				}, nil)
+				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(user, nil)
 				rs.EXPECT().DeleteUserRegSession(gomock.Any(), sessionID).Times(1).Return(nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("", &token.Payload{}, errors.New(""))
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, sessionID)
-			},
+			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
@@ -261,17 +259,13 @@ func TestSignupFinish(t *testing.T) {
 			) {
 				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(pending, nil)
 				wa.EXPECT().FinishRegistration(tmpUser, *pending.SessionData, gomock.Any()).Times(1).Return(waCred, nil)
-				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(db.CreateUserWithCredentialsTxResult{
-					User: user,
-				}, nil)
+				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(user, nil)
 				rs.EXPECT().DeleteUserRegSession(gomock.Any(), sessionID).Times(1).Return(nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("access_token", tokenPayload, nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("", &token.Payload{}, errors.New(""))
 				store.EXPECT().CreateSession(gomock.Any(), gomock.Any()).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, sessionID)
-			},
+			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
@@ -286,16 +280,14 @@ func TestSignupFinish(t *testing.T) {
 			) {
 				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(pending, nil)
 				wa.EXPECT().FinishRegistration(tmpUser, *pending.SessionData, gomock.Any()).Times(1).Return(waCred, nil)
-				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(db.CreateUserWithCredentialsTxResult{
-					User: user,
-				}, nil)
+				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(user, nil)
 				rs.EXPECT().DeleteUserRegSession(gomock.Any(), sessionID).Times(1).Return(nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("access_token", tokenPayload, nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("refresh_token", tokenPayload, nil)
 				store.EXPECT().CreateSession(gomock.Any(), sessionArg).Times(1).Return(db.Session{}, pgx.ErrNoRows)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, sessionID)
+			setupRequest: func(req *http.Request) {
+				addCookie(req)
 				req.Header.Add("User-Agent", "chrome")
 				req.RemoteAddr = "198.162.0.0:12345"
 			},
@@ -323,16 +315,14 @@ func TestSignupFinish(t *testing.T) {
 
 				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(pending, nil)
 				wa.EXPECT().FinishRegistration(tmpUser, *pending.SessionData, gomock.Any()).Times(1).Return(waCred, nil)
-				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(db.CreateUserWithCredentialsTxResult{
-					User: user,
-				}, nil)
+				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(user, nil)
 				rs.EXPECT().DeleteUserRegSession(gomock.Any(), sessionID).Times(1).Return(nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("access_token", tokenPayload, nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("refresh_token", tokenPayload, nil)
 				store.EXPECT().CreateSession(gomock.Any(), sessionArg).Times(1).Return(session, nil)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, sessionID)
+			setupRequest: func(req *http.Request) {
+				addCookie(req)
 				req.Header.Add("User-Agent", "chrome")
 				req.RemoteAddr = "198.162.0.0:12345"
 			},
@@ -372,7 +362,7 @@ func TestSignupFinish(t *testing.T) {
 			request, err := http.NewRequest(http.MethodPost, "/users/signup/finish", nil)
 			require.NoError(t, err)
 
-			tc.setupHeaders(request)
+			tc.setupRequest(request)
 
 			service.router.ServeHTTP(recorder, request)
 			tc.checkResponse(t, recorder)

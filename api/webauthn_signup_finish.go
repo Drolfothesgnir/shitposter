@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -34,26 +33,25 @@ func extractTransportData(ctx *gin.Context, cred *webauthn.Credential) []string 
 }
 
 func (service *Service) signupFinish(ctx *gin.Context) {
-	// I decided to get challenge as HTTP header because it is the easiest way to get it so far
-	chal := ctx.GetHeader(WebauthnChallengeHeader)
-	if chal == "" {
-		ctx.JSON(http.StatusBadRequest, NewErrorResponse(fmt.Errorf("missing challenge header")))
+	// 1) Read session ID from cookie
+	sessionID, err := getWebauthnSessionCookie(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, newPayloadError("missing or invalid session cookie", nil))
 		return
 	}
 
-	// 1) Load pending registration session from Redis
-	// TODO: Error parsing
-	pending, err := service.redisStore.GetUserRegSession(ctx, chal)
+	// 2) Load pending registration session from Redis
+	pending, err := service.redisStore.GetUserRegSession(ctx, sessionID)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, NewErrorResponse(err))
+		ctx.JSON(http.StatusBadRequest, newPayloadError("registration session not found or expired", nil))
 		return
 	}
 	if time.Now().After(pending.ExpiresAt) {
-		ctx.JSON(http.StatusBadRequest, NewErrorResponse(fmt.Errorf("registration session expired")))
+		ctx.JSON(http.StatusBadRequest, newPayloadError("registration session expired", nil))
 		return
 	}
 
-	// 2) Recreate the temporary user used for BeginRegistration
+	// 3) Recreate the temporary user used for BeginRegistration
 	tmp := &TempUser{
 		ID:                 pending.WebauthnUserHandle,
 		Email:              pending.Email,
@@ -61,30 +59,30 @@ func (service *Service) signupFinish(ctx *gin.Context) {
 		WebauthnUserHandle: pending.WebauthnUserHandle,
 	}
 
-	// 3) Finish registration (validates challenge/origin, builds credential)
+	// 4) Finish registration (validates challenge/origin, builds credential)
 	cred, err := service.webauthnConfig.FinishRegistration(tmp, *pending.SessionData, ctx.Request)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, NewErrorResponse(fmt.Errorf("webauthn finish failed: %w", err)))
+		ctx.JSON(http.StatusBadRequest, newPayloadError("webauthn registration verification failed", nil))
 		return
 	}
 
-	// 4) Save user data and credentials into the database
+	// 5) Save user data and credentials into the database
 
 	tr := extractTransportData(ctx, cred)
 
 	jsonTransport, err := json.Marshal(tr)
 	if err != nil {
-		err := fmt.Errorf("failed to marshal creds transport: %w", err)
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
 	txArg := db.CreateUserWithCredentialsTxParams{
-		User: db.CreateUserParams{
-			Username:           pending.Username,
-			Email:              pending.Email,
-			WebauthnUserHandle: pending.WebauthnUserHandle,
-		},
+		User: db.NewCreateUserParams(
+			pending.Username,
+			pending.Email,
+			nil, // TODO: somehow provide profile image during registration
+			pending.WebauthnUserHandle,
+		),
 		Cred: db.CreateCredentialsTxParams{
 			ID:                      cred.ID,
 			PublicKey:               cred.PublicKey,
@@ -102,24 +100,23 @@ func (service *Service) signupFinish(ctx *gin.Context) {
 		},
 	}
 
-	// TODO: add 23505 - unique violation check for racing transactions... but why there should be such thing
-	// if it is a registration step?
+	// TODO: add 23505 - unique violation check for racing transactions
 	user, err := service.store.CreateUserWithCredentialsTx(ctx, txArg)
 	if err != nil {
-		err := fmt.Errorf("failed to save user data to the database: %w", err)
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
-	// 5) remove tmp session ignoring possible error
-	_ = service.redisStore.DeleteUserRegSession(ctx, chal)
+	// 6) Clean up session cookie and Redis
+	secure := service.config.Environment != "development"
+	clearWebauthnSessionCookie(ctx, secure)
+	_ = service.redisStore.DeleteUserRegSession(ctx, sessionID)
 
-	// 6) return user data to the client
-	res, err := service.generateAuthTokens(ctx, user.User, ctx.Request.UserAgent(), ctx.ClientIP())
+	// 7) Return user data to the client
+	res, err := service.generateAuthTokens(ctx, user, ctx.Request.UserAgent(), ctx.ClientIP())
 
 	if err != nil {
-		err := fmt.Errorf("failed to generate auth tokens: %w", err)
-		ctx.JSON(http.StatusInternalServerError, NewErrorResponse(err))
+		ctx.JSON(http.StatusInternalServerError, internalResourceError())
 		return
 	}
 

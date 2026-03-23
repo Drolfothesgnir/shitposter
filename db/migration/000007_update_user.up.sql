@@ -24,6 +24,7 @@ CREATE OR REPLACE FUNCTION update_user(
 			last_modified_at
 		FROM users 
 		WHERE id = p_user_id
+		FOR UPDATE
 	),
 	updated_row AS (
 		UPDATE users u

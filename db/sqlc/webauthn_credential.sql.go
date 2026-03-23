@@ -221,11 +221,15 @@ func (q *Queries) listUserCredentials(ctx context.Context, userID int64) ([]Weba
 	return items, nil
 }
 
-const updateCredentialSignCount = `-- name: updateCredentialSignCount :exec
-UPDATE webauthn_credentials
-SET
-  sign_count = $2
-WHERE id = $1
+const updateCredentialSignCount = `-- name: updateCredentialSignCount :one
+WITH cte AS (
+  UPDATE webauthn_credentials
+  SET
+    sign_count = $2
+  WHERE id = $1
+  RETURNING id
+)
+SELECT EXISTS (SELECT 1 FROM cte)
 `
 
 type updateCredentialSignCountParams struct {
@@ -233,7 +237,9 @@ type updateCredentialSignCountParams struct {
 	SignCount int64  `json:"sign_count"`
 }
 
-func (q *Queries) updateCredentialSignCount(ctx context.Context, arg updateCredentialSignCountParams) error {
-	_, err := q.db.Exec(ctx, updateCredentialSignCount, arg.ID, arg.SignCount)
-	return err
+func (q *Queries) updateCredentialSignCount(ctx context.Context, arg updateCredentialSignCountParams) (bool, error) {
+	row := q.db.QueryRow(ctx, updateCredentialSignCount, arg.ID, arg.SignCount)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }

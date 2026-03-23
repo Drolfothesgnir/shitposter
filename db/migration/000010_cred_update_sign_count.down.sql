@@ -1,0 +1,1 @@
+DROP FUNCTION cred_update_sign_count(BYTEA, BIGINT);

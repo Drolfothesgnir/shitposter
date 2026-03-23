@@ -1,5 +1,8 @@
 DB_URL=postgresql://root:secret@localhost:5432/shitposter?sslmode=disable
 
+init_db:
+	docker run --name postgres17 -e POSTGRES_USER=root -e POSTGRES_PASSWORD=secret -p 5432:5432 -v pgdata-17:/var/lib/postgresql/data -d postgres:17
+
 createdb:
 	docker exec -it postgres17 createdb --username=root --owner=root shitposter
 

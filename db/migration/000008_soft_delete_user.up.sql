@@ -24,6 +24,7 @@ CREATE OR REPLACE FUNCTION soft_delete_user(
   WITH target AS (
     SELECT * FROM users
     WHERE id = p_user_id
+    FOR UPDATE
   ),
   deleted_row AS (
     UPDATE users u

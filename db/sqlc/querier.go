@@ -49,7 +49,7 @@ type Querier interface {
 	softDeleteUser(ctx context.Context, pUserID int64) (softDeleteUserRow, error)
 	updateComment(ctx context.Context, arg updateCommentParams) (updateCommentRow, error)
 	updateCommentPopularity(ctx context.Context, arg updateCommentPopularityParams) (Comment, error)
-	updateCredentialSignCount(ctx context.Context, arg updateCredentialSignCountParams) error
+	updateCredentialSignCount(ctx context.Context, arg updateCredentialSignCountParams) (bool, error)
 	updatePost(ctx context.Context, arg updatePostParams) (Post, error)
 	updateUser(ctx context.Context, arg updateUserParams) (updateUserRow, error)
 	upsertCommentVote(ctx context.Context, arg upsertCommentVoteParams) (upsertCommentVoteRow, error)

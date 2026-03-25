@@ -62,7 +62,7 @@ func (store *SQLStore) SoftDeleteUserTx(ctx context.Context, userID int64) (Soft
 			// else check for sql errors
 			return sqlError(
 				opSoftDeleteUser,
-				opDetails{userID: fmt.Sprint(userID), entity: entUser},
+				opDetails{entity: entUser, entityID: fmt.Sprint(userID), userID: fmt.Sprint(userID)},
 				err,
 			)
 		}

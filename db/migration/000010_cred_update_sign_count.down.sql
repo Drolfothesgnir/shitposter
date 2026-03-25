@@ -1,0 +1,1 @@
+DROP FUNCTION record_credential_use(BYTEA, BIGINT);

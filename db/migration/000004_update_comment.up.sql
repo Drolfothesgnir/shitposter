@@ -24,6 +24,7 @@ CREATE OR REPLACE FUNCTION update_comment(
             last_modified_at
         FROM comments
         WHERE id = p_comment_id
+        FOR UPDATE
     ),
     updated AS (
         UPDATE comments c

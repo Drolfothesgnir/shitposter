@@ -68,7 +68,7 @@ func (s *SQLStore) UpdateUser(ctx context.Context, arg UpdateUserParams) (Update
 		// else return internal/fk-violation error
 		opErr := sqlError(
 			opUpdateUser,
-			opDetails{userID: fmt.Sprint(arg.ID), entity: entUser},
+			opDetails{entity: entUser, entityID: fmt.Sprint(arg.ID)},
 			err,
 		)
 

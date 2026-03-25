@@ -1,5 +1,8 @@
 DB_URL=postgresql://root:secret@localhost:5432/shitposter?sslmode=disable
 
+init_db:
+	docker run --name postgres17 -e POSTGRES_USER=root -e POSTGRES_PASSWORD=secret -p 5432:5432 -v pgdata-17:/var/lib/postgresql/data -d postgres:17
+
 createdb:
 	docker exec -it postgres17 createdb --username=root --owner=root shitposter
 
@@ -46,4 +49,4 @@ db_schema:
 server:
 	go run main.go
 
-.PHONY: new_migration db_schema migratedown migratedown1 migrateup migrateup1 sqlc test server mockdb dummy_comments
+.PHONY: init_db createdb dropdb new_migration db_schema migratedown migratedown1 migrateup migrateup1 sqlc test server mockdb dummy_comments

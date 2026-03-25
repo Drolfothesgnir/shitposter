@@ -221,19 +221,28 @@ func (q *Queries) listUserCredentials(ctx context.Context, userID int64) ([]Weba
 	return items, nil
 }
 
-const updateCredentialSignCount = `-- name: updateCredentialSignCount :exec
-UPDATE webauthn_credentials
-SET
-  sign_count = $2
-WHERE id = $1
+const recordCredentialUse = `-- name: recordCredentialUse :one
+SELECT 
+  cred_exists::BOOLEAN AS cred_exists,
+	prev_count::BIGINT AS prev_count,
+	is_suspicious::BOOLEAN AS is_suspicious
+FROM record_credential_use($1, $2)
 `
 
-type updateCredentialSignCountParams struct {
-	ID        []byte `json:"id"`
-	SignCount int64  `json:"sign_count"`
+type recordCredentialUseParams struct {
+	PCredID    []byte `json:"p_cred_id"`
+	PSignCount int64  `json:"p_sign_count"`
 }
 
-func (q *Queries) updateCredentialSignCount(ctx context.Context, arg updateCredentialSignCountParams) error {
-	_, err := q.db.Exec(ctx, updateCredentialSignCount, arg.ID, arg.SignCount)
-	return err
+type recordCredentialUseRow struct {
+	CredExists   bool  `json:"cred_exists"`
+	PrevCount    int64 `json:"prev_count"`
+	IsSuspicious bool  `json:"is_suspicious"`
+}
+
+func (q *Queries) recordCredentialUse(ctx context.Context, arg recordCredentialUseParams) (recordCredentialUseRow, error) {
+	row := q.db.QueryRow(ctx, recordCredentialUse, arg.PCredID, arg.PSignCount)
+	var i recordCredentialUseRow
+	err := row.Scan(&i.CredExists, &i.PrevCount, &i.IsSuspicious)
+	return i, err
 }

@@ -21,8 +21,8 @@ func (s *SQLStore) GetSession(ctx context.Context, id uuid.UUID) (Session, error
 		opErr := sqlError(
 			opGetSession,
 			opDetails{
-				entity: entSession,
-				input:  id.String(),
+				entity:   entSession,
+				entityID: id.String(),
 			},
 			err)
 

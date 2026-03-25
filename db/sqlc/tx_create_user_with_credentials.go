@@ -90,7 +90,11 @@ func (store *SQLStore) CreateUserWithCredentialsTx(ctx context.Context, arg Crea
 		if err != nil {
 			return sqlError(
 				opCreateUserWithCredentials,
-				opDetails{entity: entWauthnCred, userID: fmt.Sprint(user.ID)},
+				opDetails{
+					entity:   entWauthnCred,
+					entityID: fmt.Sprintf("%x", arg.Cred.ID),
+					userID:   fmt.Sprint(user.ID),
+				},
 				err,
 			)
 		}

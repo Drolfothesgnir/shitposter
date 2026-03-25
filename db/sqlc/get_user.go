@@ -22,7 +22,7 @@ func (s *SQLStore) GetUser(ctx context.Context, userID int64) (User, error) {
 
 		opErr := sqlError(
 			opGetUser,
-			opDetails{userID: fmt.Sprint(userID), entity: entUser},
+			opDetails{entity: entUser, entityID: fmt.Sprint(userID)},
 			err,
 		)
 

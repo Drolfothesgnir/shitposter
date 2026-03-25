@@ -71,11 +71,27 @@ type Store interface {
 	//   - KindInternal – database error
 	EmailExists(ctx context.Context, email string) (bool, error)
 
-	// GetUserCredentials
+	// GetUserCredentials retrieves the list of the user's webauthn credentials.
 	//
+	// Errors returned (*OpError):
 	//   - KindNotFound – no user with the given ID exists
 	//   - KindInternal – database error
 	GetUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error)
+
+	// RecordCredentialUse maintains sign-in related metadata of the webauthn credential, according
+	// to the policy:
+	//
+	// the credential's sign count and the last-used-at update will be considered valid only
+	//   - when the new provided sign count is greater than the current sign count for this credential OR
+	//   - when both the provided sign count and the current one are equal to zero, which is considered as a result
+	//     of the valid authentificator which cannot handle sign-in counter well.
+	//
+	// Errors returned:
+	//   - [KindNotFound] in case the credential with provided ID is not found.
+	//   - [KindSecurity] if the update is considred suspicious.
+	//   - [KindInternal] in case some other internal error.
+	//
+	RecordCredentialUse(ctx context.Context, arg RecordCredentialUseParams) error
 
 	// InsertCommentTx creates a new comment, either a root comment or a reply
 	// to an existing comment, within a transaction.

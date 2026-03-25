@@ -45,11 +45,11 @@ type Querier interface {
 	getUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error)
 	listSessionsByUser(ctx context.Context, userID int64) ([]Session, error)
 	listUserCredentials(ctx context.Context, userID int64) ([]WebauthnCredential, error)
+	recordCredentialUse(ctx context.Context, arg recordCredentialUseParams) (recordCredentialUseRow, error)
 	softDeleteComment(ctx context.Context, id int64) (Comment, error)
 	softDeleteUser(ctx context.Context, pUserID int64) (softDeleteUserRow, error)
 	updateComment(ctx context.Context, arg updateCommentParams) (updateCommentRow, error)
 	updateCommentPopularity(ctx context.Context, arg updateCommentPopularityParams) (Comment, error)
-	updateCredentialSignCount(ctx context.Context, arg updateCredentialSignCountParams) error
 	updatePost(ctx context.Context, arg updatePostParams) (Post, error)
 	updateUser(ctx context.Context, arg updateUserParams) (updateUserRow, error)
 	upsertCommentVote(ctx context.Context, arg upsertCommentVoteParams) (upsertCommentVoteRow, error)

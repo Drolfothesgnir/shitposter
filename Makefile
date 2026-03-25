@@ -49,4 +49,4 @@ db_schema:
 server:
 	go run main.go
 
-.PHONY: new_migration db_schema migratedown migratedown1 migrateup migrateup1 sqlc test server mockdb dummy_comments
+.PHONY: init_db createdb dropdb new_migration db_schema migratedown migratedown1 migrateup migrateup1 sqlc test server mockdb dummy_comments

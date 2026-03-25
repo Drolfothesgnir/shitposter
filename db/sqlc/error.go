@@ -41,6 +41,11 @@ const (
 	// KindConstraint indicates there is some kind of limit achieved which blocks
 	// operation execution (e.g. maximum comment depth reached).
 	KindConstraint
+
+	// KindSecurity indicates that the action perfomed may cause damage to the
+	// database consistency or do other harm (e.g. use of less-than-actual sign count
+	// during webauthn credential use)
+	KindSecurity
 )
 
 var kindNames = map[Kind]string{
@@ -53,6 +58,7 @@ var kindNames = map[Kind]string{
 	KindDeleted:    "deleted",
 	KindCorrupted:  "corrupted",
 	KindConstraint: "constraint",
+	KindSecurity:   "security",
 }
 
 func (k Kind) String() string {
@@ -166,11 +172,25 @@ func notFoundError(op string, entity string, entityID string) *OpError {
 }
 
 type opDetails struct {
+	entityID  string
 	userID    string
 	postID    string
 	commentID string
 	input     string
 	entity    string
+}
+
+func (d opDetails) decorators() []errDecorator {
+	var decorators []errDecorator
+
+	if d.entityID != "" {
+		decorators = append(decorators, withEntityID(d.entityID))
+	}
+	if d.userID != "" {
+		decorators = append(decorators, withUser(d.userID))
+	}
+
+	return decorators
 }
 
 // sqlError builds *OpError for wrapping postgres errors.
@@ -215,7 +235,7 @@ func sqlError(op string, det opDetails, err error) *OpError {
 				)
 
 			default:
-				return newOpError(op, KindRelation, det.entity, pgError)
+				return newOpError(op, KindRelation, det.entity, pgError, det.decorators()...)
 			}
 		}
 
@@ -224,31 +244,31 @@ func sqlError(op string, det opDetails, err error) *OpError {
 			switch pgError.ConstraintName {
 			// when active user with this username exists
 			case "uniq_users_username_active":
+				decorators := append(det.decorators(), withField("username"))
 				return newOpError(
 					op,
 					KindConflict,
 					entUser,
 					fmt.Errorf("user with username '%s' exists: %w", det.input, pgError),
-					withEntityID(det.userID),
-					withField("username"),
+					decorators...,
 				)
 
 			// when active user with this email exists
 			case "uniq_users_email_active":
+				decorators := append(det.decorators(), withField("email"))
 				return newOpError(
 					op,
 					KindConflict,
 					entUser,
 					fmt.Errorf("user with email '%s' exists: %w", det.input, pgError),
-					withEntityID(det.userID),
-					withField("email"),
+					decorators...,
 				)
 
 			default:
-				return newOpError(op, KindConflict, det.entity, pgError)
+				return newOpError(op, KindConflict, det.entity, pgError, det.decorators()...)
 			}
 		}
 	}
 
-	return newOpError(op, KindInternal, det.entity, err)
+	return newOpError(op, KindInternal, det.entity, err, det.decorators()...)
 }

@@ -37,8 +37,9 @@ func (s *SQLStore) CreateSession(ctx context.Context, arg CreateSessionParams) (
 		opErr := sqlError(
 			opCreateSession,
 			opDetails{
-				userID: fmt.Sprint(arg.UserID),
-				entity: entSession,
+				entity:   entSession,
+				entityID: arg.ID.String(),
+				userID:   fmt.Sprint(arg.UserID),
 			},
 			err,
 		)

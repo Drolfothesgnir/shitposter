@@ -192,6 +192,20 @@ func (mr *MockStoreMockRecorder) QueryComments(ctx, query any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryComments", reflect.TypeOf((*MockStore)(nil).QueryComments), ctx, query)
 }
 
+// RecordCredentialUse mocks base method.
+func (m *MockStore) RecordCredentialUse(ctx context.Context, arg db.RecordCredentialUseParams) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RecordCredentialUse", ctx, arg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RecordCredentialUse indicates an expected call of RecordCredentialUse.
+func (mr *MockStoreMockRecorder) RecordCredentialUse(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordCredentialUse", reflect.TypeOf((*MockStore)(nil).RecordCredentialUse), ctx, arg)
+}
+
 // Shutdown mocks base method.
 func (m *MockStore) Shutdown() {
 	m.ctrl.T.Helper()

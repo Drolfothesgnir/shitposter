@@ -31,7 +31,8 @@ func (s *SQLStore) GetUserByUsername(ctx context.Context, username string) (User
 		return User{}, sqlError(
 			opGetUserByUsername,
 			opDetails{
-				input: username,
+				entity: entUser,
+				input:  username,
 			},
 			err,
 		)

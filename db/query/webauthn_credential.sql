@@ -29,15 +29,12 @@ INSERT INTO webauthn_credentials (
   $11, $12, $13, $14, $15
 ) RETURNING *;
 
--- name: updateCredentialSignCount :one
-WITH cte AS (
-  UPDATE webauthn_credentials
-  SET
-    sign_count = $2
-  WHERE id = $1
-  RETURNING id
-)
-SELECT EXISTS (SELECT 1 FROM cte);
+-- name: recordCredentialUse :one
+SELECT 
+  cred_exists::BOOLEAN AS cred_exists,
+	prev_count::BIGINT AS prev_count,
+	is_suspicious::BOOLEAN AS is_suspicious
+FROM record_credential_use($1, $2);
 
 -- name: deleteUserCredentials :exec
 DELETE FROM webauthn_credentials

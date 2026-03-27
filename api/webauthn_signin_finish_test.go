@@ -25,8 +25,7 @@ import (
 )
 
 func TestSigninFinish(t *testing.T) {
-
-	chal := "challenge"
+	sessionID := "session_id"
 	username := "user1"
 	userHandle := util.RandomByteArray(32)
 
@@ -51,13 +50,13 @@ func TestSigninFinish(t *testing.T) {
 		protocol.NFC,
 	}
 
-	transportsJson, err := json.Marshal(transports)
+	transportsJSON, err := json.Marshal(transports)
 	require.NoError(t, err)
 
 	cred := db.WebauthnCredential{
 		ID:         userHandle,
 		UserID:     user.ID,
-		Transports: transportsJson,
+		Transports: transportsJSON,
 	}
 
 	userWithCreds, err := NewUserWithCredentials(user, []db.WebauthnCredential{cred})
@@ -71,12 +70,12 @@ func TestSigninFinish(t *testing.T) {
 		},
 	}
 
-	signCountArg := db.UpdateCredentialSignCountParams{
+	recordUseArg := db.RecordCredentialUseParams{
 		ID:        waCred.ID,
 		SignCount: int64(waCred.Authenticator.SignCount),
 	}
 
-	tokenStr := "access_token"
+	tokenStr := "token"
 
 	tokenPayload := &token.Payload{
 		ID:        uuid.New(),
@@ -95,14 +94,33 @@ func TestSigninFinish(t *testing.T) {
 		ExpiresAt:    tokenPayload.ExpiredAt,
 	}
 
-	waSession := db.Session{
+	createdSession := db.Session{
 		ID:           tokenPayload.ID,
 		UserID:       tokenPayload.UserID,
-		RefreshToken: "refresh_token",
+		RefreshToken: tokenStr,
 		UserAgent:    "chrome",
 		ClientIp:     "198.162.0.0",
 		IsBlocked:    false,
 		ExpiresAt:    tokenPayload.ExpiredAt,
+	}
+
+	addCookie := func(req *http.Request) {
+		req.AddCookie(&http.Cookie{
+			Name:  webauthnSessionCookie,
+			Value: sessionID,
+		})
+	}
+
+	checkAuthFailure := func(t *testing.T, recorder *httptest.ResponseRecorder) {
+		t.Helper()
+
+		require.Equal(t, http.StatusUnauthorized, recorder.Code)
+
+		var resp AuthError
+		err := json.Unmarshal(recorder.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		require.Equal(t, KindAuth, resp.Kind)
+		require.Equal(t, "authentication failed", resp.Error)
 	}
 
 	testCases := []struct {
@@ -113,15 +131,15 @@ func TestSigninFinish(t *testing.T) {
 			wa *mockwa.MockWebAuthnConfig,
 			tokenMaker *mocktk.MockMaker,
 		)
-		setupHeaders  func(req *http.Request)
+		setupRequest  func(req *http.Request)
 		checkResponse func(t *testing.T, recorder *httptest.ResponseRecorder)
 	}{
 		{
-			name: "MissingChallengeHeader",
+			name: "MissingCookie",
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig, tokenMaker *mocktk.MockMaker) {
 				rs.EXPECT().GetUserAuthSession(gomock.Any(), gomock.Any()).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {},
+			setupRequest: func(req *http.Request) {},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
 			},
@@ -129,12 +147,10 @@ func TestSigninFinish(t *testing.T) {
 		{
 			name: "GetSessionErr",
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig, tokenMaker *mocktk.MockMaker) {
-				rs.EXPECT().GetUserAuthSession(gomock.Any(), chal).Times(1).Return(&tmpstore.PendingAuthentication{}, pgx.ErrNoRows)
+				rs.EXPECT().GetUserAuthSession(gomock.Any(), sessionID).Times(1).Return(&tmpstore.PendingAuthentication{}, errors.New(""))
 				store.EXPECT().GetUser(gomock.Any(), gomock.Any()).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, chal)
-			},
+			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
 			},
@@ -142,19 +158,17 @@ func TestSigninFinish(t *testing.T) {
 		{
 			name: "SessionExpired",
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig, tokenMaker *mocktk.MockMaker) {
-				pa := &tmpstore.PendingAuthentication{
+				expired := &tmpstore.PendingAuthentication{
 					UserID:      user.ID,
 					Username:    username,
 					SessionData: session,
 					ExpiresAt:   time.Now().Add(-time.Minute),
 				}
 
-				rs.EXPECT().GetUserAuthSession(gomock.Any(), chal).Times(1).Return(pa, nil)
+				rs.EXPECT().GetUserAuthSession(gomock.Any(), sessionID).Times(1).Return(expired, nil)
 				store.EXPECT().GetUser(gomock.Any(), gomock.Any()).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, chal)
-			},
+			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
 			},
@@ -162,13 +176,11 @@ func TestSigninFinish(t *testing.T) {
 		{
 			name: "GetUserErr",
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig, tokenMaker *mocktk.MockMaker) {
-				rs.EXPECT().GetUserAuthSession(gomock.Any(), chal).Times(1).Return(pendingAuth, nil)
+				rs.EXPECT().GetUserAuthSession(gomock.Any(), sessionID).Times(1).Return(pendingAuth, nil)
 				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(db.User{}, pgx.ErrNoRows)
 				store.EXPECT().GetUserCredentials(gomock.Any(), user.ID).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, chal)
-			},
+			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
@@ -176,14 +188,12 @@ func TestSigninFinish(t *testing.T) {
 		{
 			name: "GetUserCredsErr",
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig, tokenMaker *mocktk.MockMaker) {
-				rs.EXPECT().GetUserAuthSession(gomock.Any(), chal).Times(1).Return(pendingAuth, nil)
+				rs.EXPECT().GetUserAuthSession(gomock.Any(), sessionID).Times(1).Return(pendingAuth, nil)
 				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(user, nil)
 				store.EXPECT().GetUserCredentials(gomock.Any(), user.ID).Times(1).Return([]db.WebauthnCredential{}, pgx.ErrNoRows)
 				wa.EXPECT().FinishLogin(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, chal)
-			},
+			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
@@ -191,33 +201,62 @@ func TestSigninFinish(t *testing.T) {
 		{
 			name: "FinishLoginErr",
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig, tokenMaker *mocktk.MockMaker) {
-				rs.EXPECT().GetUserAuthSession(gomock.Any(), chal).Times(1).Return(pendingAuth, nil)
+				rs.EXPECT().GetUserAuthSession(gomock.Any(), sessionID).Times(1).Return(pendingAuth, nil)
 				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(user, nil)
 				store.EXPECT().GetUserCredentials(gomock.Any(), user.ID).Times(1).Return([]db.WebauthnCredential{cred}, nil)
 				wa.EXPECT().FinishLogin(userWithCreds, *session, gomock.Any()).Times(1).Return(&webauthn.Credential{}, errors.New(""))
-				store.EXPECT().UpdateCredentialSignCount(gomock.Any(), gomock.Any()).Times(0)
+				store.EXPECT().RecordCredentialUse(gomock.Any(), gomock.Any()).Times(0)
+				tokenMaker.EXPECT().CreateToken(gomock.Any(), gomock.Any()).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, chal)
+			setupRequest:  addCookie,
+			checkResponse: checkAuthFailure,
+		},
+		{
+			name: "RecordCredentialUseSecurityErr",
+			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig, tokenMaker *mocktk.MockMaker) {
+				rs.EXPECT().GetUserAuthSession(gomock.Any(), sessionID).Times(1).Return(pendingAuth, nil)
+				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(user, nil)
+				store.EXPECT().GetUserCredentials(gomock.Any(), user.ID).Times(1).Return([]db.WebauthnCredential{cred}, nil)
+				wa.EXPECT().FinishLogin(userWithCreds, *session, gomock.Any()).Times(1).Return(waCred, nil)
+				store.EXPECT().RecordCredentialUse(gomock.Any(), recordUseArg).Times(1).Return(&db.OpError{
+					Kind: db.KindSecurity,
+					Err:  errors.New("counter regression"),
+				})
+				tokenMaker.EXPECT().CreateToken(gomock.Any(), gomock.Any()).Times(0)
+				rs.EXPECT().DeleteUserAuthSession(gomock.Any(), gomock.Any()).Times(0)
 			},
-			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+			setupRequest:  addCookie,
+			checkResponse: checkAuthFailure,
+		},
+		{
+			name: "RecordCredentialUseNotFoundErr",
+			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig, tokenMaker *mocktk.MockMaker) {
+				rs.EXPECT().GetUserAuthSession(gomock.Any(), sessionID).Times(1).Return(pendingAuth, nil)
+				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(user, nil)
+				store.EXPECT().GetUserCredentials(gomock.Any(), user.ID).Times(1).Return([]db.WebauthnCredential{cred}, nil)
+				wa.EXPECT().FinishLogin(userWithCreds, *session, gomock.Any()).Times(1).Return(waCred, nil)
+				store.EXPECT().RecordCredentialUse(gomock.Any(), recordUseArg).Times(1).Return(&db.OpError{
+					Kind: db.KindNotFound,
+					Err:  errors.New("credential not found"),
+				})
+				tokenMaker.EXPECT().CreateToken(gomock.Any(), gomock.Any()).Times(0)
+				rs.EXPECT().DeleteUserAuthSession(gomock.Any(), gomock.Any()).Times(0)
 			},
+			setupRequest:  addCookie,
+			checkResponse: checkAuthFailure,
 		},
 		{
 			name: "AccessTokenErr",
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig, tokenMaker *mocktk.MockMaker) {
-				rs.EXPECT().GetUserAuthSession(gomock.Any(), chal).Times(1).Return(pendingAuth, nil)
+				rs.EXPECT().GetUserAuthSession(gomock.Any(), sessionID).Times(1).Return(pendingAuth, nil)
 				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(user, nil)
 				store.EXPECT().GetUserCredentials(gomock.Any(), user.ID).Times(1).Return([]db.WebauthnCredential{cred}, nil)
 				wa.EXPECT().FinishLogin(userWithCreds, *session, gomock.Any()).Times(1).Return(waCred, nil)
-				store.EXPECT().UpdateCredentialSignCount(gomock.Any(), signCountArg).Times(1).Return(nil)
+				store.EXPECT().RecordCredentialUse(gomock.Any(), recordUseArg).Times(1).Return(nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("", &token.Payload{}, errors.New(""))
 				tokenMaker.EXPECT().CreateToken(gomock.Any(), gomock.Any()).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, chal)
-			},
+			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
@@ -225,18 +264,16 @@ func TestSigninFinish(t *testing.T) {
 		{
 			name: "RefreshTokenErr",
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig, tokenMaker *mocktk.MockMaker) {
-				rs.EXPECT().GetUserAuthSession(gomock.Any(), chal).Times(1).Return(pendingAuth, nil)
+				rs.EXPECT().GetUserAuthSession(gomock.Any(), sessionID).Times(1).Return(pendingAuth, nil)
 				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(user, nil)
 				store.EXPECT().GetUserCredentials(gomock.Any(), user.ID).Times(1).Return([]db.WebauthnCredential{cred}, nil)
 				wa.EXPECT().FinishLogin(userWithCreds, *session, gomock.Any()).Times(1).Return(waCred, nil)
-				store.EXPECT().UpdateCredentialSignCount(gomock.Any(), signCountArg).Times(1).Return(nil)
+				store.EXPECT().RecordCredentialUse(gomock.Any(), recordUseArg).Times(1).Return(nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return(tokenStr, tokenPayload, nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("", &token.Payload{}, errors.New(""))
 				store.EXPECT().CreateSession(gomock.Any(), gomock.Any()).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, chal)
-			},
+			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
@@ -244,18 +281,18 @@ func TestSigninFinish(t *testing.T) {
 		{
 			name: "CreateSessionErr",
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig, tokenMaker *mocktk.MockMaker) {
-				rs.EXPECT().GetUserAuthSession(gomock.Any(), chal).Times(1).Return(pendingAuth, nil)
+				rs.EXPECT().GetUserAuthSession(gomock.Any(), sessionID).Times(1).Return(pendingAuth, nil)
 				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(user, nil)
 				store.EXPECT().GetUserCredentials(gomock.Any(), user.ID).Times(1).Return([]db.WebauthnCredential{cred}, nil)
 				wa.EXPECT().FinishLogin(userWithCreds, *session, gomock.Any()).Times(1).Return(waCred, nil)
-				store.EXPECT().UpdateCredentialSignCount(gomock.Any(), signCountArg).Times(1).Return(nil)
+				store.EXPECT().RecordCredentialUse(gomock.Any(), recordUseArg).Times(1).Return(nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return(tokenStr, tokenPayload, nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return(tokenStr, tokenPayload, nil)
 				store.EXPECT().CreateSession(gomock.Any(), sessionArg).Times(1).Return(db.Session{}, pgx.ErrTxClosed)
 				rs.EXPECT().DeleteUserAuthSession(gomock.Any(), gomock.Any()).Times(0)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, chal)
+			setupRequest: func(req *http.Request) {
+				addCookie(req)
 				req.Header.Add("User-Agent", "chrome")
 				req.RemoteAddr = "198.162.0.0:12345"
 			},
@@ -266,18 +303,18 @@ func TestSigninFinish(t *testing.T) {
 		{
 			name: "OK",
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig, tokenMaker *mocktk.MockMaker) {
-				rs.EXPECT().GetUserAuthSession(gomock.Any(), chal).Times(1).Return(pendingAuth, nil)
+				rs.EXPECT().GetUserAuthSession(gomock.Any(), sessionID).Times(1).Return(pendingAuth, nil)
 				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(user, nil)
 				store.EXPECT().GetUserCredentials(gomock.Any(), user.ID).Times(1).Return([]db.WebauthnCredential{cred}, nil)
 				wa.EXPECT().FinishLogin(userWithCreds, *session, gomock.Any()).Times(1).Return(waCred, nil)
-				store.EXPECT().UpdateCredentialSignCount(gomock.Any(), signCountArg).Times(1).Return(nil)
+				store.EXPECT().RecordCredentialUse(gomock.Any(), recordUseArg).Times(1).Return(nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return(tokenStr, tokenPayload, nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return(tokenStr, tokenPayload, nil)
-				store.EXPECT().CreateSession(gomock.Any(), sessionArg).Times(1).Return(waSession, nil)
-				rs.EXPECT().DeleteUserAuthSession(gomock.Any(), chal).Times(1).Return(nil)
+				store.EXPECT().CreateSession(gomock.Any(), sessionArg).Times(1).Return(createdSession, nil)
+				rs.EXPECT().DeleteUserAuthSession(gomock.Any(), sessionID).Times(1).Return(nil)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, chal)
+			setupRequest: func(req *http.Request) {
+				addCookie(req)
 				req.Header.Add("User-Agent", "chrome")
 				req.RemoteAddr = "198.162.0.0:12345"
 			},
@@ -286,20 +323,20 @@ func TestSigninFinish(t *testing.T) {
 			},
 		},
 		{
-			name: "OKWithSignCountUpdFail",
+			name: "OKWithRecordCredentialUseErr",
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig, tokenMaker *mocktk.MockMaker) {
-				rs.EXPECT().GetUserAuthSession(gomock.Any(), chal).Times(1).Return(pendingAuth, nil)
+				rs.EXPECT().GetUserAuthSession(gomock.Any(), sessionID).Times(1).Return(pendingAuth, nil)
 				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(user, nil)
 				store.EXPECT().GetUserCredentials(gomock.Any(), user.ID).Times(1).Return([]db.WebauthnCredential{cred}, nil)
 				wa.EXPECT().FinishLogin(userWithCreds, *session, gomock.Any()).Times(1).Return(waCred, nil)
-				store.EXPECT().UpdateCredentialSignCount(gomock.Any(), signCountArg).Times(1).Return(pgx.ErrTxClosed)
+				store.EXPECT().RecordCredentialUse(gomock.Any(), recordUseArg).Times(1).Return(pgx.ErrTxClosed)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return(tokenStr, tokenPayload, nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return(tokenStr, tokenPayload, nil)
-				store.EXPECT().CreateSession(gomock.Any(), sessionArg).Times(1).Return(waSession, nil)
-				rs.EXPECT().DeleteUserAuthSession(gomock.Any(), chal).Times(1).Return(nil)
+				store.EXPECT().CreateSession(gomock.Any(), sessionArg).Times(1).Return(createdSession, nil)
+				rs.EXPECT().DeleteUserAuthSession(gomock.Any(), sessionID).Times(1).Return(nil)
 			},
-			setupHeaders: func(req *http.Request) {
-				req.Header.Add(WebauthnChallengeHeader, chal)
+			setupRequest: func(req *http.Request) {
+				addCookie(req)
 				req.Header.Add("User-Agent", "chrome")
 				req.RemoteAddr = "198.162.0.0:12345"
 			},
@@ -311,22 +348,18 @@ func TestSigninFinish(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// mock store
 			dbCtrl := gomock.NewController(t)
 			defer dbCtrl.Finish()
 			store := mockdb.NewMockStore(dbCtrl)
 
-			// mock redis
 			rsCtrl := gomock.NewController(t)
 			defer rsCtrl.Finish()
 			rs := mockst.NewMockStore(rsCtrl)
 
-			// mock webauthn-go lib
 			waCtrl := gomock.NewController(t)
 			defer waCtrl.Finish()
 			wa := mockwa.NewMockWebAuthnConfig(waCtrl)
 
-			// mock token maker
 			tkCtrl := gomock.NewController(t)
 			defer tkCtrl.Finish()
 			tk := mocktk.NewMockMaker(tkCtrl)
@@ -339,7 +372,7 @@ func TestSigninFinish(t *testing.T) {
 			request, err := http.NewRequest(http.MethodPost, "/users/signin/finish", nil)
 			require.NoError(t, err)
 
-			tc.setupHeaders(request)
+			tc.setupRequest(request)
 
 			service.router.ServeHTTP(recorder, request)
 			tc.checkResponse(t, recorder)

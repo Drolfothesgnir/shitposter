@@ -1,13 +1,14 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	mockdb "github.com/Drolfothesgnir/shitposter/db/mock"
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
-	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -47,32 +48,73 @@ func TestGetUser(t *testing.T) {
 			name: "UserNotFound",
 			id:   "1",
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(db.User{}, pgx.ErrNoRows)
+				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(
+					db.User{},
+					&db.OpError{
+						Op:       "get-user",
+						Kind:     db.KindNotFound,
+						Entity:   "user",
+						EntityID: fmt.Sprint(user.ID),
+						Err:      fmt.Errorf("user with id %d not found", user.ID),
+					},
+				)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusNotFound, recorder.Code)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, db.KindNotFound.String(), resp.Reason)
 			},
 		},
 		{
 			name: "GetUserErr",
 			id:   "1",
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(db.User{}, pgx.ErrTxClosed)
+				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(
+					db.User{},
+					&db.OpError{
+						Op:     "get-user",
+						Kind:   db.KindInternal,
+						Entity: "user",
+						Err:    fmt.Errorf("tx closed"),
+					},
+				)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, db.KindInternal.String(), resp.Reason)
+				require.Equal(t, "an internal error occurred", resp.Error)
 			},
 		},
 		{
 			name: "UserDeleted",
 			id:   "1",
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(db.User{
-					IsDeleted: true,
-				}, nil)
+				store.EXPECT().GetUser(gomock.Any(), user.ID).Times(1).Return(
+					db.User{},
+					&db.OpError{
+						Op:       "get-user",
+						Kind:     db.KindDeleted,
+						Entity:   "user",
+						EntityID: fmt.Sprint(user.ID),
+						Err:      fmt.Errorf("user with id %d is deleted", user.ID),
+					},
+				)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusNotFound, recorder.Code)
+				var resp ResourceError
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, db.KindNotFound.String(), resp.Reason)
+				require.Equal(t, fmt.Sprintf("user with id [%d] not found", user.ID), resp.Error)
 			},
 		},
 		{
@@ -83,6 +125,10 @@ func TestGetUser(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
+				var resp PublicUserResponse
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, user.ID, resp.ID)
 			},
 		},
 	}

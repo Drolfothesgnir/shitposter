@@ -57,7 +57,7 @@ func TestUpdateUser(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, KindPayload, resp.Kind)
 				require.Len(t, resp.Issues, 1)
-				require.Equal(t, "Username", resp.Issues[0].FieldName)
+				require.Equal(t, "username", resp.Issues[0].FieldName)
 				require.Equal(t, "alphanum", resp.Issues[0].Reason)
 			},
 		},

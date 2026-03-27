@@ -23,7 +23,7 @@ func (service *Service) getUser(ctx *gin.Context) {
 	user, err := service.store.GetUser(ctx, userID)
 	if err != nil {
 		resErr := newResourceError(err)
-		if resErr.opErr.Kind == db.KindDeleted {
+		if resErr.opErr != nil && resErr.opErr.Kind == db.KindDeleted {
 			resErr = notFoundResourceError(fmt.Sprintf("user with id [%d] not found", userID))
 		}
 		ctx.JSON(resErr.StatusCode(), resErr)

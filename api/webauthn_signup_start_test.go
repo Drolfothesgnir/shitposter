@@ -149,6 +149,8 @@ func TestSignupStart(t *testing.T) {
 					).DoAndReturn(func(user *TempUser, _ ...[]webauthn.RegistrationOption) (*protocol.CredentialCreation, *webauthn.SessionData, error) {
 					require.Equal(t, tmpUser.Username, user.Username)
 					require.Equal(t, tmpUser.Email, user.Email)
+					require.Len(t, user.WebauthnUserHandle, 32)
+					require.Equal(t, user.ID, user.WebauthnUserHandle)
 					return &protocol.CredentialCreation{}, &webauthn.SessionData{}, errors.New("")
 				})
 				rs.EXPECT().SaveUserRegSession(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
@@ -164,6 +166,8 @@ func TestSignupStart(t *testing.T) {
 				"email":    email,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
+				var expectedHandle []byte
+
 				store.EXPECT().UsernameExists(gomock.Any(), username).Times(1).Return(false, nil)
 				store.EXPECT().EmailExists(gomock.Any(), email).Times(1).Return(false, nil)
 
@@ -173,19 +177,23 @@ func TestSignupStart(t *testing.T) {
 					).DoAndReturn(func(user *TempUser, _ ...[]webauthn.RegistrationOption) (*protocol.CredentialCreation, *webauthn.SessionData, error) {
 					require.Equal(t, tmpUser.Username, user.Username)
 					require.Equal(t, tmpUser.Email, user.Email)
+					require.Len(t, user.WebauthnUserHandle, 32)
+					require.Equal(t, user.ID, user.WebauthnUserHandle)
+					expectedHandle = append([]byte(nil), user.WebauthnUserHandle...)
 					return create, session, nil
 				})
 				rs.EXPECT().
 					SaveUserRegSession(
 						gomock.Any(),
-						session.Challenge,
+						gomock.Any(),
 						gomock.AssignableToTypeOf(tmpstore.PendingRegistration{}),
 						testConfig.RegistrationSessionTTL,
 					).
-					DoAndReturn(func(_ context.Context, chal string, pending tmpstore.PendingRegistration, ttl time.Duration) error {
-						require.Equal(t, session.Challenge, chal)
+					DoAndReturn(func(_ context.Context, sessionID string, pending tmpstore.PendingRegistration, ttl time.Duration) error {
+						require.NotEmpty(t, sessionID)
 						require.Equal(t, registrationData.Email, pending.Email)
 						require.Equal(t, registrationData.Username, pending.Username)
+						require.Equal(t, expectedHandle, pending.WebauthnUserHandle)
 						require.Equal(t, registrationData.SessionData, pending.SessionData)
 						require.WithinDuration(t, pending.ExpiresAt, registrationData.ExpiresAt, time.Second)
 						return errors.New("")
@@ -202,6 +210,8 @@ func TestSignupStart(t *testing.T) {
 				"email":    email,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
+				var expectedHandle []byte
+
 				store.EXPECT().UsernameExists(gomock.Any(), username).Times(1).Return(false, nil)
 				store.EXPECT().EmailExists(gomock.Any(), email).Times(1).Return(false, nil)
 
@@ -211,18 +221,22 @@ func TestSignupStart(t *testing.T) {
 					).DoAndReturn(func(user *TempUser, _ ...[]webauthn.RegistrationOption) (*protocol.CredentialCreation, *webauthn.SessionData, error) {
 					require.Equal(t, tmpUser.Username, user.Username)
 					require.Equal(t, tmpUser.Email, user.Email)
+					require.Len(t, user.WebauthnUserHandle, 32)
+					require.Equal(t, user.ID, user.WebauthnUserHandle)
+					expectedHandle = append([]byte(nil), user.WebauthnUserHandle...)
 					return create, session, nil
 				})
 				rs.EXPECT().SaveUserRegSession(
 					gomock.Any(),
-					session.Challenge,
+					gomock.Any(),
 					gomock.AssignableToTypeOf(tmpstore.PendingRegistration{}),
 					testConfig.RegistrationSessionTTL,
 				).
-					DoAndReturn(func(_ context.Context, chal string, pending tmpstore.PendingRegistration, ttl time.Duration) error {
-						require.Equal(t, session.Challenge, chal)
+					DoAndReturn(func(_ context.Context, sessionID string, pending tmpstore.PendingRegistration, ttl time.Duration) error {
+						require.NotEmpty(t, sessionID)
 						require.Equal(t, registrationData.Email, pending.Email)
 						require.Equal(t, registrationData.Username, pending.Username)
+						require.Equal(t, expectedHandle, pending.WebauthnUserHandle)
 						require.Equal(t, registrationData.SessionData, pending.SessionData)
 						require.WithinDuration(t, pending.ExpiresAt, registrationData.ExpiresAt, time.Second)
 						return nil
@@ -230,6 +244,12 @@ func TestSignupStart(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
+				require.Contains(t, recorder.Header().Get("Set-Cookie"), webauthnSessionCookie+"=")
+
+				var resp SignupStartResponse
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.NotNil(t, resp.CredentialCreation)
 			},
 		},
 	}

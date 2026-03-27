@@ -24,8 +24,6 @@ const opRecordCredentialUse = "record-credential-use"
 //   - [KindNotFound] in case the credential with provided ID is not found.
 //   - [KindSecurity] if the update is considred suspicious.
 //   - [KindInternal] in case some other internal error.
-//
-// TODO: test generated and this file thoroughly
 func (s *SQLStore) RecordCredentialUse(ctx context.Context, arg RecordCredentialUseParams) error {
 	record_res, err := s.recordCredentialUse(ctx, recordCredentialUseParams{
 		PCredID:    arg.ID,

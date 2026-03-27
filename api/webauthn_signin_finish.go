@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -63,14 +64,23 @@ func (service *Service) signinFinish(ctx *gin.Context) {
 	}
 
 	// 5. Update credential sign count
-	err = service.store.UpdateCredentialSignCount(ctx, db.UpdateCredentialSignCountParams{
+	// TODO: add policy comments
+	err = service.store.RecordCredentialUse(ctx, db.RecordCredentialUseParams{
 		ID:        credential.ID,
 		SignCount: int64(credential.Authenticator.SignCount),
 	})
 	if err != nil {
-		// Log error but don't fail authentication
-		// TODO: rethink this
-		log.Error().Err(err).Msg("Failed to update sign count")
+		var opErr *db.OpError
+		if errors.As(err, &opErr) && (opErr.Kind == db.KindSecurity || opErr.Kind == db.KindNotFound) {
+			log.Warn().
+				Err(err).
+				Str("kind", opErr.Kind.String()).
+				Msg("Rejecting authentication after credential use check")
+
+			authErr := newAuthError("authentication failed")
+			ctx.JSON(authErr.StatusCode(), authErr)
+			return
+		}
 	}
 
 	// 6. Generate access token

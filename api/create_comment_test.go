@@ -49,7 +49,7 @@ func TestCreateComment(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, KindPayload, resp.Kind)
 				require.Len(t, resp.Issues, 1)
-				require.Equal(t, "Body", resp.Issues[0].FieldName)
+				require.Equal(t, "body", resp.Issues[0].FieldName)
 				require.Equal(t, "required", resp.Issues[0].Reason)
 			},
 		},
@@ -72,7 +72,7 @@ func TestCreateComment(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, KindPayload, resp.Kind)
 				require.Len(t, resp.Issues, 1)
-				require.Equal(t, "Body", resp.Issues[0].FieldName)
+				require.Equal(t, "body", resp.Issues[0].FieldName)
 				require.Equal(t, "max", resp.Issues[0].Reason)
 			},
 		},

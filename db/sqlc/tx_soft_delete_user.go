@@ -26,7 +26,7 @@ type SoftDeleteUserTxResult struct {
 
 // SoftDeleteUserTx deletes the user's auth sessions and WebAuthn credentials,
 // then marks the user as soft-deleted, all within a single transaction.
-// Returns KindNotFound if the user does not exist, or KindInternal on database
+// Returns [KindNotFound] if the user does not exist, or [KindInternal] on database
 // errors or unexpected failure.
 func (store *SQLStore) SoftDeleteUserTx(ctx context.Context, userID int64) (SoftDeleteUserTxResult, error) {
 	var result SoftDeleteUserTxResult

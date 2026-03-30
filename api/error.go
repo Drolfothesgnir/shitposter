@@ -5,8 +5,8 @@ import "github.com/gin-gonic/gin"
 type Kind string
 
 const (
-	KindAuth      Kind = "auth"
-	KindPayload   Kind = "payload"
+	KindAuth     Kind = "auth"
+	KindPayload  Kind = "payload"
 	KindResource Kind = "resource"
 )
 

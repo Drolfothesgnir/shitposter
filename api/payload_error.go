@@ -10,12 +10,6 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type Issue struct {
-	FieldName string `json:"field_name"`
-	Reason    string `json:"reason"`
-	Message   string `json:"message"`
-}
-
 type PayloadError struct {
 	Kind   Kind    `json:"kind"`
 	Error  string  `json:"error"`
@@ -46,7 +40,7 @@ func validationErrorsToIssues(err error) []Issue {
 	for i, fe := range ve {
 		fields[i] = Issue{
 			FieldName: fe.Field(),
-			Reason:    fe.Tag(),
+			Tag:       fe.Tag(),
 			Message:   getBindingErrorMessage(fe.Tag(), fe.Value(), fe.Param()),
 		}
 	}

@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"time"
 
@@ -25,21 +24,6 @@ const (
 const (
 	ctxPostIDKey    = "post_id"
 	ctxCommentIDKey = "comment_id"
-)
-
-var (
-	// api errors
-	ErrSessionBlocked              = errors.New("session is blocked")
-	ErrSessionUserMismatch         = errors.New("incorrect session user")
-	ErrSessionRefreshTokenMismatch = errors.New("refresh token mismatch")
-	ErrSessionExpired              = errors.New("session is expired")
-	ErrInvalidPostID               = errors.New("invalid post id")
-	ErrInvalidParams               = errors.New("invalid params")
-	ErrInvalidCommentID            = errors.New("invalid comment id")
-	ErrInvalidParentCommentId      = errors.New("invalid parent comment id")
-	ErrCommentDeleted              = errors.New("comment is deleted")
-	ErrCannotUpdate                = errors.New("could not update the entity")
-	ErrCannotDelete                = errors.New("could not delete the entity")
 )
 
 type Service struct {

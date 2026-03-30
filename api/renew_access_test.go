@@ -177,7 +177,7 @@ func TestRenewAccess(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, ErrSessionBlocked.Error(), resp.Error)
+				require.Equal(t, "session is blocked", resp.Error)
 			},
 		},
 		{
@@ -204,7 +204,7 @@ func TestRenewAccess(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, ErrSessionUserMismatch.Error(), resp.Error)
+				require.Equal(t, "incorrect session user", resp.Error)
 			},
 		},
 		{
@@ -231,7 +231,7 @@ func TestRenewAccess(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, ErrSessionRefreshTokenMismatch.Error(), resp.Error)
+				require.Equal(t, "refresh token mismatch", resp.Error)
 			},
 		},
 		{
@@ -258,7 +258,7 @@ func TestRenewAccess(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, ErrSessionExpired.Error(), resp.Error)
+				require.Equal(t, "session is expired", resp.Error)
 			},
 		},
 		{

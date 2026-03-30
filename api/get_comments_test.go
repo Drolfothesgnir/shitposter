@@ -37,7 +37,7 @@ func TestGetComments(t *testing.T) {
 				require.Equal(t, KindPayload, resp.Kind)
 				require.Len(t, resp.Issues, 1)
 				require.Equal(t, "order", resp.Issues[0].FieldName)
-				require.Equal(t, "comment_order", resp.Issues[0].Reason)
+				require.Equal(t, "comment_order", resp.Issues[0].Tag)
 			},
 		},
 		{

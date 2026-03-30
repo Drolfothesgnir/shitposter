@@ -51,7 +51,7 @@ func TestUpdateComment(t *testing.T) {
 				require.Equal(t, "invalid request parameters", resp.Error)
 				require.Len(t, resp.Issues, 1)
 				require.Equal(t, "body", resp.Issues[0].FieldName)
-				require.Equal(t, "required", resp.Issues[0].Reason)
+				require.Equal(t, "required", resp.Issues[0].Tag)
 			},
 		},
 		{

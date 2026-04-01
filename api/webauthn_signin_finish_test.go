@@ -120,7 +120,7 @@ func TestSigninFinish(t *testing.T) {
 		err := json.Unmarshal(recorder.Body.Bytes(), &resp)
 		require.NoError(t, err)
 		require.Equal(t, KindAuth, resp.Kind)
-		require.Equal(t, "authentication failed", resp.Error)
+		require.Equal(t, "authentication failed", resp.ErrMessage)
 	}
 
 	testCases := []struct {

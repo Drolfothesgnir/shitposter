@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/Drolfothesgnir/shitposter/util"
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
@@ -74,9 +74,15 @@ func TestAuthMiddleware(t *testing.T) {
 
 			authPath := "/auth"
 
-			service.router.GET(authPath, service.authMiddleware, func(ctx *gin.Context) {
-				ctx.JSON(http.StatusOK, gin.H{})
+			testRouter := http.NewServeMux()
+
+			okFn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
 			})
+
+			testRouter.HandleFunc(fmt.Sprintf("GET %s", authPath), service.authMiddleware(okFn))
+
+			service.router = testRouter
 
 			recorder := httptest.NewRecorder()
 			request, err := http.NewRequest(http.MethodGet, authPath, nil)

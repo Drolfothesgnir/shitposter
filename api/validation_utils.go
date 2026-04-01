@@ -21,7 +21,7 @@ const (
 func barf(issues []Issue) *Vomit {
 	if len(issues) > 0 {
 		return puke(
-			FlavorInvalidArguments,
+			ReqInvalidArguments,
 			http.StatusBadRequest,
 			"invalid request arguments",
 			nil, // what to put here?

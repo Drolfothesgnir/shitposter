@@ -50,9 +50,13 @@ func (service *Service) setupRouter(server *http.Server) {
 	// privatePostCommentGroup.DELETE("/posts/:post_id/comments/:comment_id", service.deleteComment)
 	// privatePostCommentGroup.POST("/posts/:post_id/comments/:comment_id/vote", notImplemented)
 
-	router := service.corsMiddleware(http.NewServeMux())
+	router := http.NewServeMux()
 
-	server.Handler = router
+	// passkey auth
+	router.HandleFunc("POST /users/signup/start", service.signupStart)
+	router.HandleFunc("POST /users/signin/start", service.signinStart)
+
+	server.Handler = service.corsMiddleware(router)
 	service.router = router
 }
 

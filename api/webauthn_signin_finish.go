@@ -58,7 +58,7 @@ func (service *Service) signinFinish(ctx *gin.Context) {
 	// 4. Finish authentication
 	credential, err := service.webauthnConfig.FinishLogin(userWithCreds, *pending.SessionData, ctx.Request)
 	if err != nil {
-		authErr := newAuthError("authentication failed")
+		authErr := newAuthError(AuthInternal, "authentication failed")
 		ctx.JSON(authErr.StatusCode(), authErr)
 		return
 	}
@@ -77,7 +77,7 @@ func (service *Service) signinFinish(ctx *gin.Context) {
 				Str("kind", opErr.Kind.String()).
 				Msg("Rejecting authentication after credential use check")
 
-			authErr := newAuthError("authentication failed")
+			authErr := newAuthError(AuthInternal, "authentication failed")
 			ctx.JSON(authErr.StatusCode(), authErr)
 			return
 		}

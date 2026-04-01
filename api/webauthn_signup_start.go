@@ -67,7 +67,7 @@ func (service *Service) signupStart(w http.ResponseWriter, r *http.Request) {
 
 	if usernameExists {
 		v := puke(
-			FlavorInvalidArguments,
+			ReqInvalidArguments,
 			http.StatusConflict,
 			fmt.Sprintf("user with username [%s] already exists", req.Username),
 			nil,
@@ -85,7 +85,7 @@ func (service *Service) signupStart(w http.ResponseWriter, r *http.Request) {
 
 	if emailExists {
 		v := puke(
-			FlavorInvalidArguments,
+			ReqInvalidArguments,
 			http.StatusConflict,
 			fmt.Sprintf("user with email [%s] already exists", req.Email),
 			nil,

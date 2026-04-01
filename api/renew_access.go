@@ -25,7 +25,7 @@ func (server *Service) renewAccessToken(ctx *gin.Context) {
 
 	refreshPayload, err := server.tokenMaker.VerifyToken(req.RefreshToken)
 	if err != nil {
-		authErr := newAuthError(err.Error())
+		authErr := newAuthError(AuthRefreshTokenErr, err.Error())
 		ctx.JSON(authErr.StatusCode(), authErr)
 		return
 	}
@@ -38,25 +38,25 @@ func (server *Service) renewAccessToken(ctx *gin.Context) {
 	}
 
 	if session.IsBlocked {
-		authErr := newAuthError("session is blocked")
+		authErr := newAuthError(AuthSessionBlocked, "session is blocked")
 		ctx.JSON(authErr.StatusCode(), authErr)
 		return
 	}
 
 	if session.UserID != refreshPayload.UserID {
-		authErr := newAuthError("incorrect session user")
+		authErr := newAuthError(AuthSessionIncorrectUser, "incorrect session user")
 		ctx.JSON(authErr.StatusCode(), authErr)
 		return
 	}
 
 	if req.RefreshToken != session.RefreshToken {
-		authErr := newAuthError("refresh token mismatch")
+		authErr := newAuthError(AuthRefreshTokenErr, "refresh token mismatch")
 		ctx.JSON(authErr.StatusCode(), authErr)
 		return
 	}
 
 	if time.Now().After(session.ExpiresAt) {
-		authErr := newAuthError("session is expired")
+		authErr := newAuthError(AuthSessionExpired, "session is expired")
 		ctx.JSON(authErr.StatusCode(), authErr)
 		return
 	}

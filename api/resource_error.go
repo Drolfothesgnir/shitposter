@@ -10,13 +10,13 @@ import (
 type ResourceError struct {
 	Kind   Kind   `json:"kind"`
 	Reason string `json:"reason"`
+	Status int    `json:"status"`
 	Error  string `json:"error"`
-	status int
 	opErr  *db.OpError
 }
 
 func (e ResourceError) StatusCode() int {
-	return e.status
+	return e.Status
 }
 
 func newResourceError(err error) ResourceError {
@@ -29,8 +29,8 @@ func newResourceError(err error) ResourceError {
 		return ResourceError{
 			Kind:   KindResource,
 			Reason: opErr.Kind.String(),
+			Status: opKindToHTTPStatus(opErr.Kind),
 			Error:  msg,
-			status: opKindToHTTPStatus(opErr.Kind),
 			opErr:  opErr,
 		}
 	}
@@ -42,8 +42,8 @@ func notFoundResourceError(msg string) ResourceError {
 	return ResourceError{
 		Kind:   KindResource,
 		Reason: db.KindNotFound.String(),
+		Status: http.StatusNotFound,
 		Error:  msg,
-		status: http.StatusNotFound,
 	}
 }
 
@@ -51,8 +51,8 @@ func internalResourceError() ResourceError {
 	return ResourceError{
 		Kind:   KindResource,
 		Reason: db.KindInternal.String(),
+		Status: http.StatusInternalServerError,
 		Error:  "an internal error occurred",
-		status: http.StatusInternalServerError,
 	}
 }
 

@@ -1,6 +1,8 @@
 package api
 
-import "github.com/gin-gonic/gin"
+import (
+	"net/http"
+)
 
 type Kind string
 
@@ -14,6 +16,6 @@ type APIError interface {
 	StatusCode() int
 }
 
-func abortWithError(ctx *gin.Context, err APIError) {
-	ctx.AbortWithStatusJSON(err.StatusCode(), err)
+func abortWithError(w http.ResponseWriter, err APIError) {
+	respondWithJSON(w, err.StatusCode(), err)
 }

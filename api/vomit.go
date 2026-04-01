@@ -8,13 +8,13 @@ import (
 type Flavor string
 
 const (
-	FlavorInternal             Flavor = "internal error"
-	FlavorBodyTooLarge         Flavor = "body too large"
-	FlavorJSONSyntaxError      Flavor = "JSON syntax error"
-	FlavorMalformedJSON        Flavor = "malformed JSON"
-	FlavorEmptyBody            Flavor = "empty body"
-	FlavorInvalidArguments     Flavor = "invalid arguments"
-	FlavorIncorrectContentType Flavor = "incorrect content type"
+	FlavorInternal          Flavor = "INTERNAL_ERR"
+	ReqBodyTooLarge         Flavor = "REQ_BODY_TOO_LARGE"
+	ReqJSONSyntaxError      Flavor = "REQ_JSON_SYNTAX_ERR"
+	ReqMalformedJSON        Flavor = "REQ_JSON_MALFORMED"
+	ReqEmptyBody            Flavor = "REQ_BODY_EMPTY"
+	ReqInvalidArguments     Flavor = "REQ_INVALID_ARGUMENTS"
+	ReqIncorrectContentType Flavor = "REQ_INVALID_CONTENT_TYPE"
 )
 
 // Issue describes the error of a particular payload field

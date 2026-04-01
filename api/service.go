@@ -11,8 +11,6 @@ import (
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/Drolfothesgnir/shitposter/wauthn"
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
-	"github.com/go-playground/validator/v10"
 )
 
 const (
@@ -31,7 +29,7 @@ type Service struct {
 	store          db.Store
 	tokenMaker     token.Maker
 	server         *http.Server
-	router         *gin.Engine
+	router         http.Handler
 	webauthnConfig wauthn.WebAuthnConfig
 	redisStore     tmpstore.Store
 }
@@ -68,11 +66,11 @@ func NewService(
 
 	service.setupRouter(server)
 
-	// custom validator to check if comment order in requests is valid.
-	// used in 'binding' tag in request.
-	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		v.RegisterValidation("comment_order", isValidCommentOrder)
-	}
+	// // custom validator to check if comment order in requests is valid.
+	// // used in 'binding' tag in request.
+	// if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+	// 	v.RegisterValidation("comment_order", isValidCommentOrder)
+	// }
 
 	service.server = server
 
@@ -84,9 +82,19 @@ func (service *Service) Start() error {
 	return service.server.ListenAndServe()
 }
 
-func (s *Service) setWebauthnSessionCookie(ctx *gin.Context, sessionID string, maxAge int) {
+func (s *Service) setWebauthnSessionCookie(w http.ResponseWriter, sessionID string, maxAge int) {
 	secure := s.config.Environment != "development"
-	ctx.SetCookie(webauthnSessionCookie, sessionID, maxAge, "/", "", secure, true)
+	cookie := &http.Cookie{
+		Name:     webauthnSessionCookie,
+		Value:    sessionID,
+		MaxAge:   maxAge,
+		Path:     "/",
+		Domain:   "",
+		Secure:   secure,
+		HttpOnly: true,
+	}
+
+	http.SetCookie(w, cookie)
 }
 
 func getWebauthnSessionCookie(ctx *gin.Context) (string, error) {

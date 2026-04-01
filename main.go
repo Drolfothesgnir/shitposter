@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"reflect"
-	"strings"
 	"syscall"
 	"time"
 
@@ -17,8 +15,6 @@ import (
 	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/Drolfothesgnir/shitposter/wauthn"
-	"github.com/gin-gonic/gin/binding"
-	"github.com/go-playground/validator/v10"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -47,16 +43,16 @@ func main() {
 		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	}
 
-	// Configure the validator to use json tags for field names in errors
-	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		v.RegisterTagNameFunc(func(fld reflect.StructField) string {
-			name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
-			if name == "-" {
-				return ""
-			}
-			return name
-		})
-	}
+	// // Configure the validator to use json tags for field names in errors
+	// if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+	// 	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
+	// 		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+	// 		if name == "-" {
+	// 			return ""
+	// 		}
+	// 		return name
+	// 	})
+	// }
 
 	// catching interrupt signals for graceful shutdown
 	// stop() or a signal catch makes context Done

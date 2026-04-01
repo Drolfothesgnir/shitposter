@@ -12,7 +12,7 @@ import (
 const maxBodySize = 1 << 20
 const contentJSON = "application/json"
 
-func ingestJSONBody(w http.ResponseWriter, r *http.Request, target any) error {
+func ingestJSONBody(w http.ResponseWriter, r *http.Request, target any) *Vomit {
 	// First check if the body is of type JSON
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "" && !strings.HasPrefix(contentType, contentJSON) {

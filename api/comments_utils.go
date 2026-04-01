@@ -2,12 +2,10 @@ package api
 
 import (
 	"fmt"
-	"slices"
 	"strconv"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 )
 
 type CommentNode struct {
@@ -70,12 +68,12 @@ func PrepareCommentTree(orderedPlainComments []db.CommentsWithAuthor, n_roots in
 	return result, nil
 }
 
-var isValidCommentOrder validator.Func = func(fl validator.FieldLevel) bool {
-	if order, ok := fl.Field().Interface().(string); ok && slices.Contains(db.CommentOrderMethods, order) {
-		return true
-	}
-	return false
-}
+// var isValidCommentOrder validator.Func = func(fl validator.FieldLevel) bool {
+// 	if order, ok := fl.Field().Interface().(string); ok && slices.Contains(db.CommentOrderMethods, order) {
+// 		return true
+// 	}
+// 	return false
+// }
 
 type commentIDDescriptor struct {
 	provided    bool   // true when comment_id param is present in the URL

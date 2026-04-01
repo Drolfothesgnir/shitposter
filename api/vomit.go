@@ -1,9 +1,7 @@
 package api
 
 import (
-	"errors"
 	"fmt"
-	"net/http"
 )
 
 // Flavor represents the type of the core issue
@@ -29,6 +27,7 @@ type Issue struct {
 }
 
 // Vomit describes the error which occured during the parsing or validating of the request body.
+// TODO: normalize all error schemas in API responses, that is ResourceError, AuthError and Vomit should have same structure
 type Vomit struct {
 	Kind       Kind    `json:"kind"`
 	Reason     Flavor  `json:"reason"`
@@ -58,23 +57,24 @@ func puke(reason Flavor, status int, msg string, err error, issues ...Issue) *Vo
 	}
 }
 
-// packTheSpew explicitely transforms the error assumed to be a *Vomit into actual *Vomit.
-// Returns the Vomit-internal error in case the err was not of type [Vomit].
-func packTheSpew(err error) *Vomit {
-	var vErr *Vomit
+// // packTheSpew explicitely transforms the error assumed to be a *Vomit into actual *Vomit.
+// // Returns the Vomit-internal error in case the err was not of type [Vomit].
+// // TODO: should i even have this function? why can't i just return *Vomit directly from [ingestJSONBody]?
+// func packTheSpew(err error) *Vomit {
+// 	var vErr *Vomit
 
-	if errors.As(err, &vErr) {
-		// 1. Dereference the pointer to create a shallow copy
-		clone := *vErr
+// 	if errors.As(err, &vErr) {
+// 		// 1. Dereference the pointer to create a shallow copy
+// 		clone := *vErr
 
-		// 2. Overwrite the internal 'err' with the TOP-LEVEL wrapped error
-		// This preserves the full chain for logging/debugging
-		clone.err = err
+// 		// 2. Overwrite the internal 'err' with the TOP-LEVEL wrapped error
+// 		// This preserves the full chain for logging/debugging
+// 		clone.err = err
 
-		// 3. Return a pointer to the clone
-		return &clone
-	}
+// 		// 3. Return a pointer to the clone
+// 		return &clone
+// 	}
 
-	// Fallback for non-Vomit errors
-	return puke(FlavorInternal, http.StatusInternalServerError, "internal error", err)
-}
+// 	// Fallback for non-Vomit errors
+// 	return puke(FlavorInternal, http.StatusInternalServerError, "internal error", err)
+// }

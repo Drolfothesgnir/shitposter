@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"crypto/rand"
 	"fmt"
 	"net/http"
@@ -55,7 +54,7 @@ func (service *Service) signupStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := r.Context()
 
 	// 1) check if provided username and email are unique, reject with 400 otherwise
 	usernameExists, err := service.store.UsernameExists(ctx, req.Username)

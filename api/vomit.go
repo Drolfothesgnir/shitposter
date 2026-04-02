@@ -15,6 +15,7 @@ const (
 	ReqEmptyBody            Flavor = "REQ_BODY_EMPTY"
 	ReqInvalidArguments     Flavor = "REQ_INVALID_ARGUMENTS"
 	ReqIncorrectContentType Flavor = "REQ_INVALID_CONTENT_TYPE"
+	ReqMissingData          Flavor = "REQ_MISSING_DATA"
 )
 
 // Issue describes the error of a particular payload field

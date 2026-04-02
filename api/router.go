@@ -2,8 +2,6 @@ package api
 
 import (
 	"net/http"
-
-	"github.com/gin-gonic/gin"
 )
 
 // Establishes HTTP router.
@@ -54,12 +52,13 @@ func (service *Service) setupRouter(server *http.Server) {
 
 	// passkey auth
 	router.HandleFunc("POST /users/signup/start", service.signupStart)
+	router.HandleFunc("POST /users/signup/finish", service.signupFinish)
 	router.HandleFunc("POST /users/signin/start", service.signinStart)
+	router.HandleFunc("POST /users/signin/finish", service.signinFinish)
+
+	// renew access token
+	router.HandleFunc("POST /users/renew_access", service.renewAccessToken)
 
 	server.Handler = service.corsMiddleware(router)
 	service.router = router
-}
-
-func notImplemented(ctx *gin.Context) {
-	ctx.Status(http.StatusNotImplemented)
 }

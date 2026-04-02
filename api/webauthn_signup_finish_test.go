@@ -16,7 +16,6 @@ import (
 	mocktk "github.com/Drolfothesgnir/shitposter/token/mock"
 	"github.com/Drolfothesgnir/shitposter/util"
 	mockwa "github.com/Drolfothesgnir/shitposter/wauthn/mock"
-	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
@@ -380,10 +379,9 @@ func TestExtractTransportData(t *testing.T) {
 			},
 		}
 
-		// gin context не нужен для этого пути, можно создать пустой
-		ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+		req := httptest.NewRequest("GET", "/", nil)
 
-		got := extractTransportData(ctx, cred)
+		got := extractTransportData(req, cred)
 		require.Equal(t, []string{"usb", "nfc"}, got)
 	})
 
@@ -392,24 +390,18 @@ func TestExtractTransportData(t *testing.T) {
 		cred := &webauthn.Credential{}
 
 		// create gin context with header
-		w := httptest.NewRecorder()
-		ctx, _ := gin.CreateTestContext(w)
 		req := httptest.NewRequest("GET", "/", nil)
 		req.Header.Set(WebauthnTransportHeader, "ble,internal")
-		ctx.Request = req
 
-		got := extractTransportData(ctx, cred)
+		got := extractTransportData(req, cred)
 		require.Equal(t, []string{"ble", "internal"}, got)
 	})
 
 	t.Run("empty header", func(t *testing.T) {
 		cred := &webauthn.Credential{}
-		w := httptest.NewRecorder()
-		ctx, _ := gin.CreateTestContext(w)
 		req := httptest.NewRequest("GET", "/", nil)
-		ctx.Request = req
 
-		got := extractTransportData(ctx, cred)
+		got := extractTransportData(req, cred)
 		// strings.Split("", ",") возвращает []string{""}
 		require.Equal(t, []string{""}, got)
 	})

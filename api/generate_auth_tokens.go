@@ -17,15 +17,15 @@ type PrivateSuccessAuthResponse struct {
 	User                  PrivateUserResponse `json:"user"`
 }
 
-func (service *Service) generateAuthTokens(ctx context.Context, user db.User, userAgent, clientIP string) (*PrivateSuccessAuthResponse, error) {
+func (service *Service) generateAuthTokens(ctx context.Context, user db.User, userAgent, clientIP string) (PrivateSuccessAuthResponse, error) {
 	accessToken, accessPayload, err := service.tokenMaker.CreateToken(user.ID, service.config.AccessTokenDuration)
 	if err != nil {
-		return nil, err
+		return PrivateSuccessAuthResponse{}, err
 	}
 
 	refreshToken, refreshPayload, err := service.tokenMaker.CreateToken(user.ID, service.config.RefreshTokenDuration)
 	if err != nil {
-		return nil, err
+		return PrivateSuccessAuthResponse{}, err
 	}
 
 	sessionParams := db.CreateSessionParams{
@@ -41,10 +41,10 @@ func (service *Service) generateAuthTokens(ctx context.Context, user db.User, us
 	session, err := service.store.CreateSession(ctx, sessionParams)
 
 	if err != nil {
-		return nil, err
+		return PrivateSuccessAuthResponse{}, err
 	}
 
-	res := &PrivateSuccessAuthResponse{
+	res := PrivateSuccessAuthResponse{
 		SessionID:             session.ID,
 		AccessToken:           accessToken,
 		AccessTokenExpiresAt:  accessPayload.ExpiredAt,

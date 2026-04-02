@@ -25,19 +25,36 @@ func (s *Service) authMiddleware(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authorizationHeader := r.Header.Get(authorizationheaderKey)
 		if authorizationHeader == "" {
-			abortWithError(w, newAuthError(AuthHeaderNotProvided, "authorization header is not provided"))
+			authErr := newAuthError(
+				AuthHeaderNotProvided,
+				http.StatusUnauthorized,
+				"authorization header is not provided",
+				nil,
+			)
+			abortWithError(w, authErr)
 			return
 		}
 
 		fields := strings.Fields(authorizationHeader)
 		if len(fields) < 2 {
-			abortWithError(w, newAuthError(AuthInvalidHeaderFormat, "invalid authorization header format"))
+			authErr := newAuthError(
+				AuthInvalidHeaderFormat,
+				http.StatusUnauthorized,
+				"invalid authorization header format",
+				nil)
+			abortWithError(w, authErr)
 			return
 		}
 
 		authorizationType := strings.ToLower(fields[0])
 		if authorizationType != authorizationTypeBearer {
-			abortWithError(w, newAuthError(AuthTypeUnsupported, fmt.Sprintf("unsupported authorization type: %s", authorizationType)))
+			authErr := newAuthError(
+				AuthTypeUnsupported,
+				http.StatusUnauthorized,
+				fmt.Sprintf("unsupported authorization type: %s", authorizationType),
+				nil,
+			)
+			abortWithError(w, authErr)
 			return
 		}
 
@@ -45,7 +62,15 @@ func (s *Service) authMiddleware(next http.Handler) http.HandlerFunc {
 
 		payload, err := s.tokenMaker.VerifyToken(accessToken)
 		if err != nil {
-			abortWithError(w, newAuthError(AuthAccessTokenErr, err.Error()))
+			// We pass the raw err in so the server logs it,
+			// but the user just sees "invalid or expired token"
+			authErr := newAuthError(
+				AuthAccessTokenErr,
+				http.StatusUnauthorized,
+				"invalid or expired token",
+				err,
+			)
+			abortWithError(w, authErr)
 			return
 		}
 

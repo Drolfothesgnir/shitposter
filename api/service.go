@@ -10,7 +10,6 @@ import (
 	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/Drolfothesgnir/shitposter/wauthn"
-	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -24,6 +23,7 @@ const (
 	ctxCommentIDKey = "comment_id"
 )
 
+// TODO: refactor tests
 type Service struct {
 	config         util.Config
 	store          db.Store
@@ -66,12 +66,6 @@ func NewService(
 
 	service.setupRouter(server)
 
-	// // custom validator to check if comment order in requests is valid.
-	// // used in 'binding' tag in request.
-	// if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-	// 	v.RegisterValidation("comment_order", isValidCommentOrder)
-	// }
-
 	service.server = server
 
 	return service, nil
@@ -97,12 +91,25 @@ func (s *Service) setWebauthnSessionCookie(w http.ResponseWriter, sessionID stri
 	http.SetCookie(w, cookie)
 }
 
-func getWebauthnSessionCookie(ctx *gin.Context) (string, error) {
-	return ctx.Cookie(webauthnSessionCookie)
+func getWebauthnSessionCookieValue(r *http.Request) string {
+	c, err := r.Cookie(webauthnSessionCookie)
+	if err != nil {
+		return ""
+	}
+	return c.Value
 }
 
-func clearWebauthnSessionCookie(ctx *gin.Context, secure bool) {
-	ctx.SetCookie(webauthnSessionCookie, "", -1, "/", "", secure, true)
+func clearWebauthnSessionCookie(w http.ResponseWriter, secure bool) {
+	cookie := &http.Cookie{
+		Name:     webauthnSessionCookie,
+		Value:    "",
+		MaxAge:   -1,
+		Path:     "/",
+		Domain:   "",
+		Secure:   secure,
+		HttpOnly: true,
+	}
+	http.SetCookie(w, cookie)
 }
 
 // TODO: shutdown db store and other sub-services

@@ -37,8 +37,9 @@ func (service *Service) setupRouter(server *http.Server) {
 	router.HandleFunc("PATCH /posts/:post_id/comments/:comment_id", service.authMiddleware(http.HandlerFunc(service.updateComment)))
 	router.HandleFunc("GET /{post_id}/comments", service.getComments)
 
-	// get user's public info
+	// users CRUD
 	router.HandleFunc("GET /users/{id}", service.getUser)
+	router.HandleFunc("PATCH /users", service.authMiddleware(http.HandlerFunc(service.updateUser)))
 
 	server.Handler = service.corsMiddleware(router)
 	service.router = router

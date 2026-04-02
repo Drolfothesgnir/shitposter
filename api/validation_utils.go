@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/mail"
+	"net/url"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -12,6 +13,7 @@ import (
 const (
 	validatorRequired = "required"
 	validatorEmail    = "email"
+	validatorURL      = "url"
 	validatorMin      = "min"
 	validatorMax      = "max"
 	validatorAlphanum = "alphanum"
@@ -52,6 +54,18 @@ func strEmail(v, fieldName string, issues *[]Issue) bool {
 			FieldName: fieldName,
 			Tag:       validatorEmail,
 			Message:   "field must be a correct email address",
+		})
+	}
+
+	return true
+}
+
+func strURL(v, fieldName string, issues *[]Issue) bool {
+	if _, err := url.ParseRequestURI(v); err != nil {
+		*issues = append(*issues, Issue{
+			FieldName: fieldName,
+			Tag:       validatorURL,
+			Message:   "the value must be a valid URL",
 		})
 	}
 

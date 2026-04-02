@@ -44,6 +44,7 @@ func (service *Service) signupStart(w http.ResponseWriter, r *http.Request) {
 	// tasting the body
 	var req SignupStartRequest
 	if vErr := ingestJSONBody(w, r, &req); vErr != nil {
+		// TODO: replace all occurances in all API files with [abortWithError]
 		respondWithJSON(w, vErr.Status, vErr)
 		return
 	}

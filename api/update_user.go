@@ -4,38 +4,49 @@ import (
 	"net/http"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
-	"github.com/gin-gonic/gin"
 )
 
-// CAUTION: bindings order matters in gin validator v10!
-// To truly omit empty fields "omitempty" must be first
 type UpdateUserRequest struct {
-	Username      *string `json:"username" binding:"omitempty,min=3,max=50,alphanum"`
-	Email         *string `json:"email" binding:"omitempty,email"`
-	ProfileImgURL *string `json:"profile_img_url" binding:"omitempty,url"`
+	Username      *string `json:"username"`
+	Email         *string `json:"email"`
+	ProfileImgURL *string `json:"profile_img_url"`
 }
 
-func (req *UpdateUserRequest) isValid() bool {
-	return req.Username != nil || req.Email != nil || req.ProfileImgURL != nil
+func (r UpdateUserRequest) Validate() *Vomit {
+	issues := make([]Issue, 0, 4)
+
+	if r.Username != nil {
+		validate(&issues, *r.Username, "username", strMin(3), strMax(50), strAlphanum)
+	}
+
+	if r.Email != nil {
+		validate(&issues, *r.Email, "email", strEmail)
+	}
+
+	if r.ProfileImgURL != nil {
+		validate(&issues, *r.ProfileImgURL, "profile_img_url", strURL)
+	}
+
+	return barf(issues)
 }
 
 // TODO: handle profile image update as file
-func (service *Service) updateUser(ctx *gin.Context) {
-	authPayload := extractAuthPayloadFromCtx(ctx)
+func (service *Service) updateUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	authPayload := getAuthPayload(ctx)
 
 	var req UpdateUserRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(
-			http.StatusBadRequest,
-			newPayloadError("invalid request parameters", err))
+	if vErr := ingestJSONBody(w, r, &req); vErr != nil {
+		abortWithError(w, vErr)
 		return
 	}
 
-	if !req.isValid() {
-		ctx.JSON(http.StatusBadRequest, newPayloadError("request body is empty", nil))
+	// validating the body
+	if vErr := req.Validate(); vErr != nil {
+		abortWithError(w, vErr)
 		return
 	}
-
 	arg := db.UpdateUserParams{
 		ID:            authPayload.UserID,
 		Username:      req.Username,
@@ -47,9 +58,9 @@ func (service *Service) updateUser(ctx *gin.Context) {
 
 	if err != nil {
 		opErr := newResourceError(err)
-		ctx.JSON(opErr.StatusCode(), opErr)
+		abortWithError(w, opErr)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, user)
+	respondWithJSON(w, http.StatusOK, user)
 }

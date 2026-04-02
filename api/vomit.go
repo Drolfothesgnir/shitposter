@@ -38,6 +38,10 @@ type Vomit struct {
 	err        error
 }
 
+func (v Vomit) StatusCode() int {
+	return v.Status
+}
+
 func (v *Vomit) Error() string {
 	return fmt.Sprintf("Payload error: reason: %s; message: %s", v.Reason, v.ErrMessage)
 }

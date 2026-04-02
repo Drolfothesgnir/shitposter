@@ -27,23 +27,7 @@ func newPayloadError(message string, err error) PayloadError {
 	}
 }
 
-// validationErrorsToIssues maps Gin validator errors into a slice of [Issue].
 func validationErrorsToIssues(err error) []Issue {
-	// var ve validator.ValidationErrors
-	// if !errors.As(err, &ve) {
-	// 	return []Issue{}
-	// }
-
-	// fields := make([]Issue, len(ve))
-	// for i, fe := range ve {
-	// 	fields[i] = Issue{
-	// 		FieldName: fe.Field(),
-	// 		Tag:       fe.Tag(),
-	// 		Message:   getBindingErrorMessage(fe.Tag(), fe.Value(), fe.Param()),
-	// 	}
-	// }
-
-	// return fields
 	return []Issue{}
 }
 

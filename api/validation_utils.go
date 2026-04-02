@@ -116,11 +116,45 @@ func strAlphanum(v, fieldName string, issues *[]Issue) bool {
 	return true
 }
 
+type number interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 |
+		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr |
+		~float32 | ~float64
+}
+
+func numMin[T number](min T) func(v T, fieldName string, issues *[]Issue) bool {
+	return func(v T, fieldName string, issues *[]Issue) bool {
+		if v < min {
+			*issues = append(*issues, Issue{
+				FieldName: fieldName,
+				Tag:       validatorMin,
+				Message:   fmt.Sprintf("value must be at least %d", min),
+			})
+		}
+
+		return true
+	}
+}
+
+func numMax[T number](max T) func(v T, fieldName string, issues *[]Issue) bool {
+	return func(v T, fieldName string, issues *[]Issue) bool {
+		if v > max {
+			*issues = append(*issues, Issue{
+				FieldName: fieldName,
+				Tag:       validatorMax,
+				Message:   fmt.Sprintf("value must be at most %d", max),
+			})
+		}
+
+		return true
+	}
+}
+
 // validator is a function which performs neccessary checks on the argument v
 // and append [Issue] to the issues slice if there are any.
 // Returns false if no other validations should be performed on the value,
 // so order matters when using in [validate] func!
-type validator[T any] func(v T, fieldName string, issues *[]Issue) bool
+type validator[T any] func(v T, fieldName string, issues *[]Issue) (proceed bool)
 
 // validate performs chain of checks on value v of the field <fieldName> with validators from variadic fns
 // and appends any [Issue] to the issues slice.

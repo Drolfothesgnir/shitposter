@@ -87,12 +87,12 @@ func extractAuthPayloadFromCtx(ctx *gin.Context) *token.Payload {
 }
 
 // getAuthPayload helps to extract [token.Payload] from the request context.
-func getAuthPayload(ctx context.Context) (*token.Payload, error) {
+func getAuthPayload(ctx context.Context) *token.Payload {
 	payload, ok := ctx.Value(ctxAuthorizationPayloadKey).(*token.Payload)
 	if !ok {
+		panic("AAAAAAAA: [getAuthPayload]: authorization payload not found in context. Helper must be called ONLY in one chain with the auth middleware, after it.")
 		// This should theoretically never happen if the middleware is wired correctly,
 		// but it prevents nil pointer panics if you forget to attach the middleware to a route!
-		return nil, fmt.Errorf("authorization payload not found in context")
 	}
-	return payload, nil
+	return payload
 }

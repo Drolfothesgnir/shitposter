@@ -6,19 +6,26 @@ import (
 	"strconv"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
-	"github.com/gin-gonic/gin"
 )
 
-func (service *Service) getUser(ctx *gin.Context) {
-	param := ctx.Param("id")
+func (service *Service) getUser(w http.ResponseWriter, r *http.Request) {
+	param := r.PathValue("id")
 	userID, err := strconv.ParseInt(param, 10, 64)
 	// need to check if user id is a positive integer
 	if err != nil || userID <= 0 {
 		// using %q to format param in double quotes and excape special characters
 		msg := fmt.Sprintf("invalid user id: %q", param)
-		ctx.JSON(http.StatusBadRequest, newPayloadError(msg, nil))
+		vErr := puke(
+			ReqInvalidArguments,
+			http.StatusBadRequest,
+			msg,
+			err,
+		)
+		abortWithError(w, vErr)
 		return
 	}
+
+	ctx := r.Context()
 
 	user, err := service.store.GetUser(ctx, userID)
 	if err != nil {
@@ -26,9 +33,9 @@ func (service *Service) getUser(ctx *gin.Context) {
 		if resErr.opErr != nil && resErr.opErr.Kind == db.KindDeleted {
 			resErr = notFoundResourceError(fmt.Sprintf("user with id [%d] not found", userID))
 		}
-		ctx.JSON(resErr.StatusCode(), resErr)
+		abortWithError(w, resErr)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, createPublicUserResponse(user))
+	respondWithJSON(w, http.StatusOK, createPublicUserResponse(user))
 }

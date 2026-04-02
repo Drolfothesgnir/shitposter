@@ -6,33 +6,8 @@ import (
 
 // Establishes HTTP router.
 func (service *Service) setupRouter(server *http.Server) {
-	// router := gin.Default()
+	// TODO: create private user path
 
-	// router.Use(service.corsMiddleware())
-
-	// router.GET("/ping", func(ctx *gin.Context) {
-	// 	ctx.String(http.StatusOK, "pong")
-	// })
-
-	// // passkey auth
-	// router.POST("/users/signup/start", service.signupStart)
-	// router.POST("/users/signup/finish", service.signupFinish)
-	// router.POST("/users/signin/start", service.signinStart)
-	// router.POST("/users/signin/finish", service.signinFinish)
-
-	// // renew access token
-	// router.POST("/users/renew_access", service.renewAccessToken)
-
-	// // TODO: create private user path
-	// // get user's public info
-	// router.GET("/users/:id", service.getUser)
-
-	// // public routes where post id is checked
-	// publicPostGroup := router.Group("/posts").Use(service.postIDMiddleware())
-	// publicPostGroup.GET("/:post_id/comments", service.getComments)
-
-	// // protected routes
-	// authGroup := router.Group("/").Use(service.authMiddleware)
 	// authGroup.DELETE("/users", service.deleteUser)
 	// authGroup.PATCH("/users", service.updateUser)
 
@@ -44,7 +19,6 @@ func (service *Service) setupRouter(server *http.Server) {
 	// privatePostGroup.POST("/posts/:post_id/vote", notImplemented)
 
 	// privatePostCommentGroup := privatePostGroup.Use(service.commentIDMiddleware())
-	// privatePostCommentGroup.PATCH("/posts/:post_id/comments/:comment_id", service.updateComment)
 	// privatePostCommentGroup.DELETE("/posts/:post_id/comments/:comment_id", service.deleteComment)
 	// privatePostCommentGroup.POST("/posts/:post_id/comments/:comment_id/vote", notImplemented)
 
@@ -58,6 +32,13 @@ func (service *Service) setupRouter(server *http.Server) {
 
 	// renew access token
 	router.HandleFunc("POST /users/renew_access", service.renewAccessToken)
+
+	// comments CRUD
+	router.HandleFunc("PATCH /posts/:post_id/comments/:comment_id", service.authMiddleware(http.HandlerFunc(service.updateComment)))
+	router.HandleFunc("GET /{post_id}/comments", service.getComments)
+
+	// get user's public info
+	router.HandleFunc("GET /users/{id}", service.getUser)
 
 	server.Handler = service.corsMiddleware(router)
 	service.router = router

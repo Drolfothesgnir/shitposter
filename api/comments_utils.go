@@ -2,10 +2,10 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
-	"github.com/gin-gonic/gin"
 )
 
 type CommentNode struct {
@@ -68,13 +68,6 @@ func PrepareCommentTree(orderedPlainComments []db.CommentsWithAuthor, n_roots in
 	return result, nil
 }
 
-// var isValidCommentOrder validator.Func = func(fl validator.FieldLevel) bool {
-// 	if order, ok := fl.Field().Interface().(string); ok && slices.Contains(db.CommentOrderMethods, order) {
-// 		return true
-// 	}
-// 	return false
-// }
-
 type commentIDDescriptor struct {
 	provided    bool   // true when comment_id param is present in the URL
 	valid       bool   // true if extracted comment_id param was parsed as int successfully
@@ -88,11 +81,12 @@ func (d *commentIDDescriptor) available() bool {
 	return d.provided && d.valid
 }
 
-func getCommentIDDescriptor(ctx *gin.Context) commentIDDescriptor {
+// TODO: write doc
+func getCommentIDDescriptor(r *http.Request) commentIDDescriptor {
 
 	var descriptor commentIDDescriptor
 
-	raw := ctx.Param("comment_id")
+	raw := r.PathValue("comment_id")
 	descriptor.rawValue = raw
 
 	provided := raw != ""
@@ -107,4 +101,22 @@ func getCommentIDDescriptor(ctx *gin.Context) commentIDDescriptor {
 	descriptor.err = err
 
 	return descriptor
+}
+
+// extractCommentID takes the comment ID from the URL path and returns it.
+// If the ID is invalid, then -1 and a [Vomit] will be returned.
+func extractCommentID(r *http.Request) (int64, *Vomit) {
+	desc := getCommentIDDescriptor(r)
+	if !desc.available() {
+		msg := fmt.Sprintf("comment id [%s] is invalid", desc.rawValue)
+		vErr := puke(
+			ReqInvalidArguments,
+			http.StatusBadRequest,
+			msg,
+			desc.err,
+		)
+		return -1, vErr
+	}
+
+	return desc.parsedValue, nil
 }

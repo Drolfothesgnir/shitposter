@@ -13,38 +13,36 @@ import (
 
 const opQueryComments = "query-comments"
 
+// CommentOrder defines possible sorting criterion for the [QueryComments] method.
+// Can be [CommentOrderPopular], [CommentOrderNewest] or [CommentOrderOldest].
+type CommentOrder string
+
 const (
-	CommentOrderPopular = "pop"
-	CommentOrderNewest  = "new"
-	CommentOrderOldest  = "old"
+	CommentOrderPopular CommentOrder = "pop"
+	CommentOrderNewest  CommentOrder = "new"
+	CommentOrderOldest  CommentOrder = "old"
 )
 
-var CommentOrderMethods = []string{
+var CommentOrderMethods = []CommentOrder{
 	CommentOrderPopular,
 	CommentOrderNewest,
 	CommentOrderOldest,
 }
 
 type CommentQuery struct {
-	Order  string // pop | old | new
+	Order  CommentOrder // pop | old | new
 	PostID int64
 	Limit  int32
 	Offset int32
 }
 
-// QueryComments returns a paginated set of comments for a post, ordered by
-// popularity ("pop"), newest first ("new"), or oldest first ("old").
-// Returns an empty slice when the post has no comments or does not exist.
-// Returns KindInvalid if the order value is invalid, or KindInternal on database errors.
-func (s *SQLStore) QueryComments(ctx context.Context, q CommentQuery) ([]CommentsWithAuthor, error) {
-	var result []CommentsWithAuthor
-	var err error
-
-	if !slices.Contains(CommentOrderMethods, q.Order) {
+// ValidateCommentOrderMethod returns *[OpError] if the provided order method is not allowed.
+func ValidateCommentOrderMethod(orderMethod CommentOrder) error {
+	if !slices.Contains(CommentOrderMethods, orderMethod) {
 		// creating pretty readable list from order methods array
 		methodsList := make([]string, len(CommentOrderMethods))
 		for i, m := range CommentOrderMethods {
-			methodsList[i] = strconv.Quote(m)
+			methodsList[i] = strconv.Quote(string(m))
 		}
 
 		listStr := strings.Join(methodsList, ", ")
@@ -53,10 +51,25 @@ func (s *SQLStore) QueryComments(ctx context.Context, q CommentQuery) ([]Comment
 			opQueryComments,
 			KindInvalid,
 			entComment,
-			fmt.Errorf("invalid order \"%s\". can be one of %s", q.Order, listStr),
+			fmt.Errorf("invalid order \"%s\". can be one of %s", orderMethod, listStr),
 			withField("order"),
 		)
-		return result, opErr
+		return opErr
+	}
+
+	return nil
+}
+
+// QueryComments returns a paginated set of comments for a post, ordered by
+// popularity ("pop"), newest first ("new"), or oldest first ("old").
+// Returns an empty slice when the post has no comments or does not exist.
+// Returns KindInvalid if the order value is invalid, or KindInternal on database errors.
+func (s *SQLStore) QueryComments(ctx context.Context, q CommentQuery) ([]CommentsWithAuthor, error) {
+	var result []CommentsWithAuthor
+
+	err := ValidateCommentOrderMethod(q.Order)
+	if err != nil {
+		return result, err
 	}
 
 	switch q.Order {

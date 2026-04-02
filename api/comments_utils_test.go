@@ -2,6 +2,8 @@ package api
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -166,4 +168,24 @@ func TestPrepareCommentTree_EmptyInput(t *testing.T) {
 	nodes, err := PrepareCommentTree(nil, 0)
 	require.NoError(t, err)
 	require.Empty(t, nodes)
+}
+
+// Valid comment_id
+func TestExtractCommentID_ValidCommentID(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/posts/123/comments/777", nil)
+	commentID, err := extractCommentID(req)
+	require.NoError(t, err)
+	require.Equal(t, int64(777), commentID)
+}
+
+// Invalid comment_id
+func TestExtractCommentID_InvalidCommentID(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/posts/123/comments/abc", nil)
+	commentID, err := extractCommentID(req)
+	require.Error(t, err)
+	var vErr *Vomit
+	require.ErrorAs(t, err, &vErr)
+	require.Equal(t, ReqInvalidArguments, vErr.Reason)
+	require.Equal(t, http.StatusBadRequest, vErr.Status)
+	require.Equal(t, int64(-1), commentID)
 }

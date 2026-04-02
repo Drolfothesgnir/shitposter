@@ -1,37 +1,73 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
-	"github.com/gin-gonic/gin"
 )
 
-type GetCommentsQuery struct {
-	RootOffset int32  `form:"root_offset" json:"root_offset" binding:"min=0"`
-	NRoots     int32  `form:"n_roots" json:"n_roots" binding:"min=1,max=100"`
-	Order      string `form:"order" json:"order" binding:"comment_order"`
+type GetCommentsRequest struct {
+	RootOffset int32           `json:"root_offset"`
+	NRoots     int32           `json:"n_roots"`
+	Order      db.CommentOrder `json:"order"`
+}
+
+// TODO: is word "order" appropriate here? shouldn't it be "sort order" or "sort" or something
+// there and in the db?
+func valCommentOrder(v db.CommentOrder, fieldname string, issues *[]Issue) bool {
+	err := db.ValidateCommentOrderMethod(v)
+	if err != nil {
+		var opErr *db.OpError
+		var msg string
+		if errors.As(err, &opErr) {
+			msg = opErr.Error()
+		} else {
+			msg = "invalid comments order method"
+		}
+		*issues = append(*issues, Issue{
+			FieldName: fieldname,
+			Tag:       "comment_order",
+			Message:   msg,
+		})
+	}
+
+	return true
+}
+
+func (r GetCommentsRequest) Validate() *Vomit {
+	issues := make([]Issue, 0, 3)
+	validate(&issues, r.RootOffset, "root_offset", numMin(int32(0)))
+	validate(&issues, r.NRoots, "n_roots", numMin(int32(1)), numMax(int32(100)))
+	validate(&issues, r.Order, "order", valCommentOrder)
+	return barf(issues)
 }
 
 type GetCommentsResponse struct {
 	Comments []*CommentNode `json:"comments"`
 }
 
-func (s *Service) getComments(ctx *gin.Context) {
-	postID := extractPostIDFromCtx(ctx)
+func (s *Service) getComments(w http.ResponseWriter, r *http.Request) {
+	postID, vErr := extractPostID(r)
+	if vErr != nil {
+		abortWithError(w, vErr)
+		return
+	}
 
 	// pre-filled with default values
-	req := GetCommentsQuery{
+	req := GetCommentsRequest{
 		RootOffset: 0,
 		NRoots:     10,
 		Order:      db.CommentOrderPopular,
 	}
 
-	if err := ctx.ShouldBindQuery(&req); err != nil {
-		ctx.JSON(
-			http.StatusBadRequest,
-			newPayloadError("invalid request parameters", err),
-		)
+	if vErr := ingestJSONBody(w, r, &req); vErr != nil {
+		respondWithJSON(w, vErr.Status, vErr)
+		return
+	}
+
+	if vErr := req.Validate(); vErr != nil {
+		respondWithJSON(w, vErr.Status, vErr)
 		return
 	}
 
@@ -41,11 +77,14 @@ func (s *Service) getComments(ctx *gin.Context) {
 		Limit:  req.NRoots,
 		Offset: req.RootOffset,
 	}
+
+	ctx := r.Context()
+
 	comments, err := s.store.QueryComments(ctx, query)
 
 	if err != nil {
 		opErr := newResourceError(err)
-		ctx.JSON(opErr.StatusCode(), opErr)
+		abortWithError(w, opErr)
 		return
 	}
 
@@ -54,9 +93,9 @@ func (s *Service) getComments(ctx *gin.Context) {
 	// in case the tree cannot be formed, then there should be some data corruption in the db
 	// abort with 500
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, internalResourceError())
+		respondWithJSON(w, http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, GetCommentsResponse{tree})
+	respondWithJSON(w, http.StatusOK, GetCommentsResponse{tree})
 }

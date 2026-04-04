@@ -13,7 +13,6 @@ import (
 	mockdb "github.com/Drolfothesgnir/shitposter/db/mock"
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/Drolfothesgnir/shitposter/token"
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -27,7 +26,7 @@ func TestCreateComment(t *testing.T) {
 	testCases := []struct {
 		name          string
 		url           string
-		body          gin.H
+		body          reqBody
 		buildStubs    func(store *mockdb.MockStore)
 		setupAuth     func(t *testing.T, request *http.Request, tokenMaker token.Maker)
 		checkResponse func(t *testing.T, recorder *httptest.ResponseRecorder)
@@ -35,7 +34,7 @@ func TestCreateComment(t *testing.T) {
 		{
 			name: "EmptyBody",
 			url:  "/posts/1/comments",
-			body: gin.H{},
+			body: reqBody{},
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().InsertCommentTx(gomock.Any(), gomock.Any()).Times(0)
 			},
@@ -44,10 +43,11 @@ func TestCreateComment(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				var resp PayloadError
+				var resp Vomit
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindPayload, resp.Kind)
+				require.Equal(t, ReqInvalidArguments, resp.Reason)
 				require.Len(t, resp.Issues, 1)
 				require.Equal(t, "body", resp.Issues[0].FieldName)
 				require.Equal(t, "required", resp.Issues[0].Tag)
@@ -56,7 +56,7 @@ func TestCreateComment(t *testing.T) {
 		{
 			name: "BodyTooLong",
 			url:  "/posts/1/comments",
-			body: gin.H{
+			body: reqBody{
 				"body": strings.Repeat("too long", 100),
 			},
 			buildStubs: func(store *mockdb.MockStore) {
@@ -67,10 +67,11 @@ func TestCreateComment(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				var resp PayloadError
+				var resp Vomit
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindPayload, resp.Kind)
+				require.Equal(t, ReqInvalidArguments, resp.Reason)
 				require.Len(t, resp.Issues, 1)
 				require.Equal(t, "body", resp.Issues[0].FieldName)
 				require.Equal(t, "max", resp.Issues[0].Tag)
@@ -79,7 +80,7 @@ func TestCreateComment(t *testing.T) {
 		{
 			name: "InvalidParentId",
 			url:  "/posts/1/comments/inv_par_id",
-			body: gin.H{
+			body: reqBody{
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
@@ -90,17 +91,18 @@ func TestCreateComment(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				var resp PayloadError
+				var resp Vomit
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindPayload, resp.Kind)
-				require.Contains(t, resp.Error, "invalid comment id")
+				require.Equal(t, ReqInvalidCommentID, resp.Reason)
+				require.Contains(t, resp.ErrMessage, "invalid comment id")
 			},
 		},
 		{
 			name: "PostNotFound",
 			url:  "/posts/1/comments",
-			body: gin.H{
+			body: reqBody{
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
@@ -137,7 +139,7 @@ func TestCreateComment(t *testing.T) {
 		{
 			name: "MissingParentComment",
 			url:  "/posts/1/comments/1",
-			body: gin.H{
+			body: reqBody{
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
@@ -173,7 +175,7 @@ func TestCreateComment(t *testing.T) {
 		{
 			name: "ParentCommentPostIDMismatch",
 			url:  "/posts/1/comments/1",
-			body: gin.H{
+			body: reqBody{
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
@@ -211,7 +213,7 @@ func TestCreateComment(t *testing.T) {
 		{
 			name: "ParentCommentDeleted",
 			url:  "/posts/1/comments/1",
-			body: gin.H{
+			body: reqBody{
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
@@ -247,7 +249,7 @@ func TestCreateComment(t *testing.T) {
 		{
 			name: "InternalError",
 			url:  "/posts/1/comments/1",
-			body: gin.H{
+			body: reqBody{
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
@@ -283,7 +285,7 @@ func TestCreateComment(t *testing.T) {
 		{
 			name: "OKRoot",
 			url:  "/posts/1/comments",
-			body: gin.H{
+			body: reqBody{
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
@@ -311,7 +313,7 @@ func TestCreateComment(t *testing.T) {
 		{
 			name: "OKReply",
 			url:  "/posts/1/comments/1",
-			body: gin.H{
+			body: reqBody{
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {

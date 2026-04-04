@@ -17,7 +17,7 @@ func extractPostID(r *http.Request) (int64, *Vomit) {
 		msg := fmt.Sprintf("Invalid post id: %s", postIDRaw)
 
 		vErr := puke(
-			ReqInvalidArguments,
+			ReqInvalidPostID,
 			http.StatusBadRequest,
 			msg,
 			err,

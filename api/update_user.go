@@ -27,6 +27,14 @@ func (r UpdateUserRequest) Validate() *Vomit {
 		validate(&issues, *r.ProfileImgURL, "profile_img_url", strURL)
 	}
 
+	if r.Username == nil && r.Email == nil && r.ProfileImgURL == nil {
+		issues = append(issues, Issue{
+			FieldName: "body",
+			Tag:       "empty_body",
+			Message:   "at least one of the optional fields must be present",
+		})
+	}
+
 	return barf(issues)
 }
 

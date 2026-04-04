@@ -28,6 +28,7 @@ func (service *Service) signinFinish(w http.ResponseWriter, r *http.Request) {
 			nil, // No underlying Go error to log here
 		)
 		abortWithError(w, aErr)
+		return
 	}
 
 	ctx := r.Context()

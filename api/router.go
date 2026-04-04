@@ -8,8 +8,6 @@ import (
 func (service *Service) setupRouter(server *http.Server) {
 	// TODO: create private user path
 
-	// privatePostGroup.POST("/posts/:post_id/comments", service.createComment)
-	// privatePostGroup.POST("/posts/:post_id/comments/:comment_id", service.createComment)
 	// privatePostGroup.DELETE("/posts/:post_id")
 	// privatePostGroup.POST("/posts/:post_id/vote", notImplemented)
 
@@ -27,7 +25,11 @@ func (service *Service) setupRouter(server *http.Server) {
 	router.HandleFunc("POST /users/renew_access", service.renewAccessToken)
 
 	// comments CRUD
-	router.HandleFunc("GET /{post_id}/comments", service.getComments)
+	// one for root comments
+	router.HandleFunc("POST /posts/{post_id}/comments", service.authMiddleware(http.HandlerFunc(service.createComment)))
+	// and one for replies
+	router.HandleFunc("POST /posts/{post_id}/comments/{comment_id}", service.authMiddleware(http.HandlerFunc(service.createComment)))
+	router.HandleFunc("GET /posts/{post_id}/comments", service.getComments)
 	router.HandleFunc("PATCH /posts/{post_id}/comments/{comment_id}", service.authMiddleware(http.HandlerFunc(service.updateComment)))
 	router.HandleFunc("DELETE /posts/{post_id}/comments/{comment_id}", service.authMiddleware(http.HandlerFunc(service.deleteComment)))
 

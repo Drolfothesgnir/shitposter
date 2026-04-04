@@ -33,6 +33,10 @@ func (s *Service) createComment(w http.ResponseWriter, r *http.Request) {
 		abortWithError(w, vErr)
 		return
 	}
+	if vErr := req.Validate(); vErr != nil {
+		abortWithError(w, vErr)
+		return
+	}
 
 	// extracting comment id to check if comment is a reply
 	// i.e. comment_id from /posts/:post_id/comments/:comment_id is available
@@ -41,7 +45,7 @@ func (s *Service) createComment(w http.ResponseWriter, r *http.Request) {
 	// if the comment_id provided but not valid abort with 400
 	if !desc.valid && desc.provided {
 		vErr := puke(
-			ReqInvalidArguments,
+			ReqInvalidCommentID,
 			http.StatusBadRequest,
 			fmt.Sprintf("invalid comment id: %s", desc.rawValue),
 			nil,

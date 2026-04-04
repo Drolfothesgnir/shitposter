@@ -14,6 +14,8 @@ const (
 	ReqMalformedJSON        Flavor = "REQ_JSON_MALFORMED"
 	ReqEmptyBody            Flavor = "REQ_BODY_EMPTY"
 	ReqInvalidArguments     Flavor = "REQ_INVALID_ARGUMENTS"
+	ReqInvalidPostID        Flavor = "REQ_INVALID_POST_ID"
+	ReqInvalidCommentID     Flavor = "REQ_INVALID_COMMENT_ID"
 	ReqIncorrectContentType Flavor = "REQ_INVALID_CONTENT_TYPE"
 	ReqMissingData          Flavor = "REQ_MISSING_DATA"
 )

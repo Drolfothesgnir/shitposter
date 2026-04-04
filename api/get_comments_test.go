@@ -31,10 +31,11 @@ func TestGetComments(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				var resp PayloadError
+				var resp Vomit
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindPayload, resp.Kind)
+				require.Equal(t, ReqInvalidArguments, resp.Reason)
 				require.Len(t, resp.Issues, 1)
 				require.Equal(t, "order", resp.Issues[0].FieldName)
 				require.Equal(t, "comment_order", resp.Issues[0].Tag)

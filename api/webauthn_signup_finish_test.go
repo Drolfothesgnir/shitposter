@@ -122,11 +122,48 @@ func TestSignupFinish(t *testing.T) {
 		ExpiresAt:    tokenPayload.ExpiredAt,
 	}
 
+	createdSession := db.Session{
+		ID:           tokenPayload.ID,
+		UserID:       tokenPayload.UserID,
+		RefreshToken: "refresh_token",
+		UserAgent:    "chrome",
+		ClientIp:     "198.162.0.0",
+		IsBlocked:    false,
+		ExpiresAt:    tokenPayload.ExpiredAt,
+	}
+
 	addCookie := func(req *http.Request) {
 		req.AddCookie(&http.Cookie{
 			Name:  webauthnSessionCookie,
 			Value: sessionID,
 		})
+	}
+
+	checkVomit := func(t *testing.T, recorder *httptest.ResponseRecorder, expected Vomit) {
+		t.Helper()
+
+		require.Equal(t, expected.Status, recorder.Code)
+
+		var resp Vomit
+		err := json.NewDecoder(recorder.Body).Decode(&resp)
+		require.NoError(t, err)
+		require.Equal(t, expected, resp)
+	}
+
+	checkInternalResourceError := func(t *testing.T, recorder *httptest.ResponseRecorder) {
+		t.Helper()
+
+		require.Equal(t, http.StatusInternalServerError, recorder.Code)
+
+		var resp ResourceError
+		err := json.NewDecoder(recorder.Body).Decode(&resp)
+		require.NoError(t, err)
+		require.Equal(t, ResourceError{
+			Kind:   KindResource,
+			Reason: db.KindInternal.String(),
+			Status: http.StatusInternalServerError,
+			Error:  "an internal error occurred",
+		}, resp)
 	}
 
 	testCases := []struct {
@@ -154,7 +191,12 @@ func TestSignupFinish(t *testing.T) {
 				// no cookie — test the missing cookie path
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
+				checkVomit(t, recorder, Vomit{
+					Kind:       KindPayload,
+					Reason:     ReqMissingData,
+					Status:     http.StatusBadRequest,
+					ErrMessage: "missing or invalid session cookie",
+				})
 			},
 		},
 		{
@@ -171,7 +213,12 @@ func TestSignupFinish(t *testing.T) {
 			},
 			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
+				checkVomit(t, recorder, Vomit{
+					Kind:       KindPayload,
+					Reason:     AuthSessionNotFound,
+					Status:     http.StatusBadRequest,
+					ErrMessage: "registration session not found or expired",
+				})
 			},
 		},
 		{
@@ -190,7 +237,12 @@ func TestSignupFinish(t *testing.T) {
 			},
 			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
+				checkVomit(t, recorder, Vomit{
+					Kind:       KindPayload,
+					Reason:     AuthSessionExpired,
+					Status:     http.StatusBadRequest,
+					ErrMessage: "registration session expired",
+				})
 			},
 		},
 		{
@@ -207,7 +259,12 @@ func TestSignupFinish(t *testing.T) {
 			},
 			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
+				checkVomit(t, recorder, Vomit{
+					Kind:       KindPayload,
+					Reason:     AuthVerificationFailed,
+					Status:     http.StatusBadRequest,
+					ErrMessage: "webauthn registration verification failed",
+				})
 			},
 		},
 		{
@@ -225,7 +282,7 @@ func TestSignupFinish(t *testing.T) {
 			},
 			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+				checkInternalResourceError(t, recorder)
 			},
 		},
 		{
@@ -245,7 +302,8 @@ func TestSignupFinish(t *testing.T) {
 			},
 			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+				checkInternalResourceError(t, recorder)
+				require.Contains(t, recorder.Header().Get("Set-Cookie"), webauthnSessionCookie+"=;")
 			},
 		},
 		{
@@ -266,7 +324,8 @@ func TestSignupFinish(t *testing.T) {
 			},
 			setupRequest: addCookie,
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+				checkInternalResourceError(t, recorder)
+				require.Contains(t, recorder.Header().Get("Set-Cookie"), webauthnSessionCookie+"=;")
 			},
 		},
 		{
@@ -291,7 +350,8 @@ func TestSignupFinish(t *testing.T) {
 				req.RemoteAddr = "198.162.0.0:12345"
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+				checkInternalResourceError(t, recorder)
+				require.Contains(t, recorder.Header().Get("Set-Cookie"), webauthnSessionCookie+"=;")
 			},
 		},
 		{
@@ -302,23 +362,13 @@ func TestSignupFinish(t *testing.T) {
 				wa *mockwa.MockWebAuthnConfig,
 				tokenMaker *mocktk.MockMaker,
 			) {
-				session := db.Session{
-					ID:           tokenPayload.ID,
-					UserID:       tokenPayload.UserID,
-					RefreshToken: "refresh_token",
-					UserAgent:    "chrome",
-					ClientIp:     "198.162.0.0",
-					IsBlocked:    false,
-					ExpiresAt:    tokenPayload.ExpiredAt,
-				}
-
 				rs.EXPECT().GetUserRegSession(gomock.Any(), sessionID).Times(1).Return(pending, nil)
 				wa.EXPECT().FinishRegistration(tmpUser, *pending.SessionData, gomock.Any()).Times(1).Return(waCred, nil)
 				store.EXPECT().CreateUserWithCredentialsTx(gomock.Any(), txArg).Times(1).Return(user, nil)
 				rs.EXPECT().DeleteUserRegSession(gomock.Any(), sessionID).Times(1).Return(nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("access_token", tokenPayload, nil)
 				tokenMaker.EXPECT().CreateToken(user.ID, time.Minute).Times(1).Return("refresh_token", tokenPayload, nil)
-				store.EXPECT().CreateSession(gomock.Any(), sessionArg).Times(1).Return(session, nil)
+				store.EXPECT().CreateSession(gomock.Any(), sessionArg).Times(1).Return(createdSession, nil)
 			},
 			setupRequest: func(req *http.Request) {
 				addCookie(req)
@@ -327,6 +377,20 @@ func TestSignupFinish(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
+				require.Contains(t, recorder.Header().Get("Set-Cookie"), webauthnSessionCookie+"=;")
+				require.Contains(t, recorder.Header().Get("Set-Cookie"), "Max-Age=0")
+
+				var resp PrivateSuccessAuthResponse
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, createdSession.ID, resp.SessionID)
+				require.Equal(t, "access_token", resp.AccessToken)
+				require.True(t, tokenPayload.ExpiredAt.Equal(resp.AccessTokenExpiresAt))
+				require.Equal(t, "refresh_token", resp.RefreshToken)
+				require.True(t, tokenPayload.ExpiredAt.Equal(resp.RefreshTokenExpiresAt))
+				require.Equal(t, user.ID, resp.User.ID)
+				require.Equal(t, user.Username, resp.User.Username)
+				require.Equal(t, user.Email, resp.User.Email)
 			},
 		},
 	}
@@ -364,6 +428,7 @@ func TestSignupFinish(t *testing.T) {
 			tc.setupRequest(request)
 
 			service.router.ServeHTTP(recorder, request)
+			require.Equal(t, contentJSON, recorder.Header().Get("Content-Type"))
 			tc.checkResponse(t, recorder)
 		})
 	}

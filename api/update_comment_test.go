@@ -12,7 +12,6 @@ import (
 	mockdb "github.com/Drolfothesgnir/shitposter/db/mock"
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/Drolfothesgnir/shitposter/token"
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -28,14 +27,14 @@ func TestUpdateComment(t *testing.T) {
 
 	testCases := []struct {
 		name          string
-		body          gin.H
+		body          reqBody
 		buildStubs    func(store *mockdb.MockStore)
 		setupAuth     func(t *testing.T, request *http.Request, tokenMaker token.Maker)
 		checkResponse func(t *testing.T, recorder *httptest.ResponseRecorder)
 	}{
 		{
 			name: "EmptyBody",
-			body: gin.H{},
+			body: reqBody{},
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().UpdateComment(gomock.Any(), gomock.Any()).Times(0)
 			},
@@ -44,11 +43,13 @@ func TestUpdateComment(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				var resp PayloadError
+				var resp Vomit
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindPayload, resp.Kind)
-				require.Equal(t, "invalid request parameters", resp.Error)
+				require.Equal(t, ReqInvalidArguments, resp.Reason)
+				require.Equal(t, http.StatusBadRequest, resp.Status)
+				require.Equal(t, "invalid request arguments", resp.ErrMessage)
 				require.Len(t, resp.Issues, 1)
 				require.Equal(t, "body", resp.Issues[0].FieldName)
 				require.Equal(t, "required", resp.Issues[0].Tag)
@@ -56,7 +57,7 @@ func TestUpdateComment(t *testing.T) {
 		},
 		{
 			name: "TargetNotFound",
-			body: gin.H{
+			body: reqBody{
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
@@ -80,12 +81,14 @@ func TestUpdateComment(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, http.StatusNotFound, resp.Status)
 				require.Equal(t, "not_found", resp.Reason)
+				require.Equal(t, "comment with id 1 not found", resp.Error)
 			},
 		},
 		{
 			name: "UpdateCommentDBErr",
-			body: gin.H{
+			body: reqBody{
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
@@ -108,13 +111,14 @@ func TestUpdateComment(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, http.StatusInternalServerError, resp.Status)
 				require.Equal(t, "internal", resp.Reason)
 				require.Equal(t, "an internal error occurred", resp.Error)
 			},
 		},
 		{
 			name: "TargetDeleted",
-			body: gin.H{
+			body: reqBody{
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
@@ -138,12 +142,14 @@ func TestUpdateComment(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, http.StatusGone, resp.Status)
 				require.Equal(t, "deleted", resp.Reason)
+				require.Equal(t, "comment with id 1 is deleted and cannot be updated", resp.Error)
 			},
 		},
 		{
 			name: "UserIDMismatch",
-			body: gin.H{
+			body: reqBody{
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
@@ -168,12 +174,14 @@ func TestUpdateComment(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, http.StatusForbidden, resp.Status)
 				require.Equal(t, "permission", resp.Reason)
+				require.Equal(t, "comment with id 1 does not belong to user with id 1", resp.Error)
 			},
 		},
 		{
 			name: "PostIDMismatch",
-			body: gin.H{
+			body: reqBody{
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
@@ -197,12 +205,14 @@ func TestUpdateComment(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, http.StatusBadRequest, resp.Status)
 				require.Equal(t, "relation", resp.Reason)
+				require.Equal(t, "comment with id 1 does not belong to post with id 1", resp.Error)
 			},
 		},
 		{
 			name: "OK",
-			body: gin.H{
+			body: reqBody{
 				"body": "test",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
@@ -219,6 +229,12 @@ func TestUpdateComment(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
+
+				var resp db.UpdateCommentResult
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, int64(1), resp.ID)
+				require.Equal(t, "test", resp.Body)
 			},
 		},
 	}
@@ -248,6 +264,7 @@ func TestUpdateComment(t *testing.T) {
 			tc.setupAuth(t, request, tokenMaker)
 
 			service.router.ServeHTTP(recorder, request)
+			require.Equal(t, contentJSON, recorder.Header().Get("Content-Type"))
 			tc.checkResponse(t, recorder)
 		})
 	}

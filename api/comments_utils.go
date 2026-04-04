@@ -21,6 +21,8 @@ func (comment *CommentNode) GetParentID() (int64, bool) {
 // Comments from the database must be in depth-first order so the tree can be built from them.
 //
 // The tree will have n_roots number of roots
+//
+// TODO: why do i return pointers to CommentNode?
 func PrepareCommentTree(orderedPlainComments []db.CommentsWithAuthor, n_roots int) ([]*CommentNode, error) {
 	result := make([]*CommentNode, 0, n_roots)
 	stack := make([]*CommentNode, 0, 5) // 5 is the guess of typical comment thread depth

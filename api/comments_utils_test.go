@@ -29,9 +29,10 @@ func root(id int64, postID int64) db.CommentsWithAuthor {
 
 func child(id, parentID int64, depth int32, postID int64) db.CommentsWithAuthor {
 	return db.CommentsWithAuthor{
-		ID:              id,
-		UserID:          100 + id,
-		PostID:          postID,
+		ID:     id,
+		UserID: 100 + id,
+		PostID: postID,
+
 		ParentID:        pgtype.Int8{Int64: parentID, Valid: true},
 		Depth:           depth,
 		Body:            "child",
@@ -173,19 +174,26 @@ func TestPrepareCommentTree_EmptyInput(t *testing.T) {
 // Valid comment_id
 func TestExtractCommentID_ValidCommentID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/posts/123/comments/777", nil)
-	commentID, err := extractCommentID(req)
-	require.NoError(t, err)
+	req.SetPathValue("comment_id", "777")
+	commentID, vErr := extractCommentID(req)
+	require.Nil(t, vErr)
 	require.Equal(t, int64(777), commentID)
 }
 
 // Invalid comment_id
 func TestExtractCommentID_InvalidCommentID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/posts/123/comments/abc", nil)
-	commentID, err := extractCommentID(req)
-	require.Error(t, err)
-	var vErr *Vomit
-	require.ErrorAs(t, err, &vErr)
-	require.Equal(t, ReqInvalidArguments, vErr.Reason)
+	commentID, vErr := extractCommentID(req)
+	require.NotNil(t, vErr)
+	require.Equal(t, ReqInvalidCommentID, vErr.Reason)
 	require.Equal(t, http.StatusBadRequest, vErr.Status)
 	require.Equal(t, int64(-1), commentID)
+}
+
+func TestGetCommentIDDescriptor(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	req.SetPathValue("comment_id", "777")
+
+	desc := getCommentIDDescriptor(req)
+	t.Logf("val: %+v, available: %v", desc, desc.available())
 }

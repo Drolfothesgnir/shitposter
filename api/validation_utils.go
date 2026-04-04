@@ -130,13 +130,16 @@ func strAlphanum(v, fieldName string, issues *[]Issue) bool {
 	return true
 }
 
-type number interface {
+type integer interface {
 	~int | ~int8 | ~int16 | ~int32 | ~int64 |
-		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr |
-		~float32 | ~float64
+		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr
 }
 
-func numMin[T number](min T) func(v T, fieldName string, issues *[]Issue) bool {
+type number interface {
+	integer | ~float32 | ~float64
+}
+
+func numMin[T integer](min T) func(v T, fieldName string, issues *[]Issue) bool {
 	return func(v T, fieldName string, issues *[]Issue) bool {
 		if v < min {
 			*issues = append(*issues, Issue{
@@ -150,7 +153,7 @@ func numMin[T number](min T) func(v T, fieldName string, issues *[]Issue) bool {
 	}
 }
 
-func numMax[T number](max T) func(v T, fieldName string, issues *[]Issue) bool {
+func numMax[T integer](max T) func(v T, fieldName string, issues *[]Issue) bool {
 	return func(v T, fieldName string, issues *[]Issue) bool {
 		if v > max {
 			*issues = append(*issues, Issue{

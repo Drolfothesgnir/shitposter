@@ -17,7 +17,6 @@ import (
 	mockst "github.com/Drolfothesgnir/shitposter/tmpstore/mock"
 	"github.com/Drolfothesgnir/shitposter/util"
 	mockwa "github.com/Drolfothesgnir/shitposter/wauthn/mock"
-	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/stretchr/testify/require"
@@ -51,32 +50,80 @@ func TestSignInStart(t *testing.T) {
 	userWithCreds, err := NewUserWithCredentials(user, []db.WebauthnCredential{cred})
 	require.NoError(t, err)
 
-	assertion := &protocol.CredentialAssertion{}
+	assertion := &protocol.CredentialAssertion{
+		Response: protocol.PublicKeyCredentialRequestOptions{
+			Challenge: protocol.URLEncodedBase64([]byte("challenge")),
+			AllowedCredentials: []protocol.CredentialDescriptor{{
+				Type:         protocol.PublicKeyCredentialType,
+				CredentialID: protocol.URLEncodedBase64(cred.ID),
+				Transport:    transports,
+			}},
+		},
+	}
 	session := &webauthn.SessionData{
 		Challenge: "challenge",
 	}
 
+	checkInvalidArguments := func(t *testing.T, recorder *httptest.ResponseRecorder, fieldName, tag string) {
+		t.Helper()
+
+		require.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		var resp Vomit
+		err := json.NewDecoder(recorder.Body).Decode(&resp)
+		require.NoError(t, err)
+		require.Equal(t, KindPayload, resp.Kind)
+		require.Equal(t, ReqInvalidArguments, resp.Reason)
+		require.Equal(t, http.StatusBadRequest, resp.Status)
+		require.Equal(t, "invalid request arguments", resp.ErrMessage)
+		require.Len(t, resp.Issues, 1)
+		require.Equal(t, fieldName, resp.Issues[0].FieldName)
+		require.Equal(t, tag, resp.Issues[0].Tag)
+	}
+
+	checkResourceError := func(t *testing.T, recorder *httptest.ResponseRecorder, expected ResourceError) {
+		t.Helper()
+
+		require.Equal(t, expected.Status, recorder.Code)
+
+		var resp ResourceError
+		err := json.NewDecoder(recorder.Body).Decode(&resp)
+		require.NoError(t, err)
+		require.Equal(t, expected, resp)
+	}
+
+	checkInternalResourceError := func(t *testing.T, recorder *httptest.ResponseRecorder) {
+		t.Helper()
+
+		checkResourceError(t, recorder, ResourceError{
+			Kind:   KindResource,
+			Reason: db.KindInternal.String(),
+			Status: http.StatusInternalServerError,
+			Error:  "an internal error occurred",
+		})
+	}
+
 	testCases := []struct {
 		name          string
-		body          gin.H
+		body          reqBody
 		buildStubs    func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig)
 		checkResponse func(t *testing.T, recorder *httptest.ResponseRecorder)
 	}{
 		{
 			name: "InvalidUsername",
-			body: gin.H{
+			body: reqBody{
 				"username": "./-",
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
 				store.EXPECT().GetUserByUsername(gomock.Any(), "./-").Times(0)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
+				checkInvalidArguments(t, recorder, "username", "alphanum")
 			},
 		},
 		{
 			name: "UserNotFound",
-			body: gin.H{
+			body: reqBody{
 				"username": username,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
@@ -92,17 +139,17 @@ func TestSignInStart(t *testing.T) {
 				store.EXPECT().GetUserCredentials(gomock.Any(), gomock.Any()).Times(0)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusNotFound, recorder.Code)
-				var resp ResourceError
-				err := json.NewDecoder(recorder.Body).Decode(&resp)
-				require.NoError(t, err)
-				require.Equal(t, KindResource, resp.Kind)
-				require.Equal(t, db.KindNotFound.String(), resp.Reason)
+				checkResourceError(t, recorder, ResourceError{
+					Kind:   KindResource,
+					Reason: db.KindNotFound.String(),
+					Status: http.StatusNotFound,
+					Error:  fmt.Sprintf("user with username %q not found", username),
+				})
 			},
 		},
 		{
 			name: "GetUserErr",
-			body: gin.H{
+			body: reqBody{
 				"username": username,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
@@ -118,18 +165,12 @@ func TestSignInStart(t *testing.T) {
 				store.EXPECT().GetUserCredentials(gomock.Any(), gomock.Any()).Times(0)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusInternalServerError, recorder.Code)
-				var resp ResourceError
-				err := json.NewDecoder(recorder.Body).Decode(&resp)
-				require.NoError(t, err)
-				require.Equal(t, KindResource, resp.Kind)
-				require.Equal(t, db.KindInternal.String(), resp.Reason)
-				require.Equal(t, "an internal error occurred", resp.Error)
+				checkInternalResourceError(t, recorder)
 			},
 		},
 		{
 			name: "GetUserCredsErr",
-			body: gin.H{
+			body: reqBody{
 				"username": username,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
@@ -146,17 +187,17 @@ func TestSignInStart(t *testing.T) {
 				wa.EXPECT().BeginLogin(gomock.Any()).Times(0)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusNotFound, recorder.Code)
-				var resp ResourceError
-				err := json.NewDecoder(recorder.Body).Decode(&resp)
-				require.NoError(t, err)
-				require.Equal(t, KindResource, resp.Kind)
-				require.Equal(t, db.KindNotFound.String(), resp.Reason)
+				checkResourceError(t, recorder, ResourceError{
+					Kind:   KindResource,
+					Reason: db.KindNotFound.String(),
+					Status: http.StatusNotFound,
+					Error:  fmt.Sprintf("webauthn credentials for user %d not found", user.ID),
+				})
 			},
 		},
 		{
 			name: "BeginLoginErr",
-			body: gin.H{
+			body: reqBody{
 				"username": username,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
@@ -166,12 +207,12 @@ func TestSignInStart(t *testing.T) {
 				rs.EXPECT().SaveUserAuthSession(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+				checkInternalResourceError(t, recorder)
 			},
 		},
 		{
 			name: "SaveSessionErr",
-			body: gin.H{
+			body: reqBody{
 				"username": username,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
@@ -197,13 +238,13 @@ func TestSignInStart(t *testing.T) {
 					)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+				checkInternalResourceError(t, recorder)
 				require.Empty(t, recorder.Header().Get("Set-Cookie"))
 			},
 		},
 		{
 			name: "OK",
-			body: gin.H{
+			body: reqBody{
 				"username": username,
 			},
 			buildStubs: func(store *mockdb.MockStore, rs *mockst.MockStore, wa *mockwa.MockWebAuthnConfig) {
@@ -231,11 +272,19 @@ func TestSignInStart(t *testing.T) {
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
 				require.Contains(t, recorder.Header().Get("Set-Cookie"), webauthnSessionCookie+"=")
+				require.Contains(t, recorder.Header().Get("Set-Cookie"), "Max-Age=60")
+				require.Contains(t, recorder.Header().Get("Set-Cookie"), "HttpOnly")
+				require.Contains(t, recorder.Header().Get("Set-Cookie"), "Secure")
 
 				var resp SigninStartResponse
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.NotNil(t, resp.CredentialAssertion)
+				require.Equal(t, assertion.Response.Challenge, resp.CredentialAssertion.Response.Challenge)
+				require.Len(t, resp.CredentialAssertion.Response.AllowedCredentials, 1)
+				require.Equal(t, assertion.Response.AllowedCredentials[0].Type, resp.CredentialAssertion.Response.AllowedCredentials[0].Type)
+				require.Equal(t, assertion.Response.AllowedCredentials[0].CredentialID, resp.CredentialAssertion.Response.AllowedCredentials[0].CredentialID)
+				require.Equal(t, assertion.Response.AllowedCredentials[0].Transport, resp.CredentialAssertion.Response.AllowedCredentials[0].Transport)
 			},
 		},
 	}
@@ -266,6 +315,7 @@ func TestSignInStart(t *testing.T) {
 			require.NoError(t, err)
 
 			service.router.ServeHTTP(recorder, request)
+			require.Equal(t, contentJSON, recorder.Header().Get("Content-Type"))
 			tc.checkResponse(t, recorder)
 		})
 	}

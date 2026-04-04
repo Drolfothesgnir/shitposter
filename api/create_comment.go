@@ -5,37 +5,48 @@ import (
 	"net/http"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type CreateCommentRequest struct {
-	Body string `json:"body" binding:"required,max=500"`
+	Body string `json:"body"`
 }
 
-func (s *Service) createComment(ctx *gin.Context) {
-	authPayload := extractAuthPayloadFromCtx(ctx)
+func (r CreateCommentRequest) Validate() *Vomit {
+	issues := make([]Issue, 0)
+	validate(&issues, r.Body, "body", strRequired, strMax(500))
+	return barf(issues)
+}
 
-	postID := extractPostIDFromCtx(ctx)
+func (s *Service) createComment(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	authPayload := getAuthPayload(ctx)
+
+	postID, vErr := extractPostID(r)
+	if vErr != nil {
+		abortWithError(w, vErr)
+		return
+	}
 
 	var req CreateCommentRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(
-			http.StatusBadRequest,
-			newPayloadError("invalid request parameters", err))
+	if vErr := ingestJSONBody(w, r, &req); vErr != nil {
+		abortWithError(w, vErr)
 		return
 	}
 
 	// extracting comment id to check if comment is a reply
 	// i.e. comment_id from /posts/:post_id/comments/:comment_id is available
-	desc := getCommentIDDescriptor(ctx)
+	desc := getCommentIDDescriptor(r)
 
 	// if the comment_id provided but not valid abort with 400
 	if !desc.valid && desc.provided {
-		ctx.JSON(
+		vErr := puke(
+			ReqInvalidArguments,
 			http.StatusBadRequest,
-			newPayloadError(fmt.Sprintf("invalid comment id: %s", desc.rawValue), nil),
+			fmt.Sprintf("invalid comment id: %s", desc.rawValue),
+			nil,
 		)
+		abortWithError(w, vErr)
 		return
 	}
 
@@ -50,9 +61,9 @@ func (s *Service) createComment(ctx *gin.Context) {
 	comment, err := s.store.InsertCommentTx(ctx, arg)
 	if err != nil {
 		opErr := newResourceError(err)
-		ctx.JSON(opErr.StatusCode(), opErr)
+		abortWithError(w, opErr)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, comment)
+	respondWithJSON(w, http.StatusOK, comment)
 }

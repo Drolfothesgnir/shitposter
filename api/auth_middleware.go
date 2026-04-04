@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/Drolfothesgnir/shitposter/token"
-	"github.com/gin-gonic/gin"
 )
 
 type contextKey string
@@ -79,11 +78,6 @@ func (s *Service) authMiddleware(next http.Handler) http.HandlerFunc {
 
 		next.ServeHTTP(w, r)
 	}
-}
-
-// Helper to get auth data after the middleware check.
-func extractAuthPayloadFromCtx(ctx *gin.Context) *token.Payload {
-	return ctx.MustGet(string(ctxAuthorizationPayloadKey)).(*token.Payload)
 }
 
 // getAuthPayload helps to extract [token.Payload] from the request context.

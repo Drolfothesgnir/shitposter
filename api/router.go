@@ -8,18 +8,11 @@ import (
 func (service *Service) setupRouter(server *http.Server) {
 	// TODO: create private user path
 
-	// authGroup.DELETE("/users", service.deleteUser)
-	// authGroup.PATCH("/users", service.updateUser)
-
-	// // private routes where post id is checked
-	// privatePostGroup := authGroup.Use(service.postIDMiddleware())
 	// privatePostGroup.POST("/posts/:post_id/comments", service.createComment)
 	// privatePostGroup.POST("/posts/:post_id/comments/:comment_id", service.createComment)
 	// privatePostGroup.DELETE("/posts/:post_id")
 	// privatePostGroup.POST("/posts/:post_id/vote", notImplemented)
 
-	// privatePostCommentGroup := privatePostGroup.Use(service.commentIDMiddleware())
-	// privatePostCommentGroup.DELETE("/posts/:post_id/comments/:comment_id", service.deleteComment)
 	// privatePostCommentGroup.POST("/posts/:post_id/comments/:comment_id/vote", notImplemented)
 
 	router := http.NewServeMux()
@@ -34,12 +27,14 @@ func (service *Service) setupRouter(server *http.Server) {
 	router.HandleFunc("POST /users/renew_access", service.renewAccessToken)
 
 	// comments CRUD
-	router.HandleFunc("PATCH /posts/:post_id/comments/:comment_id", service.authMiddleware(http.HandlerFunc(service.updateComment)))
 	router.HandleFunc("GET /{post_id}/comments", service.getComments)
+	router.HandleFunc("PATCH /posts/{post_id}/comments/{comment_id}", service.authMiddleware(http.HandlerFunc(service.updateComment)))
+	router.HandleFunc("DELETE /posts/{post_id}/comments/{comment_id}", service.authMiddleware(http.HandlerFunc(service.deleteComment)))
 
 	// users CRUD
 	router.HandleFunc("GET /users/{id}", service.getUser)
 	router.HandleFunc("PATCH /users", service.authMiddleware(http.HandlerFunc(service.updateUser)))
+	router.HandleFunc("DELETE /users", service.authMiddleware(http.HandlerFunc(service.deleteUser)))
 
 	server.Handler = service.corsMiddleware(router)
 	service.router = router

@@ -112,7 +112,7 @@ func extractCommentID(r *http.Request) (int64, *Vomit) {
 	if !desc.available() {
 		msg := fmt.Sprintf("comment id [%s] is invalid", desc.rawValue)
 		vErr := puke(
-			ReqInvalidArguments,
+			ReqInvalidCommentID,
 			http.StatusBadRequest,
 			msg,
 			desc.err,

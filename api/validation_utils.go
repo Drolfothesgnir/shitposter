@@ -1,3 +1,4 @@
+// TODO: write some docs
 package api
 
 import (
@@ -5,6 +6,7 @@ import (
 	"net/http"
 	"net/mail"
 	"net/url"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -135,9 +137,9 @@ type integer interface {
 		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr
 }
 
-type number interface {
-	integer | ~float32 | ~float64
-}
+// type number interface {
+// 	integer | ~float32 | ~float64
+// }
 
 func numMin[T integer](min T) func(v T, fieldName string, issues *[]Issue) bool {
 	return func(v T, fieldName string, issues *[]Issue) bool {
@@ -181,4 +183,93 @@ func validate[T any](issues *[]Issue, v T, fieldName string, fns ...validator[T]
 			break
 		}
 	}
+}
+
+// Parser defines a function that converts a string to any type T
+type parser[T any] func([]string) (T, error)
+
+type singleParser[T any] func(string) (T, error)
+
+func extractRequiredParam[T any](
+	issues *[]Issue,
+	m url.Values,
+	key string,
+	dest *T,
+	parse parser[T],
+	fns ...validator[T],
+) {
+	// 1. Get the value (Extract)
+	vals, ok := m[key]
+	if !ok || len(vals) == 0 {
+		*issues = append(*issues, Issue{
+			FieldName: key,
+			Tag:       validatorRequired,
+			Message:   fmt.Sprintf("%s must be provided", key),
+		})
+		return
+	}
+	parseAndValidate(issues, vals, key, dest, parse, fns)
+}
+
+func extractOptionalParam[T any](
+	issues *[]Issue,
+	m url.Values,
+	key string,
+	dest *T,
+	parse parser[T],
+	fns ...validator[T],
+) {
+	vals, ok := m[key]
+	if !ok || len(vals) == 0 {
+		return
+	}
+	parseAndValidate(issues, vals, key, dest, parse, fns)
+}
+
+func parseSingle[T any](p singleParser[T]) parser[T] {
+	return func(s []string) (T, error) {
+		var zero T
+
+		if len(s) > 1 {
+			quoted := make([]string, len(s))
+			for i, str := range s {
+				quoted[i] = strconv.Quote(str)
+			}
+
+			joined := strings.Join(quoted, ", ")
+
+			return zero, fmt.Errorf("there should be only one value for this field, received: %s", joined)
+		}
+
+		return p(s[0])
+	}
+}
+
+func parseInt32(s string) (int32, error) {
+	val, err := strconv.ParseInt(s, 10, 32)
+	return int32(val), err
+}
+
+func parseString(s string) (string, error) {
+	return s, nil // Strings just pass through
+}
+
+func parseAndValidate[T any](issues *[]Issue, vals []string, key string, dest *T, parse parser[T], fns []validator[T]) {
+	parsed, err := parse(vals)
+	if err != nil {
+		*issues = append(*issues, Issue{
+			FieldName: key,
+			Tag:       "type_error",
+			Message:   fmt.Sprintf("%s has an invalid format: %s", key, err.Error()),
+		})
+		return
+	}
+
+	for _, fn := range fns {
+		if proceed := fn(parsed, key, issues); !proceed {
+			break // Stop validating this field if a validator fails and says to stop
+		}
+	}
+
+	*dest = parsed
 }

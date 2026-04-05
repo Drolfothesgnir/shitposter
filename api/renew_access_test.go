@@ -75,7 +75,7 @@ func TestRenewAccess(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, token.ErrInvalidToken.Error(), resp.ErrMessage)
+				require.Equal(t, "invalid or expired refresh token", resp.ErrMessage)
 			},
 		},
 		{
@@ -93,7 +93,7 @@ func TestRenewAccess(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, token.ErrTokenExpired.Error(), resp.ErrMessage)
+				require.Equal(t, "invalid or expired refresh token", resp.ErrMessage)
 			},
 		},
 		{
@@ -171,12 +171,12 @@ func TestRenewAccess(t *testing.T) {
 				"refresh_token": refreshToken,
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+				require.Equal(t, http.StatusForbidden, recorder.Code)
 				var resp AuthError
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, "session is blocked", resp.ErrMessage)
+				require.Equal(t, "account has been blocked", resp.ErrMessage)
 			},
 		},
 		{
@@ -203,7 +203,7 @@ func TestRenewAccess(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, "incorrect session user", resp.ErrMessage)
+				require.Equal(t, "invalid or expired refresh token", resp.ErrMessage)
 			},
 		},
 		{
@@ -230,7 +230,7 @@ func TestRenewAccess(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, "refresh token mismatch", resp.ErrMessage)
+				require.Equal(t, "invalid or expired refresh token", resp.ErrMessage)
 			},
 		},
 		{
@@ -257,7 +257,7 @@ func TestRenewAccess(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, "session is expired", resp.ErrMessage)
+				require.Equal(t, "invalid or expired refresh token", resp.ErrMessage)
 			},
 		},
 		{

@@ -17,13 +17,6 @@ const (
 	webauthnSessionCookie   = "webauthn_session"
 )
 
-// keys for values parsed from the uri and set into the request context
-const (
-	ctxPostIDKey    = "post_id"
-	ctxCommentIDKey = "comment_id"
-)
-
-// TODO: refactor tests
 type Service struct {
 	config         util.Config
 	store          db.Store

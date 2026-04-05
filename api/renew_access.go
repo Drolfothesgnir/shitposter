@@ -63,7 +63,7 @@ func (server *Service) renewAccessToken(w http.ResponseWriter, r *http.Request) 
 		authErr := newAuthError(
 			AuthSessionBlocked,
 			http.StatusForbidden,
-			"your account has been blocked",
+			"account has been blocked",
 			nil,
 		)
 		respondWithJSON(w, authErr.StatusCode(), authErr)

@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"net/http"
+	"net/url"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 )
@@ -11,6 +12,21 @@ type GetCommentsRequest struct {
 	RootOffset int32           `json:"root_offset"`
 	NRoots     int32           `json:"n_roots"`
 	Order      db.CommentOrder `json:"order"`
+}
+
+func (r *GetCommentsRequest) ExtractQueryParams(m url.Values) *Vomit {
+	issues := make([]Issue, 0, 3)
+
+	// root_offset
+	extractOptionalParam(&issues, m, "root_offset", &r.RootOffset, parseSingle(parseInt32), numMin(int32(0)))
+
+	// n_roots
+	extractOptionalParam(&issues, m, "n_roots", &r.NRoots, parseSingle(parseInt32), numMin(int32(1)), numMax(int32(100)))
+
+	// order
+	extractOptionalParam(&issues, m, "order", &r.Order, parseSingle(parseOrder), valCommentOrder)
+
+	return barf(issues)
 }
 
 // TODO: is word "order" appropriate here? shouldn't it be "sort order" or "sort" or something
@@ -35,12 +51,9 @@ func valCommentOrder(v db.CommentOrder, fieldname string, issues *[]Issue) bool 
 	return true
 }
 
-func (r GetCommentsRequest) Validate() *Vomit {
-	issues := make([]Issue, 0, 3)
-	validate(&issues, r.RootOffset, "root_offset", numMin(int32(0)))
-	validate(&issues, r.NRoots, "n_roots", numMin(int32(1)), numMax(int32(100)))
-	validate(&issues, r.Order, "order", valCommentOrder)
-	return barf(issues)
+func parseOrder(s string) (db.CommentOrder, error) {
+	o, err := parseString(s)
+	return db.CommentOrder(o), err
 }
 
 type GetCommentsResponse struct {
@@ -61,12 +74,7 @@ func (s *Service) getComments(w http.ResponseWriter, r *http.Request) {
 		Order:      db.CommentOrderPopular,
 	}
 
-	if vErr := ingestJSONBody(w, r, &req); vErr != nil {
-		respondWithJSON(w, vErr.Status, vErr)
-		return
-	}
-
-	if vErr := req.Validate(); vErr != nil {
+	if vErr := req.ExtractQueryParams(r.URL.Query()); vErr != nil {
 		respondWithJSON(w, vErr.Status, vErr)
 		return
 	}

@@ -42,6 +42,26 @@ func TestGetComments(t *testing.T) {
 			},
 		},
 		{
+			name:  "UsesDefaultsWhenQueryEmpty",
+			query: "",
+			buildStubs: func(store *mockdb.MockStore) {
+				arg := db.CommentQuery{
+					PostID: postID,
+					Limit:  10,
+					Offset: 0,
+					Order:  db.CommentOrderPopular,
+				}
+				store.EXPECT().QueryComments(gomock.Any(), arg).Times(1).Return([]db.CommentsWithAuthor{}, nil)
+			},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusOK, recorder.Code)
+				var res GetCommentsResponse
+				err := json.Unmarshal(recorder.Body.Bytes(), &res)
+				require.NoError(t, err)
+				require.Len(t, res.Comments, 0)
+			},
+		},
+		{
 			name:  "OKNoRows",
 			query: fmt.Sprintf("order=%s&root_offset=10&n_roots=10", db.CommentOrderPopular),
 			buildStubs: func(store *mockdb.MockStore) {

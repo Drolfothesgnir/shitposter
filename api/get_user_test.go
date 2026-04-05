@@ -155,8 +155,10 @@ func TestGetUser(t *testing.T) {
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
 
+				body := recorder.Body.Bytes()
+
 				var resp PublicUserResponse
-				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				err := json.Unmarshal(body, &resp)
 				require.NoError(t, err)
 				require.Equal(t, user.ID, resp.ID)
 				require.Equal(t, user.DisplayName, resp.DisplayName)
@@ -165,7 +167,7 @@ func TestGetUser(t *testing.T) {
 				require.Equal(t, user.ProfileImgUrl.String, *resp.ProfileImageURL)
 
 				var raw map[string]any
-				err = json.Unmarshal(recorder.Body.Bytes(), &raw)
+				err = json.Unmarshal(body, &raw)
 				require.NoError(t, err)
 				require.NotContains(t, raw, "username")
 				require.NotContains(t, raw, "email")

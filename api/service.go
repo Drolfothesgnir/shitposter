@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"time"
 
@@ -11,9 +10,6 @@ import (
 	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/Drolfothesgnir/shitposter/util"
 	"github.com/Drolfothesgnir/shitposter/wauthn"
-	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
-	"github.com/go-playground/validator/v10"
 )
 
 const (
@@ -21,33 +17,12 @@ const (
 	webauthnSessionCookie   = "webauthn_session"
 )
 
-// keys for values parsed from the uri and set into the request context
-const (
-	ctxPostIDKey    = "post_id"
-	ctxCommentIDKey = "comment_id"
-)
-
-var (
-	// api errors
-	ErrSessionBlocked              = errors.New("session is blocked")
-	ErrSessionUserMismatch         = errors.New("incorrect session user")
-	ErrSessionRefreshTokenMismatch = errors.New("refresh token mismatch")
-	ErrSessionExpired              = errors.New("session is expired")
-	ErrInvalidPostID               = errors.New("invalid post id")
-	ErrInvalidParams               = errors.New("invalid params")
-	ErrInvalidCommentID            = errors.New("invalid comment id")
-	ErrInvalidParentCommentId      = errors.New("invalid parent comment id")
-	ErrCommentDeleted              = errors.New("comment is deleted")
-	ErrCannotUpdate                = errors.New("could not update the entity")
-	ErrCannotDelete                = errors.New("could not delete the entity")
-)
-
 type Service struct {
 	config         util.Config
 	store          db.Store
 	tokenMaker     token.Maker
 	server         *http.Server
-	router         *gin.Engine
+	router         http.Handler
 	webauthnConfig wauthn.WebAuthnConfig
 	redisStore     tmpstore.Store
 }
@@ -84,12 +59,6 @@ func NewService(
 
 	service.setupRouter(server)
 
-	// custom validator to check if comment order in requests is valid.
-	// used in 'binding' tag in request.
-	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		v.RegisterValidation("comment_order", isValidCommentOrder)
-	}
-
 	service.server = server
 
 	return service, nil
@@ -100,17 +69,40 @@ func (service *Service) Start() error {
 	return service.server.ListenAndServe()
 }
 
-func (s *Service) setWebauthnSessionCookie(ctx *gin.Context, sessionID string, maxAge int) {
+func (s *Service) setWebauthnSessionCookie(w http.ResponseWriter, sessionID string, maxAge int) {
 	secure := s.config.Environment != "development"
-	ctx.SetCookie(webauthnSessionCookie, sessionID, maxAge, "/", "", secure, true)
+	cookie := &http.Cookie{
+		Name:     webauthnSessionCookie,
+		Value:    sessionID,
+		MaxAge:   maxAge,
+		Path:     "/",
+		Domain:   "",
+		Secure:   secure,
+		HttpOnly: true,
+	}
+
+	http.SetCookie(w, cookie)
 }
 
-func getWebauthnSessionCookie(ctx *gin.Context) (string, error) {
-	return ctx.Cookie(webauthnSessionCookie)
+func getWebauthnSessionCookieValue(r *http.Request) string {
+	c, err := r.Cookie(webauthnSessionCookie)
+	if err != nil {
+		return ""
+	}
+	return c.Value
 }
 
-func clearWebauthnSessionCookie(ctx *gin.Context, secure bool) {
-	ctx.SetCookie(webauthnSessionCookie, "", -1, "/", "", secure, true)
+func clearWebauthnSessionCookie(w http.ResponseWriter, secure bool) {
+	cookie := &http.Cookie{
+		Name:     webauthnSessionCookie,
+		Value:    "",
+		MaxAge:   -1,
+		Path:     "/",
+		Domain:   "",
+		Secure:   secure,
+		HttpOnly: true,
+	}
+	http.SetCookie(w, cookie)
 }
 
 // TODO: shutdown db store and other sub-services

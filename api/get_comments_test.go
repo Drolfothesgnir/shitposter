@@ -31,13 +31,34 @@ func TestGetComments(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				var resp PayloadError
+				var resp Vomit
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindPayload, resp.Kind)
+				require.Equal(t, ReqInvalidArguments, resp.Reason)
 				require.Len(t, resp.Issues, 1)
 				require.Equal(t, "order", resp.Issues[0].FieldName)
-				require.Equal(t, "comment_order", resp.Issues[0].Reason)
+				require.Equal(t, "comment_order", resp.Issues[0].Tag)
+			},
+		},
+		{
+			name:  "UsesDefaultsWhenQueryEmpty",
+			query: "",
+			buildStubs: func(store *mockdb.MockStore) {
+				arg := db.CommentQuery{
+					PostID: postID,
+					Limit:  10,
+					Offset: 0,
+					Order:  db.CommentOrderPopular,
+				}
+				store.EXPECT().QueryComments(gomock.Any(), arg).Times(1).Return([]db.CommentsWithAuthor{}, nil)
+			},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusOK, recorder.Code)
+				var res GetCommentsResponse
+				err := json.Unmarshal(recorder.Body.Bytes(), &res)
+				require.NoError(t, err)
+				require.Len(t, res.Comments, 0)
 			},
 		},
 		{

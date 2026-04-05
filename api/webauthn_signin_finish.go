@@ -6,7 +6,6 @@ import (
 	"time"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
-	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 )
 
@@ -16,22 +15,45 @@ import (
 // 3. Client signs the challenge with his private key, created during registration, and sends Webauthn response to the server.
 // 4. Server checks if the challenge is solved correctly and checks sign count, then authenticates the user, returns 401 otherwise.
 
-func (service *Service) signinFinish(ctx *gin.Context) {
+func (service *Service) signinFinish(w http.ResponseWriter, r *http.Request) {
 	// 1. Read session ID from cookie
-	sessionID, err := getWebauthnSessionCookie(ctx)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, newPayloadError("missing or invalid session cookie", nil))
+	sessionID := getWebauthnSessionCookieValue(r)
+	if sessionID == "" {
+		// We use AuthError here because this is an authentication state failure,
+		// not a JSON body parsing/validation failure.
+		aErr := newAuthError(
+			AuthSessionNotFound,   // The flavor we added in the previous step
+			http.StatusBadRequest, // 400 because they submitted a malformed request for this stage
+			"missing or invalid session cookie",
+			nil, // No underlying Go error to log here
+		)
+		abortWithError(w, aErr)
 		return
 	}
+
+	ctx := r.Context()
 
 	// 2. Get pending authentication session
 	pending, err := service.redisStore.GetUserAuthSession(ctx, sessionID)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, newPayloadError("authentication session not found or expired", nil))
+		aErr := newAuthError(
+			AuthSessionNotFound,
+			http.StatusBadRequest,
+			"authentication session not found or expired",
+			nil,
+		)
+		abortWithError(w, aErr)
 		return
 	}
+
 	if time.Now().After(pending.ExpiresAt) {
-		ctx.JSON(http.StatusBadRequest, newPayloadError("authentication session expired", nil))
+		aErr := newAuthError(
+			AuthSessionExpired,
+			http.StatusUnauthorized,
+			"authentication session expired",
+			nil,
+		)
+		abortWithError(w, aErr)
 		return
 	}
 
@@ -39,27 +61,31 @@ func (service *Service) signinFinish(ctx *gin.Context) {
 	user, err := service.store.GetUser(ctx, pending.UserID)
 	if err != nil {
 		opErr := newResourceError(err)
-		ctx.JSON(opErr.StatusCode(), opErr)
+		respondWithJSON(w, opErr.StatusCode(), opErr)
 		return
 	}
 
 	credentials, err := service.store.GetUserCredentials(ctx, user.ID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, internalResourceError())
+		respondWithJSON(w, http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
 	userWithCreds, err := NewUserWithCredentials(user, credentials)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, internalResourceError())
+		respondWithJSON(w, http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
 	// 4. Finish authentication
-	credential, err := service.webauthnConfig.FinishLogin(userWithCreds, *pending.SessionData, ctx.Request)
+	credential, err := service.webauthnConfig.FinishLogin(userWithCreds, *pending.SessionData, r)
 	if err != nil {
-		authErr := newAuthError("authentication failed")
-		ctx.JSON(authErr.StatusCode(), authErr)
+		authErr := newAuthError(
+			FlavorInternal,
+			http.StatusUnauthorized,
+			"authentication failed",
+			err)
+		respondWithJSON(w, authErr.StatusCode(), authErr)
 		return
 	}
 
@@ -77,8 +103,12 @@ func (service *Service) signinFinish(ctx *gin.Context) {
 				Str("kind", opErr.Kind.String()).
 				Msg("Rejecting authentication after credential use check")
 
-			authErr := newAuthError("authentication failed")
-			ctx.JSON(authErr.StatusCode(), authErr)
+			authErr := newAuthError(
+				AuthVerificationFailed,
+				http.StatusUnauthorized,
+				"authentication failed",
+				opErr)
+			respondWithJSON(w, authErr.StatusCode(), authErr)
 			return
 		}
 	}
@@ -87,20 +117,20 @@ func (service *Service) signinFinish(ctx *gin.Context) {
 	res, err := service.generateAuthTokens(
 		ctx,
 		userWithCreds.User,
-		ctx.Request.UserAgent(),
-		ctx.ClientIP(),
+		r.UserAgent(),
+		getClientIP(r),
 	)
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, internalResourceError())
+		respondWithJSON(w, http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
 	// 7. Clean up session cookie and Redis
 	secure := service.config.Environment != "development"
-	clearWebauthnSessionCookie(ctx, secure)
+	clearWebauthnSessionCookie(w, secure)
 	_ = service.redisStore.DeleteUserAuthSession(ctx, sessionID)
 
 	// 8. Return tokens and user data to the client
-	ctx.JSON(http.StatusOK, res)
+	respondWithJSON(w, http.StatusOK, res)
 }

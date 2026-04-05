@@ -7,7 +7,6 @@ import (
 	"time"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
-	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -16,7 +15,7 @@ import (
 // Helper function to extract credential transport info from user creds or from the HTTP header.
 //
 // TODO: add proper data sanitizing
-func extractTransportData(ctx *gin.Context, cred *webauthn.Credential) []string {
+func extractTransportData(r *http.Request, cred *webauthn.Credential) []string {
 	if len(cred.Transport) > 0 {
 		// need to convert native webauthn transport type to the string
 		// to be consistent in return value
@@ -27,27 +26,34 @@ func extractTransportData(ctx *gin.Context, cred *webauthn.Credential) []string 
 		return transport
 	}
 
-	transport := ctx.GetHeader(WebauthnTransportHeader)
+	transport := r.Header.Get(WebauthnTransportHeader)
 	return strings.Split(transport, ",")
 
 }
 
-func (service *Service) signupFinish(ctx *gin.Context) {
+func (service *Service) signupFinish(w http.ResponseWriter, r *http.Request) {
 	// 1) Read session ID from cookie
-	sessionID, err := getWebauthnSessionCookie(ctx)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, newPayloadError("missing or invalid session cookie", nil))
+	sessionID := getWebauthnSessionCookieValue(r)
+	if sessionID == "" {
+		vErr := puke(ReqMissingData, http.StatusBadRequest, "missing or invalid session cookie", nil)
+		respondWithJSON(w, vErr.Status, vErr)
 		return
 	}
+
+	// FIX: Always use the request context to respect client disconnects/timeouts
+	ctx := r.Context()
 
 	// 2) Load pending registration session from Redis
 	pending, err := service.redisStore.GetUserRegSession(ctx, sessionID)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, newPayloadError("registration session not found or expired", nil))
+		vErr := puke(AuthSessionNotFound, http.StatusBadRequest, "registration session not found or expired", err)
+		respondWithJSON(w, vErr.Status, vErr)
 		return
 	}
+
 	if time.Now().After(pending.ExpiresAt) {
-		ctx.JSON(http.StatusBadRequest, newPayloadError("registration session expired", nil))
+		vErr := puke(AuthSessionExpired, http.StatusBadRequest, "registration session expired", nil)
+		respondWithJSON(w, vErr.Status, vErr)
 		return
 	}
 
@@ -60,19 +66,20 @@ func (service *Service) signupFinish(ctx *gin.Context) {
 	}
 
 	// 4) Finish registration (validates challenge/origin, builds credential)
-	cred, err := service.webauthnConfig.FinishRegistration(tmp, *pending.SessionData, ctx.Request)
+	cred, err := service.webauthnConfig.FinishRegistration(tmp, *pending.SessionData, r)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, newPayloadError("webauthn registration verification failed", nil))
+		vErr := puke(AuthVerificationFailed, http.StatusBadRequest, "webauthn registration verification failed", err)
+		respondWithJSON(w, vErr.Status, vErr)
 		return
 	}
 
 	// 5) Save user data and credentials into the database
-
-	tr := extractTransportData(ctx, cred)
+	tr := extractTransportData(r, cred)
 
 	jsonTransport, err := json.Marshal(tr)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, internalResourceError())
+		// Assuming internalResourceError() returns a *Vomit or you can replace it with puke()
+		respondWithJSON(w, http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
@@ -103,22 +110,21 @@ func (service *Service) signupFinish(ctx *gin.Context) {
 	// TODO: add 23505 - unique violation check for racing transactions
 	user, err := service.store.CreateUserWithCredentialsTx(ctx, txArg)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, internalResourceError())
+		respondWithJSON(w, http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
 	// 6) Clean up session cookie and Redis
 	secure := service.config.Environment != "development"
-	clearWebauthnSessionCookie(ctx, secure)
+	clearWebauthnSessionCookie(w, secure)
 	_ = service.redisStore.DeleteUserRegSession(ctx, sessionID)
 
 	// 7) Return user data to the client
-	res, err := service.generateAuthTokens(ctx, user, ctx.Request.UserAgent(), ctx.ClientIP())
-
+	res, err := service.generateAuthTokens(ctx, user, r.UserAgent(), getClientIP(r))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, internalResourceError())
+		respondWithJSON(w, http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, res)
+	respondWithJSON(w, http.StatusOK, res)
 }

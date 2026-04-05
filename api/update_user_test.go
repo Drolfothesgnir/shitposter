@@ -13,7 +13,6 @@ import (
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/Drolfothesgnir/shitposter/token"
 	"github.com/Drolfothesgnir/shitposter/util"
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -34,14 +33,14 @@ func TestUpdateUser(t *testing.T) {
 
 	testCases := []struct {
 		name          string
-		body          gin.H
+		body          reqBody
 		buildStubs    func(store *mockdb.MockStore)
 		setupAuth     func(t *testing.T, request *http.Request, tokenMaker token.Maker)
 		checkResponse func(t *testing.T, recorder *httptest.ResponseRecorder)
 	}{
 		{
 			name: "InvalidUsername",
-			body: gin.H{
+			body: reqBody{
 				"username": "./1",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
@@ -52,18 +51,20 @@ func TestUpdateUser(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				var resp PayloadError
+				var resp Vomit
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindPayload, resp.Kind)
+				require.Equal(t, ReqInvalidArguments, resp.Reason)
+				require.Equal(t, http.StatusBadRequest, resp.Status)
 				require.Len(t, resp.Issues, 1)
 				require.Equal(t, "username", resp.Issues[0].FieldName)
-				require.Equal(t, "alphanum", resp.Issues[0].Reason)
+				require.Equal(t, "alphanum", resp.Issues[0].Tag)
 			},
 		},
 		{
 			name: "EmptyBody",
-			body: gin.H{},
+			body: reqBody{},
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().UpdateUser(gomock.Any(), gomock.Any()).Times(0)
 			},
@@ -72,16 +73,22 @@ func TestUpdateUser(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				var resp PayloadError
+				var resp Vomit
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindPayload, resp.Kind)
-				require.Equal(t, "request body is empty", resp.Error)
+				require.Equal(t, ReqInvalidArguments, resp.Reason)
+				require.Equal(t, http.StatusBadRequest, resp.Status)
+				require.Equal(t, "invalid request arguments", resp.ErrMessage)
+				require.Len(t, resp.Issues, 1)
+				require.Equal(t, "body", resp.Issues[0].FieldName)
+				require.Equal(t, "empty_body", resp.Issues[0].Tag)
+				require.Equal(t, "at least one of the optional fields must be present", resp.Issues[0].Message)
 			},
 		},
 		{
 			name: "UserNotFound",
-			body: gin.H{
+			body: reqBody{
 				"username": username,
 				"email":    email,
 			},
@@ -110,12 +117,14 @@ func TestUpdateUser(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, http.StatusNotFound, resp.Status)
 				require.Equal(t, "not_found", resp.Reason)
+				require.Equal(t, fmt.Sprintf("user with id %d not found", userID), resp.Error)
 			},
 		},
 		{
 			name: "DuplicateUsername",
-			body: gin.H{
+			body: reqBody{
 				"username":        username,
 				"email":           email,
 				"profile_img_url": imgURL,
@@ -142,12 +151,14 @@ func TestUpdateUser(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, http.StatusConflict, resp.Status)
 				require.Equal(t, "conflict", resp.Reason)
+				require.Equal(t, fmt.Sprintf("user with username '%s' exists", username), resp.Error)
 			},
 		},
 		{
 			name: "DuplicateEmail",
-			body: gin.H{
+			body: reqBody{
 				"username":        username,
 				"email":           email,
 				"profile_img_url": imgURL,
@@ -174,12 +185,14 @@ func TestUpdateUser(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, http.StatusConflict, resp.Status)
 				require.Equal(t, "conflict", resp.Reason)
+				require.Equal(t, fmt.Sprintf("user with email '%s' exists", email), resp.Error)
 			},
 		},
 		{
 			name: "UpdateUserErr",
-			body: gin.H{
+			body: reqBody{
 				"username":        username,
 				"email":           email,
 				"profile_img_url": imgURL,
@@ -204,13 +217,14 @@ func TestUpdateUser(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, http.StatusInternalServerError, resp.Status)
 				require.Equal(t, "internal", resp.Reason)
 				require.Equal(t, "an internal error occurred", resp.Error)
 			},
 		},
 		{
 			name: "OK",
-			body: gin.H{
+			body: reqBody{
 				"username":        username,
 				"email":           email,
 				"profile_img_url": imgURL,
@@ -230,6 +244,13 @@ func TestUpdateUser(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
+
+				var resp db.UpdateUserResult
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, userID, resp.ID)
+				require.Equal(t, username, resp.Username)
+				require.Equal(t, email, resp.Email)
 			},
 		},
 	}
@@ -258,6 +279,7 @@ func TestUpdateUser(t *testing.T) {
 			tc.setupAuth(t, request, tokenMaker)
 
 			service.router.ServeHTTP(recorder, request)
+			require.Equal(t, contentJSON, recorder.Header().Get("Content-Type"))
 			tc.checkResponse(t, recorder)
 		})
 	}

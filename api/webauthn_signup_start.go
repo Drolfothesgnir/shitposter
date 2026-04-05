@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Drolfothesgnir/shitposter/tmpstore"
-	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/google/uuid"
 )
@@ -19,8 +18,21 @@ import (
 // 4. Server saves user data and credentials in the db and returns user object to the client
 
 type SignupStartRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Username string `json:"username" binding:"required,min=3,max=50,alphanum"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
+}
+
+func (r SignupStartRequest) Validate() *Vomit {
+	// email -> required OR pattern + username -> required OR min OR max AND alphanum = 3 possible errors
+	issues := make([]Issue, 0, 3)
+
+	// email
+	validate(&issues, r.Email, "email", strRequired, strEmail)
+
+	// username
+	validate(&issues, r.Username, "username", strRequired, strMin(3), strMax(50), strAlphanum)
+
+	return barf(issues)
 }
 
 type SignupStartResponse struct {
@@ -28,47 +40,57 @@ type SignupStartResponse struct {
 }
 
 // TODO: add profile image handling during registration
-func (service *Service) signupStart(ctx *gin.Context) {
+func (service *Service) signupStart(w http.ResponseWriter, r *http.Request) {
+	// tasting the body
 	var req SignupStartRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, newPayloadError("invalid request parameters", err))
+	if vErr := ingestJSONBody(w, r, &req); vErr != nil {
+		// TODO: replace all occurances in all API files with [abortWithError]
+		respondWithJSON(w, vErr.Status, vErr)
 		return
 	}
+
+	// validating the body
+	if vErr := req.Validate(); vErr != nil {
+		respondWithJSON(w, vErr.Status, vErr)
+		return
+	}
+
+	ctx := r.Context()
 
 	// 1) check if provided username and email are unique, reject with 400 otherwise
 	usernameExists, err := service.store.UsernameExists(ctx, req.Username)
 	if err != nil {
 		opErr := newResourceError(err)
-		ctx.JSON(opErr.StatusCode(), opErr)
+		respondWithJSON(w, opErr.StatusCode(), opErr)
 		return
 	}
 
 	if usernameExists {
-		ctx.JSON(
+		v := puke(
+			ReqInvalidArguments,
 			http.StatusConflict,
-			newPayloadError(
-				fmt.Sprintf(
-					"user with username [%s] already exists",
-					req.Username,
-				), nil))
+			fmt.Sprintf("user with username [%s] already exists", req.Username),
+			nil,
+		)
+		respondWithJSON(w, v.Status, v)
 		return
 	}
 
 	emailExists, err := service.store.EmailExists(ctx, req.Email)
 	if err != nil {
 		opErr := newResourceError(err)
-		ctx.JSON(opErr.StatusCode(), opErr)
+		respondWithJSON(w, opErr.StatusCode(), opErr)
 		return
 	}
 
 	if emailExists {
-		ctx.JSON(
+		v := puke(
+			ReqInvalidArguments,
 			http.StatusConflict,
-			newPayloadError(
-				fmt.Sprintf(
-					"user with email [%s] already exists",
-					req.Email,
-				), nil))
+			fmt.Sprintf("user with email [%s] already exists", req.Email),
+			nil,
+		)
+		respondWithJSON(w, v.Status, v)
 		return
 	}
 
@@ -76,7 +98,7 @@ func (service *Service) signupStart(ctx *gin.Context) {
 	userHandle := make([]byte, 32)
 	_, err = rand.Read(userHandle)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, internalResourceError())
+		respondWithJSON(w, http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
@@ -90,7 +112,7 @@ func (service *Service) signupStart(ctx *gin.Context) {
 	// 3) init registration process with temporary user
 	create, session, err := service.webauthnConfig.BeginRegistration(tempUser)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, internalResourceError())
+		respondWithJSON(w, http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
@@ -112,13 +134,13 @@ func (service *Service) signupStart(ctx *gin.Context) {
 	)
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, internalResourceError())
+		respondWithJSON(w, http.StatusInternalServerError, internalResourceError())
 		return
 	}
 
 	// 5) Set session cookie and return challenge options to the client
-	service.setWebauthnSessionCookie(ctx, sessionID, int(service.config.RegistrationSessionTTL.Seconds()))
-	ctx.JSON(http.StatusOK, SignupStartResponse{
+	service.setWebauthnSessionCookie(w, sessionID, int(service.config.RegistrationSessionTTL.Seconds()))
+	respondWithJSON(w, http.StatusOK, SignupStartResponse{
 		CredentialCreation: create,
 	})
 }

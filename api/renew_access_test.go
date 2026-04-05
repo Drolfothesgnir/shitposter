@@ -14,7 +14,6 @@ import (
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
 	"github.com/Drolfothesgnir/shitposter/token"
 	mocktk "github.com/Drolfothesgnir/shitposter/token/mock"
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -48,7 +47,7 @@ func TestRenewAccess(t *testing.T) {
 			store *mockdb.MockStore,
 			tokenMaker *mocktk.MockMaker,
 		)
-		body          gin.H
+		body          reqBody
 		checkResponse func(t *testing.T, recorder *httptest.ResponseRecorder)
 	}{
 		{
@@ -56,7 +55,7 @@ func TestRenewAccess(t *testing.T) {
 			buildStubs: func(store *mockdb.MockStore, tokenMaker *mocktk.MockMaker) {
 				tokenMaker.EXPECT().VerifyToken(gomock.Any()).Times(0)
 			},
-			body: gin.H{},
+			body: reqBody{},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
 			},
@@ -67,7 +66,7 @@ func TestRenewAccess(t *testing.T) {
 				tokenMaker.EXPECT().VerifyToken(refreshToken).Times(1).Return(&token.Payload{}, token.ErrInvalidToken)
 				store.EXPECT().GetSession(gomock.Any(), gomock.Any()).Times(0)
 			},
-			body: gin.H{
+			body: reqBody{
 				"refresh_token": refreshToken,
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -76,7 +75,7 @@ func TestRenewAccess(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, token.ErrInvalidToken.Error(), resp.Error)
+				require.Equal(t, "invalid or expired refresh token", resp.ErrMessage)
 			},
 		},
 		{
@@ -85,7 +84,7 @@ func TestRenewAccess(t *testing.T) {
 				tokenMaker.EXPECT().VerifyToken(refreshToken).Times(1).Return(&token.Payload{}, token.ErrTokenExpired)
 				store.EXPECT().GetSession(gomock.Any(), gomock.Any()).Times(0)
 			},
-			body: gin.H{
+			body: reqBody{
 				"refresh_token": refreshToken,
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -94,7 +93,7 @@ func TestRenewAccess(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, token.ErrTokenExpired.Error(), resp.Error)
+				require.Equal(t, "invalid or expired refresh token", resp.ErrMessage)
 			},
 		},
 		{
@@ -113,7 +112,7 @@ func TestRenewAccess(t *testing.T) {
 				)
 				tokenMaker.EXPECT().CreateToken(gomock.Any(), gomock.Any()).Times(0)
 			},
-			body: gin.H{
+			body: reqBody{
 				"refresh_token": refreshToken,
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -140,7 +139,7 @@ func TestRenewAccess(t *testing.T) {
 				)
 				tokenMaker.EXPECT().CreateToken(gomock.Any(), gomock.Any()).Times(0)
 			},
-			body: gin.H{
+			body: reqBody{
 				"refresh_token": refreshToken,
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -168,16 +167,16 @@ func TestRenewAccess(t *testing.T) {
 				store.EXPECT().GetSession(gomock.Any(), payload.ID).Times(1).Return(session, nil)
 				tokenMaker.EXPECT().CreateToken(gomock.Any(), gomock.Any()).Times(0)
 			},
-			body: gin.H{
+			body: reqBody{
 				"refresh_token": refreshToken,
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+				require.Equal(t, http.StatusForbidden, recorder.Code)
 				var resp AuthError
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, ErrSessionBlocked.Error(), resp.Error)
+				require.Equal(t, "account has been blocked", resp.ErrMessage)
 			},
 		},
 		{
@@ -195,7 +194,7 @@ func TestRenewAccess(t *testing.T) {
 				store.EXPECT().GetSession(gomock.Any(), payload.ID).Times(1).Return(session, nil)
 				tokenMaker.EXPECT().CreateToken(gomock.Any(), gomock.Any()).Times(0)
 			},
-			body: gin.H{
+			body: reqBody{
 				"refresh_token": refreshToken,
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -204,7 +203,7 @@ func TestRenewAccess(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, ErrSessionUserMismatch.Error(), resp.Error)
+				require.Equal(t, "invalid or expired refresh token", resp.ErrMessage)
 			},
 		},
 		{
@@ -222,7 +221,7 @@ func TestRenewAccess(t *testing.T) {
 				store.EXPECT().GetSession(gomock.Any(), payload.ID).Times(1).Return(session, nil)
 				tokenMaker.EXPECT().CreateToken(gomock.Any(), gomock.Any()).Times(0)
 			},
-			body: gin.H{
+			body: reqBody{
 				"refresh_token": refreshToken,
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -231,7 +230,7 @@ func TestRenewAccess(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, ErrSessionRefreshTokenMismatch.Error(), resp.Error)
+				require.Equal(t, "invalid or expired refresh token", resp.ErrMessage)
 			},
 		},
 		{
@@ -249,7 +248,7 @@ func TestRenewAccess(t *testing.T) {
 				store.EXPECT().GetSession(gomock.Any(), payload.ID).Times(1).Return(session, nil)
 				tokenMaker.EXPECT().CreateToken(gomock.Any(), gomock.Any()).Times(0)
 			},
-			body: gin.H{
+			body: reqBody{
 				"refresh_token": refreshToken,
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -258,7 +257,7 @@ func TestRenewAccess(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindAuth, resp.Kind)
-				require.Equal(t, ErrSessionExpired.Error(), resp.Error)
+				require.Equal(t, "invalid or expired refresh token", resp.ErrMessage)
 			},
 		},
 		{
@@ -268,7 +267,7 @@ func TestRenewAccess(t *testing.T) {
 				store.EXPECT().GetSession(gomock.Any(), payload.ID).Times(1).Return(session, nil)
 				tokenMaker.EXPECT().CreateToken(payload.UserID, time.Minute).Times(1).Return("", nil, errors.New(""))
 			},
-			body: gin.H{
+			body: reqBody{
 				"refresh_token": refreshToken,
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -287,7 +286,7 @@ func TestRenewAccess(t *testing.T) {
 				store.EXPECT().GetSession(gomock.Any(), payload.ID).Times(1).Return(session, nil)
 				tokenMaker.EXPECT().CreateToken(payload.UserID, time.Minute).Times(1).Return("access_token", payload, nil)
 			},
-			body: gin.H{
+			body: reqBody{
 				"refresh_token": refreshToken,
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {

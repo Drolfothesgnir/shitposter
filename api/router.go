@@ -2,58 +2,42 @@ package api
 
 import (
 	"net/http"
-
-	"github.com/gin-gonic/gin"
 )
 
 // Establishes HTTP router.
 func (service *Service) setupRouter(server *http.Server) {
-	router := gin.Default()
+	// TODO: create private user path
 
-	router.Use(service.corsMiddleware())
+	// privatePostGroup.DELETE("/posts/:post_id")
+	// privatePostGroup.POST("/posts/:post_id/vote", notImplemented)
 
-	router.GET("/ping", func(ctx *gin.Context) {
-		ctx.String(http.StatusOK, "pong")
-	})
+	// privatePostCommentGroup.POST("/posts/:post_id/comments/:comment_id/vote", notImplemented)
+
+	router := http.NewServeMux()
 
 	// passkey auth
-	router.POST("/users/signup/start", service.signupStart)
-	router.POST("/users/signup/finish", service.signupFinish)
-	router.POST("/users/signin/start", service.signinStart)
-	router.POST("/users/signin/finish", service.signinFinish)
+	router.HandleFunc("POST /users/signup/start", service.signupStart)
+	router.HandleFunc("POST /users/signup/finish", service.signupFinish)
+	router.HandleFunc("POST /users/signin/start", service.signinStart)
+	router.HandleFunc("POST /users/signin/finish", service.signinFinish)
 
 	// renew access token
-	router.POST("/users/renew_access", service.renewAccessToken)
+	router.HandleFunc("POST /users/renew_access", service.renewAccessToken)
 
-	// TODO: create private user path
-	// get user's public info
-	router.GET("/users/:id", service.getUser)
+	// comments CRUD
+	// one for root comments
+	router.HandleFunc("POST /posts/{post_id}/comments", service.authMiddleware(http.HandlerFunc(service.createComment)))
+	// and one for replies
+	router.HandleFunc("POST /posts/{post_id}/comments/{comment_id}", service.authMiddleware(http.HandlerFunc(service.createComment)))
+	router.HandleFunc("GET /posts/{post_id}/comments", service.getComments)
+	router.HandleFunc("PATCH /posts/{post_id}/comments/{comment_id}", service.authMiddleware(http.HandlerFunc(service.updateComment)))
+	router.HandleFunc("DELETE /posts/{post_id}/comments/{comment_id}", service.authMiddleware(http.HandlerFunc(service.deleteComment)))
 
-	// public routes where post id is checked
-	publicPostGroup := router.Group("/posts").Use(service.postIDMiddleware())
-	publicPostGroup.GET("/:post_id/comments", service.getComments)
+	// users CRUD
+	router.HandleFunc("GET /users/{id}", service.getUser)
+	router.HandleFunc("PATCH /users", service.authMiddleware(http.HandlerFunc(service.updateUser)))
+	router.HandleFunc("DELETE /users", service.authMiddleware(http.HandlerFunc(service.deleteUser)))
 
-	// protected routes
-	authGroup := router.Group("/").Use(service.authMiddleware)
-	authGroup.DELETE("/users", service.deleteUser)
-	authGroup.PATCH("/users", service.updateUser)
-
-	// private routes where post id is checked
-	privatePostGroup := authGroup.Use(service.postIDMiddleware())
-	privatePostGroup.POST("/posts/:post_id/comments", service.createComment)
-	privatePostGroup.POST("/posts/:post_id/comments/:comment_id", service.createComment)
-	privatePostGroup.DELETE("/posts/:post_id")
-	privatePostGroup.POST("/posts/:post_id/vote", notImplemented)
-
-	privatePostCommentGroup := privatePostGroup.Use(service.commentIDMiddleware())
-	privatePostCommentGroup.PATCH("/posts/:post_id/comments/:comment_id", service.updateComment)
-	privatePostCommentGroup.DELETE("/posts/:post_id/comments/:comment_id", service.deleteComment)
-	privatePostCommentGroup.POST("/posts/:post_id/comments/:comment_id/vote", notImplemented)
-
-	server.Handler = router
+	server.Handler = service.corsMiddleware(router)
 	service.router = router
-}
-
-func notImplemented(ctx *gin.Context) {
-	ctx.Status(http.StatusNotImplemented)
 }

@@ -6,16 +6,27 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	mockdb "github.com/Drolfothesgnir/shitposter/db/mock"
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
 func TestGetUser(t *testing.T) {
 	user := db.User{
-		ID: 1,
+		ID:          1,
+		Username:    "alice",
+		Email:       "alice@example.com",
+		DisplayName: "Alice",
+		CreatedAt:   time.Date(2026, 4, 4, 12, 0, 0, 0, time.UTC),
+		ProfileImgUrl: pgtype.Text{
+			String: "https://example.com/alice.png",
+			Valid:  true,
+		},
+		IsDeleted: true,
 	}
 
 	testCases := []struct {
@@ -32,6 +43,13 @@ func TestGetUser(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
+				var resp Vomit
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindPayload, resp.Kind)
+				require.Equal(t, ReqInvalidArguments, resp.Reason)
+				require.Equal(t, http.StatusBadRequest, resp.Status)
+				require.Equal(t, `invalid user id: "12s"`, resp.ErrMessage)
 			},
 		},
 		{
@@ -42,6 +60,13 @@ func TestGetUser(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
+				var resp Vomit
+				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				require.NoError(t, err)
+				require.Equal(t, KindPayload, resp.Kind)
+				require.Equal(t, ReqInvalidArguments, resp.Reason)
+				require.Equal(t, http.StatusBadRequest, resp.Status)
+				require.Equal(t, `invalid user id: "-1"`, resp.ErrMessage)
 			},
 		},
 		{
@@ -65,7 +90,9 @@ func TestGetUser(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, http.StatusNotFound, resp.Status)
 				require.Equal(t, db.KindNotFound.String(), resp.Reason)
+				require.Equal(t, fmt.Sprintf("user with id %d not found", user.ID), resp.Error)
 			},
 		},
 		{
@@ -88,6 +115,7 @@ func TestGetUser(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, http.StatusInternalServerError, resp.Status)
 				require.Equal(t, db.KindInternal.String(), resp.Reason)
 				require.Equal(t, "an internal error occurred", resp.Error)
 			},
@@ -113,6 +141,7 @@ func TestGetUser(t *testing.T) {
 				err := json.NewDecoder(recorder.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, KindResource, resp.Kind)
+				require.Equal(t, http.StatusNotFound, resp.Status)
 				require.Equal(t, db.KindNotFound.String(), resp.Reason)
 				require.Equal(t, fmt.Sprintf("user with id [%d] not found", user.ID), resp.Error)
 			},
@@ -125,10 +154,24 @@ func TestGetUser(t *testing.T) {
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
+
+				body := recorder.Body.Bytes()
+
 				var resp PublicUserResponse
-				err := json.NewDecoder(recorder.Body).Decode(&resp)
+				err := json.Unmarshal(body, &resp)
 				require.NoError(t, err)
 				require.Equal(t, user.ID, resp.ID)
+				require.Equal(t, user.DisplayName, resp.DisplayName)
+				require.Equal(t, user.CreatedAt, resp.CreatedAt)
+				require.NotNil(t, resp.ProfileImageURL)
+				require.Equal(t, user.ProfileImgUrl.String, *resp.ProfileImageURL)
+
+				var raw map[string]any
+				err = json.Unmarshal(body, &raw)
+				require.NoError(t, err)
+				require.NotContains(t, raw, "username")
+				require.NotContains(t, raw, "email")
+				require.NotContains(t, raw, "is_deleted")
 			},
 		},
 	}
@@ -151,6 +194,7 @@ func TestGetUser(t *testing.T) {
 			require.NoError(t, err)
 
 			service.router.ServeHTTP(recorder, request)
+			require.Equal(t, contentJSON, recorder.Header().Get("Content-Type"))
 			tc.checkResponse(t, recorder)
 		})
 	}

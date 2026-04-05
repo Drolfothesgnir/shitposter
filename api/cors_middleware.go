@@ -2,40 +2,43 @@ package api
 
 import (
 	"net/http"
+	"slices"
 	"strings"
-
-	"github.com/gin-gonic/gin"
 )
 
-// handling CORS
-func (s *Service) corsMiddleware() gin.HandlerFunc {
-	allowedSet := make(map[string]bool, len(s.config.AllowedOrigins))
-	for _, o := range s.config.AllowedOrigins {
-		allowedSet[o] = true
-	}
+func (s Service) corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 1. Always tell caches that this response varies based on the Origin
+		w.Header().Add("Vary", "Origin")
 
-	return func(ctx *gin.Context) {
-		origin := ctx.GetHeader("Origin")
-		if allowedSet[origin] {
-			ctx.Header("Access-Control-Allow-Origin", origin)
-			ctx.Header("Access-Control-Allow-Credentials", "true")
+		origin := r.Header.Get("Origin")
+
+		// 2. Only attach CORS headers if the origin is actually in our allowed list
+		if origin != "" && slices.Contains(s.config.AllowedOrigins, origin) {
+			// FIX: Set on the ResponseWriter (w), not the Request (r)
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+			// It's cleaner to only set these if the origin is allowed,
+			// since the browser rejects the preflight anyway if Origin is missing/wrong.
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+
+			allowedHeaders := []string{
+				"Content-Type",
+				"Authorization",
+				WebauthnTransportHeader, // Assuming this is defined elsewhere in your package
+			}
+			w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ","))
 		}
 
-		ctx.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-
-		allowedHeaders := []string{
-			"Content-Type",
-			"Authorization",
-			WebauthnTransportHeader,
-		}
-		ctx.Header("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ","))
-
-		// If someone sends preflight (OPTIONS), respond 204 and return
-		if ctx.Request.Method == http.MethodOptions {
-			ctx.AbortWithStatus(http.StatusNoContent)
+		// 3. Intercept preflight OPTIONS requests
+		if r.Method == http.MethodOptions {
+			// Respond with 204 No Content and stop the chain
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 
-		ctx.Next()
-	}
+		// 4. Pass to the actual handler
+		next.ServeHTTP(w, r)
+	})
 }

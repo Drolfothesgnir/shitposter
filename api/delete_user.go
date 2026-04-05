@@ -2,19 +2,18 @@ package api
 
 import (
 	"net/http"
-
-	"github.com/gin-gonic/gin"
 )
 
-func (service *Service) deleteUser(ctx *gin.Context) {
-	authPayload := extractAuthPayloadFromCtx(ctx)
+func (service *Service) deleteUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	authPayload := getAuthPayload(ctx)
 
 	_, err := service.store.SoftDeleteUserTx(ctx, authPayload.UserID)
 	if err != nil {
 		opErr := newResourceError(err)
-		ctx.JSON(opErr.StatusCode(), opErr)
+		abortWithError(w, opErr)
 		return
 	}
 
-	ctx.Status(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent)
 }

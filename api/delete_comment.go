@@ -4,13 +4,21 @@ import (
 	"net/http"
 
 	db "github.com/Drolfothesgnir/shitposter/db/sqlc"
-	"github.com/gin-gonic/gin"
 )
 
-func (s *Service) deleteComment(ctx *gin.Context) {
-	authPayload := extractAuthPayloadFromCtx(ctx)
-	postID := extractPostIDFromCtx(ctx)
-	commentID := extractCommentIDFromCtx(ctx)
+func (s *Service) deleteComment(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	authPayload := getAuthPayload(ctx)
+	postID, vErr := extractPostID(r)
+	if vErr != nil {
+		abortWithError(w, vErr)
+		return
+	}
+	commentID, vErr := extractCommentID(r)
+	if vErr != nil {
+		abortWithError(w, vErr)
+		return
+	}
 
 	_, err := s.store.DeleteCommentTx(ctx, db.DeleteCommentTxParams{
 		CommentID: commentID,
@@ -20,9 +28,9 @@ func (s *Service) deleteComment(ctx *gin.Context) {
 
 	if err != nil {
 		opErr := newResourceError(err)
-		ctx.JSON(opErr.StatusCode(), opErr)
+		abortWithError(w, opErr)
 		return
 	}
 
-	ctx.Status(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent)
 }

@@ -135,7 +135,7 @@ func (w *Warnings) Add(item Warning) {
 }
 
 // NewWarnings creates a Warnings collector with the given overflow policy and capacity.
-// It returns a ConfigError if cap is negative.
+// It returns a [ConfigError] if cap is negative.
 func NewWarnings(policy WarningOverflowPolicy, cap int) (Warnings, error) {
 
 	if cap < 0 {

@@ -1,7 +1,5 @@
 package scum
 
-import "strconv"
-
 // AddTag registers new [Tag] in the [Dictionary] and return [ConfigError] if the provided values are
 // inconsistent or invalid.
 func (d *Dictionary) AddTag(name string, seq []byte, greed Greed, rule Rule, openID, closeID byte) error {
@@ -10,9 +8,6 @@ func (d *Dictionary) AddTag(name string, seq []byte, greed Greed, rule Rule, ope
 	if err != nil {
 		return err
 	}
-
-	// escaping the name to avoid panic during the serialization
-	name = strconv.Quote(name)
 
 	ts, err := NewTagSequence(seq)
 

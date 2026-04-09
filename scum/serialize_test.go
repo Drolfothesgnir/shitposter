@@ -13,7 +13,7 @@ func TestSerialize_EmptyRoot(t *testing.T) {
 	input := ""
 	tree := Parse(input, &d, warns)
 
-	result := tree.Serialize()
+	result := tree.Serialize(&d)
 
 	require.Equal(t, "Root", result.Type)
 	require.Equal(t, "ROOT", result.Name)
@@ -28,7 +28,7 @@ func TestSerialize_PlainText(t *testing.T) {
 	input := "hello world"
 	tree := Parse(input, &d, warns)
 
-	result := tree.Serialize()
+	result := tree.Serialize(&d)
 
 	require.Equal(t, "Root", result.Type)
 	require.Len(t, result.Children, 1)
@@ -47,7 +47,7 @@ func TestSerialize_SingleTag(t *testing.T) {
 	input := "*italic*"
 	tree := Parse(input, &d, warns)
 
-	result := tree.Serialize()
+	result := tree.Serialize(&d)
 
 	require.Len(t, result.Children, 1)
 
@@ -70,7 +70,7 @@ func TestSerialize_NestedTags(t *testing.T) {
 	input := "[*nested*]"
 	tree := Parse(input, &d, warns)
 
-	result := tree.Serialize()
+	result := tree.Serialize(&d)
 
 	require.Len(t, result.Children, 1)
 
@@ -97,7 +97,7 @@ func TestSerialize_MixedContent(t *testing.T) {
 	input := "before *bold* after"
 	tree := Parse(input, &d, warns)
 
-	result := tree.Serialize()
+	result := tree.Serialize(&d)
 
 	// root -> text, tag, text
 	require.Len(t, result.Children, 3)
@@ -120,7 +120,7 @@ func TestSerialize_DifferentWidthTag(t *testing.T) {
 	input := ":[alt text]"
 	tree := Parse(input, &d, warns)
 
-	result := tree.Serialize()
+	result := tree.Serialize(&d)
 
 	require.Len(t, result.Children, 1)
 
@@ -141,7 +141,7 @@ func TestSerialize_DeeplyNested(t *testing.T) {
 	input := "[$$*deep*$$]"
 	tree := Parse(input, &d, warns)
 
-	result := tree.Serialize()
+	result := tree.Serialize(&d)
 
 	// root -> [ -> $$ -> * -> text
 	linkNode := result.Children[0]
@@ -155,4 +155,66 @@ func TestSerialize_DeeplyNested(t *testing.T) {
 
 	textNode := italicNode.Children[0]
 	require.Equal(t, "deep", textNode.Content)
+}
+
+func TestSerialize_TagAttributes(t *testing.T) {
+	d := testDict(t)
+	warns := newWarnings(t)
+
+	input := "*italic*!lang{ru}!{featured}"
+	tree := Parse(input, &d, warns)
+
+	result := tree.Serialize(&d)
+	require.Empty(t, warns.List())
+
+	require.Len(t, result.Children, 1)
+
+	tagNode := result.Children[0]
+	require.Equal(t, d.tags[tagNode.ID].Name, tagNode.Name)
+	require.Equal(t, "Tag", tagNode.Type)
+	require.Equal(t, byte('*'), tagNode.ID)
+	require.Len(t, tagNode.Attributes, 2)
+
+	require.Equal(t, SerializableAttribute{
+		Name:    "lang",
+		Payload: "ru",
+		IsFlag:  false,
+	}, tagNode.Attributes[0])
+
+	require.Equal(t, SerializableAttribute{
+		Name:    "",
+		Payload: "featured",
+		IsFlag:  true,
+	}, tagNode.Attributes[1])
+}
+
+func TestSerialize_TextAttributes(t *testing.T) {
+	d := testDict(t)
+	warns := newWarnings(t)
+
+	input := "hello!lang{en}!{plain}"
+	tree := Parse(input, &d, warns)
+
+	result := tree.Serialize(&d)
+	require.Empty(t, warns.List())
+
+	require.Len(t, result.Children, 1)
+
+	textNode := result.Children[0]
+	require.Equal(t, "TEXT", textNode.Name)
+	require.Equal(t, "Text", textNode.Type)
+	require.Equal(t, "hello", textNode.Content)
+	require.Len(t, textNode.Attributes, 2)
+
+	require.Equal(t, SerializableAttribute{
+		Name:    "lang",
+		Payload: "en",
+		IsFlag:  false,
+	}, textNode.Attributes[0])
+
+	require.Equal(t, SerializableAttribute{
+		Name:    "",
+		Payload: "plain",
+		IsFlag:  true,
+	}, textNode.Attributes[1])
 }

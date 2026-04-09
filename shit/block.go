@@ -8,12 +8,20 @@ import (
 
 type Block interface {
 	Type() string
-	Render(w io.Writer) error
+	Render(io.Writer) error
 }
 
 // A wrapper to handle the unmarshaling router
 type TypedBlock struct {
 	Block Block
+}
+
+func (b TypedBlock) Type() string {
+	return b.Block.Type()
+}
+
+func (b TypedBlock) Render(w io.Writer) error {
+	return nil
 }
 
 func (tb *TypedBlock) UnmarshalJSON(data []byte) error {

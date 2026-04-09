@@ -3,7 +3,6 @@ package sml
 import (
 	"fmt"
 	"html"
-	"strconv"
 	"strings"
 
 	"github.com/Drolfothesgnir/shitposter/scum"
@@ -16,13 +15,13 @@ func handleTextNode(b *strings.Builder, _ *[]string, n scum.SerializableNode) {
 func handleTagNode(b *strings.Builder, w *[]string, n scum.SerializableNode) {
 	switch n.Name {
 	case Bold:
-		handleTag(b, w, n, "strong", "strong")
+		handleTag(b, w, n, attrMap{}, "strong", "strong")
 	case Italic:
-		handleTag(b, w, n, "em", "em")
+		handleTag(b, w, n, attrMap{}, "em", "em")
 	case Underline:
-		handleTag(b, w, n, "span class=\"underline\"", "span")
+		handleTag(b, w, n, attrMap{}, "span class=\"underline\"", "span")
 	case Link:
-		handleTag(b, w, n, "a", "a")
+		handleTag(b, w, n, attrMap{"href": attrHref}, "a", "a")
 	}
 }
 
@@ -41,30 +40,10 @@ func handleNode(b *strings.Builder, w *[]string, n scum.SerializableNode) {
 	*w = append(*w, fmt.Sprintf("SML: Unknown node type encountered: %s", n.Type))
 }
 
-// TODO: check if attributes are appropriate
-func handleAttributes(b *strings.Builder, _ *[]string, n scum.SerializableNode) {
-	for _, a := range n.Attributes {
-		// TODO: check if scum strips whitespaces
-		var name, payload string
-		if a.IsFlag {
-			name = strings.ToLower(a.Payload)
-			payload = "\"true\""
-		} else {
-			name = strings.ToLower(a.Name)
-			payload = strconv.Quote(a.Payload)
-		}
-
-		b.WriteByte(' ')
-		b.WriteString(name)
-		b.WriteString("=")
-		b.WriteString(payload)
-	}
-}
-
-func handleTag(b *strings.Builder, w *[]string, n scum.SerializableNode, start, end string) {
+func handleTag(b *strings.Builder, w *[]string, n scum.SerializableNode, m attrMap, start, end string) {
 	b.WriteByte('<')
 	b.WriteString(start)
-	handleAttributes(b, w, n)
+	handleAttributes(b, w, m, n)
 	b.WriteByte('>')
 	for _, c := range n.Children {
 		handleNode(b, w, c)

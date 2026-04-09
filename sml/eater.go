@@ -14,34 +14,46 @@ const (
 	Link      = "LINK"
 )
 
-type Parser struct {
-	dict     scum.Dictionary
+type Poop struct {
 	ast      scum.AST
 	tree     scum.SerializableNode
 	Warnings scum.Warnings
-	Issues   []string
 }
 
-func (p *Parser) Eat(input string) {
-	ast := scum.Parse(input, &p.dict, &p.Warnings)
-	tree := ast.Serialize(&p.dict)
-	p.ast = ast
-	p.tree = tree
-}
-
-func (p *Parser) HTML() string {
+func (p *Poop) HTML(w *[]string) string {
 	var b strings.Builder
 	for _, n := range p.tree.Children {
-		handleNode(&b, &p.Issues, n)
+		handleNode(&b, w, n)
 	}
 	return b.String()
 }
 
-func (p Parser) TextLength() int {
+func (p Poop) TextLength() int {
 	return p.ast.TextLength
 }
 
-func NewParser(warnPol scum.WarningOverflowPolicy, warnCap int) (Parser, error) {
+type Eater struct {
+	dict                  scum.Dictionary
+	WarningOverflowPolicy scum.WarningOverflowPolicy
+	WarnCap               int
+}
+
+func (p Eater) Munch(input string) (Poop, error) {
+	w, err := scum.NewWarnings(p.WarningOverflowPolicy, p.WarnCap)
+	if err != nil {
+		return Poop{}, err
+	}
+	ast := scum.Parse(input, &p.dict, &w)
+	tree := ast.Serialize(&p.dict)
+
+	return Poop{
+		ast:      ast,
+		tree:     tree,
+		Warnings: w,
+	}, nil
+}
+
+func NewEater(warnPol scum.WarningOverflowPolicy, warnCap int) Eater {
 	d, _ := scum.NewDictionary(scum.Limits{})
 
 	_ = d.AddUniversalTag(Bold, []byte{'$'}, scum.NonGreedy, scum.RuleNA)
@@ -58,15 +70,9 @@ func NewParser(warnPol scum.WarningOverflowPolicy, warnCap int) (Parser, error) 
 
 	_ = d.SetEscapeTrigger('\\')
 
-	w, err := scum.NewWarnings(warnPol, warnCap)
-	if err != nil {
-		return Parser{}, err
+	return Eater{
+		dict:                  d,
+		WarningOverflowPolicy: warnPol,
+		WarnCap:               warnCap,
 	}
-
-	return Parser{
-		dict:     d,
-		Warnings: w,
-		// TODO: it should not be like that, better warning handling needed
-		Issues: make([]string, 0, warnCap),
-	}, nil
 }

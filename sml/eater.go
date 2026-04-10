@@ -1,4 +1,52 @@
-// Shitposter Markup Language
+// # Shitposter's Markup Language
+//
+// It is created for the Shiposter users to be able to create tag-based rich text in their posts.
+// The parsed rich text can be transformed to an HTML or plain text string.
+//
+// # Tags
+//
+// Tags can be embedded.
+//
+// $ - Bold:
+//
+//   - Simple bold text.
+//   - Accepts no attributes.
+//   - Written as $text$ and rendered in HTML as <strong>text</strong>.
+//
+// * - Italic:
+//
+//   - Simple italic/emphasized text.
+//   - Accepts no attributes.
+//   - Written as *text* and rendered in HTML as <em>text</em>.
+//
+// _ - Underline:
+//
+//   - Represents text with a line below.
+//   - Accepts no attributes.
+//   - Written as _text_ and rendered in HTML as <span class="sml-underline">text</span>.
+//
+// [...] - Link:
+//
+//   - Represents hyperlink.
+//
+//   - Accepts attributes:
+//
+//     href - Required, for link to be valid.
+//     Must not contain forbidden control characters.
+//     Must not be protocol-relative.
+//     Schema must be one of "http", "https" or "mailto".
+//
+//     target - Optional.
+//     Must be one of "_blank" or "_self".
+//     In case of "_blank" value `rel="noopener noreferrer"` will be added as an attribute.
+//
+//     title - Optional.
+//     Must not contain forbidden control characters.
+//     Must be at most [MaxTitleLength] characters long.
+//
+//   - Written as [text]!href{https://address.com}!target{_blank}!title{this is a link} and
+//     rendered in HTML as <a href="https://address.com" target="_blank" rel="noopener noreferrer" title="this is a link">text</a>.
+//     When rendered as plain text, only the text in the [] will be rendered.
 package sml
 
 import (

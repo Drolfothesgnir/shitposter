@@ -63,17 +63,23 @@ const (
 )
 
 type Poop struct {
+	input    string
 	ast      scum.AST
 	tree     scum.SerializableNode
-	Warnings scum.Warnings
+	Warnings []SyntaxIssue
 }
 
-func (p *Poop) HTML(w *[]string) string {
+func (p *Poop) HTML() (string, []SyntaxIssue) {
 	var b strings.Builder
+
+	list := make([]SyntaxIssue, 0, len(p.input)/10)
+
+	issues := Issues{list}
+
 	for _, n := range p.tree.Children {
-		handleNode(&b, w, n)
+		handleNode(&b, &issues, n)
 	}
-	return b.String()
+	return b.String(), issues.list
 }
 
 func (p Poop) TextLength() int {
@@ -94,10 +100,17 @@ func (p Eater) Munch(input string) (Poop, error) {
 	ast := scum.Parse(input, &p.dict, &w)
 	tree := ast.Serialize(&p.dict)
 
+	scumWarns := make([]scum.SerializableWarning, 0, w.WarnCount())
+	w.SerializeAll(&scumWarns, &p.dict)
+	warns := make([]SyntaxIssue, 0, w.WarnCount())
+	for _, w := range scumWarns {
+		warns = append(warns, Warning{w})
+	}
 	return Poop{
+		input:    input,
 		ast:      ast,
 		tree:     tree,
-		Warnings: w,
+		Warnings: warns,
 	}, nil
 }
 

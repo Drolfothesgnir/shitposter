@@ -22,6 +22,11 @@ func handleTagNode(b *strings.Builder, i *Issues, n scum.SerializableNode) {
 		handleTag(b, i, n, attrMap{}, "span class=\"sml-underline\"", "span")
 	case Link:
 		handleTag(b, i, n, attrMap{"href": attrHref, "target": attrTarget, "title": attrTitle}, "a", "a")
+	default:
+		i.Add(NewSyntaxIssueDescriptor(
+			IssueUnknownTag,
+			fmt.Sprintf("unknown tag %q encountered", n.Name),
+		))
 	}
 }
 
@@ -37,7 +42,7 @@ func handleNode(b *strings.Builder, i *Issues, n scum.SerializableNode) {
 	}
 
 	// Shouldn't happen
-	i.Add(NewSyntaxIssuesDescriptor(
+	i.Add(NewSyntaxIssueDescriptor(
 		IssueUnknownNodeType,
 		fmt.Sprintf("unknown node type encountered: %s", n.Type),
 	))

@@ -60,6 +60,9 @@ const (
 	// IssueWarningsTruncated occurs when there are too many Warnings recorded.
 	IssueWarningsTruncated
 
+	// IssueInvalidWarningsPolicy reports when the provided policy is not one of policies defined in this package.
+	IssueInvalidWarningsPolicy
+
 	// IssueNegativeWarningsCap reports an invalid (negative) warnings capacity.
 	IssueNegativeWarningsCap
 

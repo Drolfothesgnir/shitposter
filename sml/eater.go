@@ -1,6 +1,6 @@
 // # Shitposter's Markup Language
 //
-// It is created for the Shiposter users to be able to create tag-based rich text in their posts.
+// It is created for the Shitposter users to be able to create tag-based rich text in their posts.
 // The parsed rich text can be transformed to an HTML or plain text string.
 //
 // # Tags
@@ -31,10 +31,12 @@
 //
 //   - Accepts attributes:
 //
-//     href - Required, for link to be valid.
+//     href - Optional.
+//     SML will not enforce the user to add the url attribute. User must provide it
+//     by themselves otherwise the link will be non-functional.
 //     Must not contain forbidden control characters.
 //     Must not be protocol-relative.
-//     Schema must be one of "http", "https" or "mailto".
+//     Scheme must be one of "http", "https" or "mailto".
 //
 //     target - Optional.
 //     Must be one of "_blank" or "_self".
@@ -69,7 +71,7 @@ type Poop struct {
 	Warnings []SyntaxIssue
 }
 
-func (p *Poop) HTML() (string, []SyntaxIssue) {
+func (p Poop) HTML() (string, []SyntaxIssue) {
 	var b strings.Builder
 
 	list := make([]SyntaxIssue, 0, len(p.input)/10)
@@ -80,6 +82,11 @@ func (p *Poop) HTML() (string, []SyntaxIssue) {
 		handleNode(&b, &issues, n)
 	}
 	return b.String(), issues.list
+}
+
+// TODO: implement Text() method for [scum.AST] and use it here
+func (p Poop) Text() string {
+	return ""
 }
 
 func (p Poop) TextLength() int {
@@ -95,7 +102,11 @@ type Eater struct {
 func (p Eater) Munch(input string) (Poop, error) {
 	w, err := scum.NewWarnings(p.WarningOverflowPolicy, p.WarnCap)
 	if err != nil {
-		return Poop{}, err
+		return Poop{}, NewConfigError(
+			"SML parser warnings list",
+			ReasonInvalidParams,
+			err,
+		)
 	}
 	ast := scum.Parse(input, &p.dict, &w)
 	tree := ast.Serialize(&p.dict)
@@ -114,26 +125,44 @@ func (p Eater) Munch(input string) (Poop, error) {
 	}, nil
 }
 
-func NewEater(warnPol scum.WarningOverflowPolicy, warnCap int) Eater {
-	d, _ := scum.NewDictionary(scum.Limits{})
+func NewEater(warnPol scum.WarningOverflowPolicy, warnCap int) (Eater, error) {
+	d, err := scum.NewDictionary(scum.Limits{})
+	if err != nil {
+		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+	}
 
-	_ = d.AddUniversalTag(Bold, []byte{'$'}, scum.NonGreedy, scum.RuleNA)
-
-	_ = d.AddUniversalTag(Italic, []byte{'*'}, scum.NonGreedy, scum.RuleNA)
-
-	_ = d.AddUniversalTag(Underline, []byte{'_'}, scum.NonGreedy, scum.RuleInfraWord)
-
-	_ = d.AddTag(Link, []byte{'['}, scum.NonGreedy, scum.RuleNA, 0, ']')
-
-	_ = d.AddTag(Link, []byte{']'}, scum.NonGreedy, scum.RuleNA, '[', 0)
-
-	_ = d.SetAttributeSignature('!', '{', '}')
-
-	_ = d.SetEscapeTrigger('\\')
+	err = d.AddUniversalTag(Bold, []byte{'$'}, scum.NonGreedy, scum.RuleNA)
+	if err != nil {
+		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+	}
+	err = d.AddUniversalTag(Italic, []byte{'*'}, scum.NonGreedy, scum.RuleNA)
+	if err != nil {
+		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+	}
+	err = d.AddUniversalTag(Underline, []byte{'_'}, scum.NonGreedy, scum.RuleInfraWord)
+	if err != nil {
+		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+	}
+	err = d.AddTag(Link, []byte{'['}, scum.NonGreedy, scum.RuleNA, 0, ']')
+	if err != nil {
+		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+	}
+	err = d.AddTag(Link, []byte{']'}, scum.NonGreedy, scum.RuleNA, '[', 0)
+	if err != nil {
+		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+	}
+	err = d.SetAttributeSignature('!', '{', '}')
+	if err != nil {
+		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+	}
+	err = d.SetEscapeTrigger('\\')
+	if err != nil {
+		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+	}
 
 	return Eater{
 		dict:                  d,
 		WarningOverflowPolicy: warnPol,
 		WarnCap:               warnCap,
-	}
+	}, nil
 }

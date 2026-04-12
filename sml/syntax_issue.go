@@ -23,6 +23,7 @@ const (
 	IssueInternal Issue = issueCodeBase + iota
 	IssueConfig
 	IssueUnknownNodeType
+	IssueUnknownTag
 	IssueAttributeNotAllowed
 	IssueAttributeInvalidPayload
 
@@ -41,6 +42,7 @@ func init() {
 	mapIssueToStr[issueIndex(IssueInternal)] = "INTERNAL"
 	mapIssueToStr[issueIndex(IssueConfig)] = "CONFIG"
 	mapIssueToStr[issueIndex(IssueUnknownNodeType)] = "UNKNOWN_NODE_TYPE"
+	mapIssueToStr[issueIndex(IssueUnknownTag)] = "UNKNOWN_TAG"
 	mapIssueToStr[issueIndex(IssueAttributeNotAllowed)] = "ATTRIBUTE_NOT_ALLOWED"
 	mapIssueToStr[issueIndex(IssueAttributeInvalidPayload)] = "ATTRIBUTE_INVALID_PAYLOAD"
 }
@@ -68,7 +70,12 @@ func (i SyntaxIssueDescriptor) Description() string {
 	return i.Desc
 }
 
-func NewSyntaxIssuesDescriptor(code Issue, desc string) SyntaxIssueDescriptor {
+func NewSyntaxIssueDescriptor(code Issue, desc string) SyntaxIssueDescriptor {
+	// i don't want to return any errors because i think returning errors from the error factory
+	// is stupid. What do you think?
+	if code < issueCodeBase || code >= maxIssueCode {
+		code = IssueInternal
+	}
 	return SyntaxIssueDescriptor{
 		C:     code,
 		CName: mapIssueToStr[issueIndex(code)],

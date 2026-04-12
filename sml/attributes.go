@@ -22,7 +22,7 @@ func handleAttributes(b *strings.Builder, i *Issues, m attrMap, n scum.Serializa
 
 		fn, ok := m[name]
 		if !ok {
-			i.Add(NewSyntaxIssuesDescriptor(IssueAttributeNotAllowed, fmt.Sprintf("attribute %s is not allowed", name)))
+			i.Add(NewSyntaxIssueDescriptor(IssueAttributeNotAllowed, fmt.Sprintf("attribute %s is not allowed", name)))
 			continue
 		}
 

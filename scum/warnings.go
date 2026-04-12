@@ -43,6 +43,9 @@ const (
 	// the number dropped ones will be recorded and additional Warning, signalling the overflow,
 	// added.
 	WarnOverflowTrunc
+
+	// should be the last. used for policy validation
+	numPolicies
 )
 
 // Warnings maintains the list of issues occured during the tokenization or the parsing.
@@ -135,8 +138,15 @@ func (w *Warnings) Add(item Warning) {
 }
 
 // NewWarnings creates a Warnings collector with the given overflow policy and capacity.
-// It returns a [ConfigError] if cap is negative.
+// It returns a [ConfigError] if the policy is not-allowed or the cap is negative.
 func NewWarnings(policy WarningOverflowPolicy, cap int) (Warnings, error) {
+
+	if policy < 0 || policy > (numPolicies-1) {
+		return Warnings{}, NewConfigError(
+			IssueInvalidWarningsPolicy,
+			fmt.Errorf("invalid warnings policy: %q", policy),
+		)
+	}
 
 	if cap < 0 {
 		return Warnings{}, NewConfigError(

@@ -14,24 +14,24 @@ const MaxTitleLength int = 65
 
 func attrHref(b *strings.Builder, i *Issues, a scum.SerializableAttribute) bool {
 	if a.IsFlag {
-		i.Add(NewSyntaxIssuesDescriptor(IssueAttributeInvalidPayload, "attribute href must have a value"))
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute href must have a value"))
 		return false
 	}
 
 	payload := strings.TrimSpace(a.Payload)
 	if payload == "" {
-		i.Add(NewSyntaxIssuesDescriptor(IssueAttributeInvalidPayload, "attribute href must not be empty"))
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute href must not be empty"))
 		return false
 	}
 
 	if strings.ContainsAny(payload, "\x00\r\n\t") {
-		i.Add(NewSyntaxIssuesDescriptor(IssueAttributeInvalidPayload, "attribute href contains forbidden control characters"))
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute href contains forbidden control characters"))
 		return false
 	}
 
 	u, err := url.Parse(payload)
 	if err != nil {
-		i.Add(NewSyntaxIssuesDescriptor(IssueAttributeInvalidPayload, fmt.Sprintf("attribute href is invalid: %v", err)))
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, fmt.Sprintf("attribute href is invalid: %v", err)))
 		return false
 	}
 
@@ -39,7 +39,7 @@ func attrHref(b *strings.Builder, i *Issues, a scum.SerializableAttribute) bool 
 	case "":
 		// Allow relative references, but reject protocol-relative URLs such as //evil.com.
 		if strings.HasPrefix(payload, "//") {
-			i.Add(NewSyntaxIssuesDescriptor(IssueAttributeInvalidPayload, "attribute href must not be protocol-relative"))
+			i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute href must not be protocol-relative"))
 			return false
 		}
 
@@ -47,7 +47,7 @@ func attrHref(b *strings.Builder, i *Issues, a scum.SerializableAttribute) bool 
 		// Allowed schemes.
 
 	default:
-		i.Add(NewSyntaxIssuesDescriptor(IssueAttributeInvalidPayload, fmt.Sprintf("attribute href scheme %q is not allowed", u.Scheme)))
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, fmt.Sprintf("attribute href scheme %q is not allowed", u.Scheme)))
 		return false
 	}
 
@@ -59,25 +59,25 @@ func attrHref(b *strings.Builder, i *Issues, a scum.SerializableAttribute) bool 
 
 func attrTarget(b *strings.Builder, i *Issues, a scum.SerializableAttribute) bool {
 	if a.IsFlag {
-		i.Add(NewSyntaxIssuesDescriptor(IssueAttributeInvalidPayload, "attribute target must have a value"))
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute target must have a value"))
 		return false
 	}
 
 	payload := strings.TrimSpace(a.Payload)
 	if payload == "" {
-		i.Add(NewSyntaxIssuesDescriptor(IssueAttributeInvalidPayload, "attribute target must not be empty"))
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute target must not be empty"))
 		return false
 	}
 
 	if strings.ContainsAny(payload, "\x00\r\n\t") {
-		i.Add(NewSyntaxIssuesDescriptor(IssueAttributeInvalidPayload, "attribute target contains forbidden control characters"))
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute target contains forbidden control characters"))
 		return false
 	}
 
 	switch payload {
 	case "_blank", "_self": // some others?
 	default:
-		i.Add(NewSyntaxIssuesDescriptor(IssueAttributeInvalidPayload, `attribute target must be one of "_blank" or "_self"`))
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, `attribute target must be one of "_blank" or "_self"`))
 		return false
 	}
 
@@ -93,24 +93,24 @@ func attrTarget(b *strings.Builder, i *Issues, a scum.SerializableAttribute) boo
 
 func attrTitle(b *strings.Builder, i *Issues, a scum.SerializableAttribute) bool {
 	if a.IsFlag {
-		i.Add(NewSyntaxIssuesDescriptor(IssueAttributeInvalidPayload, "attribute title must have a value"))
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute title must have a value"))
 		return false
 	}
 
 	payload := strings.TrimSpace(a.Payload)
 	if payload == "" {
-		i.Add(NewSyntaxIssuesDescriptor(IssueAttributeInvalidPayload, "attribute title must not be empty"))
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute title must not be empty"))
 		return false
 	}
 
 	if strings.ContainsAny(payload, "\x00\r\n\t") {
-		i.Add(NewSyntaxIssuesDescriptor(IssueAttributeInvalidPayload, "attribute title contains forbidden control characters"))
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute title contains forbidden control characters"))
 		return false
 	}
 
 	if utf8.RuneCountInString(payload) > MaxTitleLength {
 		// TODO: find the idiomatic way to make max title length configurable
-		i.Add(NewSyntaxIssuesDescriptor(IssueAttributeInvalidPayload, fmt.Sprintf("attribute title must be at most %d characters long", MaxTitleLength)))
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, fmt.Sprintf("attribute title must be at most %d characters long", MaxTitleLength)))
 		return false
 	}
 

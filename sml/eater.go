@@ -84,13 +84,12 @@ func (p Poop) HTML() (string, []SyntaxIssue) {
 	return b.String(), issues.list
 }
 
-// TODO: implement Text() method for [scum.AST] and use it here
 func (p Poop) Text() string {
-	return ""
+	return p.ast.Text()
 }
 
-func (p Poop) TextLength() int {
-	return p.ast.TextLength
+func (p Poop) TextByteLen() int {
+	return p.ast.TextByteLen
 }
 
 type Eater struct {

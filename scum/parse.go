@@ -52,7 +52,8 @@ func Parse(input string, d *Dictionary, warns *Warnings) AST {
 	// Finalize root span and collect statistics
 	state.ast.Nodes[0].Span.End = state.peekCumWidth()
 	state.ast.MaxDepth = state.maxDepth
-	state.ast.TextLength += out.TextLen
+	// TokenizerOutput.TextByteLen is a byte count, so AST.TextByteLen remains byte-based.
+	state.ast.TextByteLen += out.TextByteLen
 	state.ast.TotalTextNodes = state.textNodes + out.TextTokens
 	state.ast.TotalTagNodes = state.totalTagNodes
 

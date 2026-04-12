@@ -34,8 +34,13 @@ func processClosingTag(state *parserState, d *Dictionary, warns *Warnings, tok T
 			Expected: stacked,
 		})
 
-		state.ast.TextLength += tok.Width
+		// Count the demoted closing tag as text bytes; Token.Width is byte-based.
+		state.ast.TextByteLen += tok.Width
 		state.textNodes++
+		// processText uses Payload as the text node span. For a demoted tag, the
+		// text is the raw tag bytes, not the tag payload.
+		tok.Type = TokenText
+		tok.Payload = NewSpan(tok.Pos, tok.Width)
 		processText(state, tok)
 		return
 	}

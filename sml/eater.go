@@ -2,6 +2,7 @@
 //
 // It is created for the Shitposter users to be able to create tag-based rich text in their posts.
 // The parsed rich text can be transformed to an HTML or plain text string.
+// Attribute names are case-insensetive.
 //
 // # Tags
 //
@@ -23,7 +24,7 @@
 //
 //   - Represents text with a line below.
 //   - Accepts no attributes.
-//   - Written as _text_ and rendered in HTML as <span class="sml-underline">text</span>.
+//   - Written as _text_ and rendered in HTML as <span class="sml-internal-underline">text</span>.
 //
 // [...] - Link:
 //
@@ -57,6 +58,7 @@ import (
 	"github.com/Drolfothesgnir/shitposter/scum"
 )
 
+// Tag names
 const (
 	Bold      = "BOLD"
 	Italic    = "ITALIC"
@@ -64,6 +66,9 @@ const (
 	Link      = "LINK"
 )
 
+// Poop is the result of the input parsing, returned by [Eater.Munch].
+// It contains a list of [SyntaxIssue]s occured during the parsing and the methods
+// to manipulate the resulting syntax tree and converting the parse result into HTML or plain text.
 type Poop struct {
 	input    string
 	ast      scum.AST
@@ -71,9 +76,12 @@ type Poop struct {
 	Warnings []SyntaxIssue
 }
 
+// HTML returns the parsed input as an HTML string and
+// a list of [SyntaxIssue]s which were discovered during the process.
 func (p Poop) HTML() (string, []SyntaxIssue) {
 	var b strings.Builder
 
+	// len(p.input/10) is just a guess
 	list := make([]SyntaxIssue, 0, len(p.input)/10)
 
 	issues := Issues{list}
@@ -84,21 +92,27 @@ func (p Poop) HTML() (string, []SyntaxIssue) {
 	return b.String(), issues.list
 }
 
+// Text returns the parsed input as plain text string.
 func (p Poop) Text() string {
 	return p.ast.Text()
 }
 
+// TextByteLength returns the byte count of the plain text in the input, that is the non-tag and non-attribute parts.
 func (p Poop) TextByteLen() int {
 	return p.ast.TextByteLen
 }
 
+// Eater is the main SML parser object.
 type Eater struct {
-	dict                  scum.Dictionary
+	dict scum.Dictionary
+	// WarningOverflowPolicy determines what happends when the maximum Warning capacity is reached.
 	WarningOverflowPolicy scum.WarningOverflowPolicy
-	WarnCap               int
+	// WarnCap is the maximum number of warnings which will be processed during parsing.
+	WarnCap int
 }
 
-func (p Eater) Munch(input string) (Poop, error) {
+// Munch parses the input and returns a [Poop] and possibly a *[ConfigError].
+func (p *Eater) Munch(input string) (Poop, error) {
 	w, err := scum.NewWarnings(p.WarningOverflowPolicy, p.WarnCap)
 	if err != nil {
 		return Poop{}, NewConfigError(
@@ -124,6 +138,7 @@ func (p Eater) Munch(input string) (Poop, error) {
 	}, nil
 }
 
+// It will return a *[ConfigError] if something go wrong.
 func NewEater(warnPol scum.WarningOverflowPolicy, warnCap int) (Eater, error) {
 	d, err := scum.NewDictionary(scum.Limits{})
 	if err != nil {

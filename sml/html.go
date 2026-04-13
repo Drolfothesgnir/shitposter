@@ -13,13 +13,14 @@ func handleTextNode(b *strings.Builder, _ *Issues, n scum.SerializableNode) {
 }
 
 func handleTagNode(b *strings.Builder, i *Issues, n scum.SerializableNode) {
+
 	switch n.Name {
 	case Bold:
 		handleTag(b, i, n, attrMap{}, "strong", "strong")
 	case Italic:
 		handleTag(b, i, n, attrMap{}, "em", "em")
 	case Underline:
-		handleTag(b, i, n, attrMap{}, "span class=\"sml-underline\"", "span")
+		handleTag(b, i, n, attrMap{}, "span class=\"sml-internal-underline\"", "span")
 	case Link:
 		handleTag(b, i, n, attrMap{"href": attrHref, "target": attrTarget, "title": attrTitle}, "a", "a")
 	default:

@@ -7,11 +7,13 @@ const (
 	ReasonInvalidParams = "INVALID_PARAMS"
 )
 
+// ConfigError occures when the SML parser - [Eater], or other structures, which allow configuration,
+// have some issues because of the config.
 type ConfigError struct {
+	// SubjectName is the name of the structure which which creation was attempted, e.g. "SML Parser".
 	SubjectName string `json:"subject_name"`
 	Reason      string `json:"reason"`
 	Err         error  `json:"error"`
-	// some other stuff...
 }
 
 func (e ConfigError) Error() string {

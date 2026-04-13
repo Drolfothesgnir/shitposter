@@ -26,7 +26,7 @@ type Warning struct {
 	Got byte
 }
 
-// WarningOverflowPolicy determines what happends when the maximum Warnin capacity is reached.
+// WarningOverflowPolicy determines what happends when the maximum Warning capacity is reached.
 type WarningOverflowPolicy int
 
 const (

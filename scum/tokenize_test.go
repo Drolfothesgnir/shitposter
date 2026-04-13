@@ -47,7 +47,7 @@ func requireTokenizeInvariants(t *testing.T, inp string, out TokenizerOutput, d 
 	require.Equal(t, len(inp), end, "tokens do not cover full input")
 
 	// Verify TokenizerOutput counters
-	require.Equal(t, textLen, out.TextLen, "TextLen mismatch")
+	require.Equal(t, textLen, out.TextByteLen, "TextByteLen mismatch")
 	require.Equal(t, textTokens, out.TextTokens, "TextTokens mismatch")
 }
 
@@ -136,7 +136,7 @@ func TestBoldItalic(t *testing.T) {
 	require.Len(t, w.List(), 0)
 
 	// Verify state counters
-	require.Equal(t, 4, out.TextLen)
+	require.Equal(t, 4, out.TextByteLen)
 	require.Equal(t, 1, out.TextTokens)
 	require.Equal(t, 4, out.TagsTotal)
 	require.Equal(t, 4, out.UniversalTags)
@@ -200,7 +200,7 @@ func TestLink(t *testing.T) {
 	require.Len(t, w.List(), 0)
 
 	// Verify state counters
-	require.Equal(t, 21, out.TextLen)
+	require.Equal(t, 21, out.TextByteLen)
 	require.Equal(t, 1, out.TextTokens)
 	require.Equal(t, 4, out.TagsTotal)
 	require.Equal(t, 2, out.UniversalTags) // $$ tags
@@ -285,7 +285,7 @@ func TestTokenize_AttributePayload_EscapedEndBrace(t *testing.T) {
 
 	// Verify state
 	require.Equal(t, 1, out.Attributes)
-	require.Equal(t, 0, out.TextLen)
+	require.Equal(t, 0, out.TextByteLen)
 }
 
 func TestTokenize_EscapedAttributeTrigger_DoesNotStartAttribute(t *testing.T) {
@@ -867,7 +867,7 @@ func TestTokenizerOutput_PlainTextOnly(t *testing.T) {
 	require.Equal(t, TokenText, out.Tokens[0].Type)
 
 	// All counters should reflect plain text only
-	require.Equal(t, 11, out.TextLen)
+	require.Equal(t, 11, out.TextByteLen)
 	require.Equal(t, 1, out.TextTokens)
 	require.Equal(t, 0, out.TagsTotal)
 	require.Equal(t, 0, out.UniversalTags)
@@ -889,7 +889,7 @@ func TestTokenizerOutput_EmptyInput(t *testing.T) {
 	require.Len(t, out.Tokens, 0)
 
 	// All counters should be zero
-	require.Equal(t, 0, out.TextLen)
+	require.Equal(t, 0, out.TextByteLen)
 	require.Equal(t, 0, out.TextTokens)
 	require.Equal(t, 0, out.TagsTotal)
 	require.Equal(t, 0, out.UniversalTags)
@@ -912,8 +912,8 @@ func TestTokenizerOutput_MixedContent(t *testing.T) {
 	// Tokens: text("hello "), tag($$), text("bold"), tag($$), text(" world")
 	require.Len(t, out.Tokens, 5)
 
-	// TextLen = "hello " (6) + "bold" (4) + " world" (6) = 16
-	require.Equal(t, 16, out.TextLen)
+	// TextByteLen bytes = "hello " (6) + "bold" (4) + " world" (6) = 16
+	require.Equal(t, 16, out.TextByteLen)
 	require.Equal(t, 3, out.TextTokens)
 	require.Equal(t, 2, out.TagsTotal)
 	require.Equal(t, 2, out.UniversalTags)
@@ -936,7 +936,7 @@ func TestTokenizerOutput_OpenCloseTags(t *testing.T) {
 	// Tokens: tag([), text("link"), tag(])
 	require.Len(t, out.Tokens, 3)
 
-	require.Equal(t, 4, out.TextLen)
+	require.Equal(t, 4, out.TextByteLen)
 	require.Equal(t, 1, out.TextTokens)
 	require.Equal(t, 2, out.TagsTotal)
 	require.Equal(t, 0, out.UniversalTags)
@@ -960,7 +960,7 @@ func TestTokenizerOutput_MultipleAttributes(t *testing.T) {
 	require.Equal(t, TokenAttributeKV, out.Tokens[0].Type)
 	require.Equal(t, TokenAttributeKV, out.Tokens[1].Type)
 
-	require.Equal(t, 0, out.TextLen)
+	require.Equal(t, 0, out.TextByteLen)
 	require.Equal(t, 0, out.TextTokens)
 	require.Equal(t, 0, out.TagsTotal)
 	require.Equal(t, 2, out.Attributes)
@@ -981,7 +981,7 @@ func TestTokenizerOutput_GreedyTagWithPayload(t *testing.T) {
 	require.Equal(t, TokenTag, out.Tokens[0].Type)
 	require.Equal(t, "code", spanStr(inp, out.Tokens[0].Payload))
 
-	require.Equal(t, 4, out.TextLen)
+	require.Equal(t, 4, out.TextByteLen)
 	require.Equal(t, 1, out.TextTokens)
 	// Greedy RuleTagVsContent tags don't increment TagsTotal through normal path
 	require.Equal(t, 0, out.Attributes)
@@ -1001,8 +1001,8 @@ func TestTokenizerOutput_ComplexDocument(t *testing.T) {
 	// Tokens: text("Hello "), tag([), tag($$), text("world"), tag($$), tag(]), attr(!url{...})
 	require.Len(t, out.Tokens, 7)
 
-	// TextLen = "Hello " (6) + "world" (5) = 11
-	require.Equal(t, 11, out.TextLen)
+	// TextByteLen bytes = "Hello " (6) + "world" (5) = 11
+	require.Equal(t, 11, out.TextByteLen)
 	require.Equal(t, 2, out.TextTokens)
 	require.Equal(t, 4, out.TagsTotal)     // [, $$, $$, ]
 	require.Equal(t, 2, out.UniversalTags) // $$ x2
@@ -1025,7 +1025,7 @@ func TestTokenizerOutput_NestedTags(t *testing.T) {
 	// Tokens: tag($$), tag(*), text("nested"), tag(*), tag($$)
 	require.Len(t, out.Tokens, 5)
 
-	require.Equal(t, 6, out.TextLen)
+	require.Equal(t, 6, out.TextByteLen)
 	require.Equal(t, 1, out.TextTokens)
 	require.Equal(t, 4, out.TagsTotal)
 	require.Equal(t, 4, out.UniversalTags) // $$, *, *, $$
@@ -1050,7 +1050,7 @@ func TestTokenizerOutput_OnlyTagsNoText(t *testing.T) {
 	require.Equal(t, TokenTag, out.Tokens[0].Type)
 	require.Equal(t, TokenTag, out.Tokens[1].Type)
 
-	require.Equal(t, 0, out.TextLen)
+	require.Equal(t, 0, out.TextByteLen)
 	require.Equal(t, 0, out.TextTokens)
 	require.Equal(t, 2, out.TagsTotal)
 	require.Equal(t, 2, out.UniversalTags)

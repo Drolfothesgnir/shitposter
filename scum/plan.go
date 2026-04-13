@@ -45,7 +45,7 @@ type Bounds struct {
 	KeyLenLimitReached bool
 
 	// PayloadLimitReached is true when the Tag's or attribute's payload is
-	// longer then [Limits.]
+	// longer then [Limits.MaxAttrPayloadLen]
 	PayloadLimitReached bool
 }
 

@@ -10,7 +10,7 @@ import (
 
 func TestAttrHref_AllowsHTTPS(t *testing.T) {
 	var b strings.Builder
-	issues := []string{}
+	issues := Issues{}
 
 	ok := attrHref(&b, &issues, scum.SerializableAttribute{
 		Name:    "href",
@@ -18,13 +18,13 @@ func TestAttrHref_AllowsHTTPS(t *testing.T) {
 	})
 
 	require.True(t, ok)
-	require.Empty(t, issues)
+	require.Empty(t, issues.list)
 	require.Equal(t, `href="https://example.com?q=1&amp;x=&lt;y&gt;"`, b.String())
 }
 
 func TestAttrHref_AllowsRelativePath(t *testing.T) {
 	var b strings.Builder
-	issues := []string{}
+	issues := Issues{}
 
 	ok := attrHref(&b, &issues, scum.SerializableAttribute{
 		Name:    "href",
@@ -32,13 +32,13 @@ func TestAttrHref_AllowsRelativePath(t *testing.T) {
 	})
 
 	require.True(t, ok)
-	require.Empty(t, issues)
+	require.Empty(t, issues.list)
 	require.Equal(t, `href="/posts/42?tab=top"`, b.String())
 }
 
 func TestAttrHref_RejectsFlag(t *testing.T) {
 	var b strings.Builder
-	issues := []string{}
+	issues := Issues{}
 
 	ok := attrHref(&b, &issues, scum.SerializableAttribute{
 		Payload: "href",
@@ -47,12 +47,12 @@ func TestAttrHref_RejectsFlag(t *testing.T) {
 
 	require.False(t, ok)
 	require.Empty(t, b.String())
-	require.Contains(t, issues, "attribute href must have a value")
+	requireIssueDescription(t, issues, "attribute href must have a value")
 }
 
 func TestAttrHref_RejectsJavascriptScheme(t *testing.T) {
 	var b strings.Builder
-	issues := []string{}
+	issues := Issues{}
 
 	ok := attrHref(&b, &issues, scum.SerializableAttribute{
 		Name:    "href",
@@ -61,12 +61,12 @@ func TestAttrHref_RejectsJavascriptScheme(t *testing.T) {
 
 	require.False(t, ok)
 	require.Empty(t, b.String())
-	require.Contains(t, issues, `attribute href scheme "javascript" is not allowed`)
+	requireIssueDescription(t, issues, `attribute href scheme "javascript" is not allowed`)
 }
 
 func TestHandleAttributes_SkipsUnknownAndKeepsAllowed(t *testing.T) {
 	var b strings.Builder
-	issues := []string{}
+	issues := Issues{}
 
 	handleAttributes(&b, &issues, attrMap{"href": attrHref}, scum.SerializableNode{
 		Attributes: []scum.SerializableAttribute{
@@ -76,5 +76,17 @@ func TestHandleAttributes_SkipsUnknownAndKeepsAllowed(t *testing.T) {
 	})
 
 	require.Equal(t, ` href="https://example.com"`, b.String())
-	require.Contains(t, issues, "attribute onclick is not allowed")
+	requireIssueDescription(t, issues, "attribute onclick is not allowed")
+}
+
+func requireIssueDescription(t *testing.T, issues Issues, desc string) {
+	t.Helper()
+
+	for _, issue := range issues.list {
+		if issue.Description() == desc {
+			return
+		}
+	}
+
+	require.Failf(t, "missing issue description", "expected issue description %q in %#v", desc, issues.list)
 }

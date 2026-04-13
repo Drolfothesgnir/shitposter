@@ -4,9 +4,13 @@ package scum
 type Issue int
 
 const (
+	issueCodeBase Issue = 1000
+)
+
+const (
 	// IssueUnexpectedEOL means that either the specific symbol or a plain text was expected,
 	// but the input string was terminated.
-	IssueUnexpectedEOL Issue = iota
+	IssueUnexpectedEOL Issue = issueCodeBase + iota
 
 	// IssueUnexpectedSymbol usually occurs during the tokenization, when the occured symbol breaks the Tag's
 	// opening or closing sequence.
@@ -56,6 +60,9 @@ const (
 	// IssueWarningsTruncated occurs when there are too many Warnings recorded.
 	IssueWarningsTruncated
 
+	// IssueInvalidWarningsPolicy reports when the provided policy is not one of policies defined in this package.
+	IssueInvalidWarningsPolicy
+
 	// IssueNegativeWarningsCap reports an invalid (negative) warnings capacity.
 	IssueNegativeWarningsCap
 
@@ -90,6 +97,12 @@ const (
 	// IssueDuplicateNestedTag occurs when the Tag is a descendant of the Tag with the same ID.
 	IssueDuplicateNestedTag
 
-	// NumIssues is the total number of Issue types. Should be the last in the const list.
-	NumIssues
+	maxIssueCode
 )
+
+// NumIssues is the total number of Issue types.
+const NumIssues = int(maxIssueCode - issueCodeBase)
+
+func issueIndex(issue Issue) int {
+	return int(issue - issueCodeBase)
+}

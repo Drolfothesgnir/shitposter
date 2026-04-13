@@ -20,12 +20,18 @@ func (p Paragraph) Render(w io.Writer) error {
 	return nil
 }
 
-func (p *Paragraph) Parse(eater sml.Eater, w *[]string) error {
+func (p *Paragraph) Parse(eater sml.Eater, i *sml.Issues) error {
 	outpoop, err := eater.Munch(p.Content)
 	if err != nil {
 		return err
 	}
 
-	p.parsedContent = outpoop.HTML(w)
+	html, issues := outpoop.HTML()
+	p.parsedContent = html
+	if i != nil {
+		for _, issue := range issues {
+			i.Add(issue)
+		}
+	}
 	return nil
 }

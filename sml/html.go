@@ -8,45 +8,54 @@ import (
 	"github.com/Drolfothesgnir/shitposter/scum"
 )
 
-func handleTextNode(b *strings.Builder, _ *[]string, n scum.SerializableNode) {
+func handleTextNode(b *strings.Builder, _ *Issues, n scum.SerializableNode) {
 	b.WriteString(html.EscapeString(n.Content))
 }
 
-func handleTagNode(b *strings.Builder, w *[]string, n scum.SerializableNode) {
+func handleTagNode(b *strings.Builder, i *Issues, n scum.SerializableNode) {
+
 	switch n.Name {
 	case Bold:
-		handleTag(b, w, n, attrMap{}, "strong", "strong")
+		handleTag(b, i, n, attrMap{}, "strong", "strong")
 	case Italic:
-		handleTag(b, w, n, attrMap{}, "em", "em")
+		handleTag(b, i, n, attrMap{}, "em", "em")
 	case Underline:
-		handleTag(b, w, n, attrMap{}, "span class=\"sml-underline\"", "span")
+		handleTag(b, i, n, attrMap{}, "span class=\"sml-internal-underline\"", "span")
 	case Link:
-		handleTag(b, w, n, attrMap{"href": attrHref, "target": attrTarget, "title": attrTitle}, "a", "a")
+		handleTag(b, i, n, attrMap{"href": attrHref, "target": attrTarget, "title": attrTitle}, "a", "a")
+	default:
+		i.Add(NewSyntaxIssueDescriptor(
+			IssueUnknownTag,
+			fmt.Sprintf("unknown tag %q encountered", n.Name),
+		))
 	}
 }
 
-func handleNode(b *strings.Builder, w *[]string, n scum.SerializableNode) {
+func handleNode(b *strings.Builder, i *Issues, n scum.SerializableNode) {
 	if n.Type == "Tag" {
-		handleTagNode(b, w, n)
+		handleTagNode(b, i, n)
 		return
 	}
 
 	if n.Type == "Text" {
-		handleTextNode(b, w, n)
+		handleTextNode(b, i, n)
 		return
 	}
 
 	// Shouldn't happen
-	*w = append(*w, fmt.Sprintf("SML: Unknown node type encountered: %s", n.Type))
+	i.Add(NewSyntaxIssueDescriptor(
+		IssueUnknownNodeType,
+		fmt.Sprintf("unknown node type encountered: %s", n.Type),
+	))
 }
 
-func handleTag(b *strings.Builder, w *[]string, n scum.SerializableNode, m attrMap, start, end string) {
+func handleTag(b *strings.Builder, i *Issues, n scum.SerializableNode, m attrMap, start, end string) {
 	b.WriteByte('<')
 	b.WriteString(start)
-	handleAttributes(b, w, m, n)
+	handleAttributes(b, i, m, n)
 	b.WriteByte('>')
 	for _, c := range n.Children {
-		handleNode(b, w, c)
+		handleNode(b, i, c)
 	}
 	b.WriteString("</")
 	b.WriteString(end)

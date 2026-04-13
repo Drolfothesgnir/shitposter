@@ -4,8 +4,9 @@ package scum
 type TokenizerOutput struct {
 	// Tokens is the sequence of Tokens.
 	Tokens []Token
-	// TextLen is the total length of the text in the input string.
-	TextLen int
+	// TextByteLen is the total byte length of text in the input string.
+	// It is measured in bytes, not runes.
+	TextByteLen int
 	// TagsTotal is the total count of Tags in the input string.
 	TagsTotal int
 	// UniversalTags is the total count of universal Tags in the input string, not accounting for greedy Tags.
@@ -73,6 +74,7 @@ func Tokenize(d *Dictionary, input string, warns *Warnings) (out TokenizerOutput
 		}
 
 		// if the current byte is part of a Tag, we first try to flush existing plain text as a Token
+		// textLen is measured in bytes because i and textStart are byte indexes.
 		textLen := i - textStart
 
 		// but only if the text string is not empty
@@ -85,7 +87,7 @@ func Tokenize(d *Dictionary, input string, warns *Warnings) (out TokenizerOutput
 			})
 
 			out.TextTokens++
-			out.TextLen += textLen
+			out.TextByteLen += textLen
 		}
 
 		// adjusting the loop pointer to account the processed bytes
@@ -101,8 +103,8 @@ func Tokenize(d *Dictionary, input string, warns *Warnings) (out TokenizerOutput
 		// Count non-empty greedy content as text token for accurate preallocation
 		if ac.Tag.Greed > NonGreedy && token.Payload.End > token.Payload.Start {
 			out.TextTokens++
-			// also count the text correctly
-			out.TextLen += token.Payload.End - token.Payload.Start
+			// Payload spans are byte offsets, so this adds payload bytes, not runes.
+			out.TextByteLen += token.Payload.End - token.Payload.Start
 		}
 	}
 
@@ -117,7 +119,8 @@ func Tokenize(d *Dictionary, input string, warns *Warnings) (out TokenizerOutput
 		})
 
 		out.TextTokens++
-		out.TextLen += n - textStart
+		// n is len(input), so this adds the final text span length in bytes.
+		out.TextByteLen += n - textStart
 	}
 
 	out.TagsTotal = s.TagsTotal

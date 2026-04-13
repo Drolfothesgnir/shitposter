@@ -75,8 +75,9 @@ type AST struct {
 	// MaxDepth is a meassurement of maximum embedding level of the AST.
 	MaxDepth int
 
-	// TextLength is the length of the text in the input.
-	TextLength int
+	// TextByteLen is the total byte length of text in the input.
+	// It is measured in bytes, not runes.
+	TextByteLen int
 
 	// TotalTagNodes is the total count of the effective (no duplicate nesting) Tags in the input.
 	TotalTagNodes int

@@ -28,7 +28,8 @@
 //
 // [...] - Link:
 //
-//   - Represents hyperlink.
+//   - Represents hyperlink. In case of multiple attributes with the same name (case-insensetive), the first one will be used
+//     and others discarded.
 //
 //   - Accepts attributes:
 //
@@ -89,7 +90,7 @@ func (p Poop) HTML() (string, []SyntaxIssue) {
 	for _, n := range p.tree.Children {
 		handleNode(&b, &issues, n)
 	}
-	return b.String(), issues.list
+	return b.String(), issues.List
 }
 
 // Text returns the parsed input as plain text string.
@@ -105,22 +106,15 @@ func (p Poop) TextByteLen() int {
 // Eater is the main SML parser object.
 type Eater struct {
 	dict scum.Dictionary
-	// WarningOverflowPolicy determines what happends when the maximum Warning capacity is reached.
-	WarningOverflowPolicy scum.WarningOverflowPolicy
-	// WarnCap is the maximum number of warnings which will be processed during parsing.
-	WarnCap int
+	// warningOverflowPolicy determines what happends when the maximum Warning capacity is reached.
+	warningOverflowPolicy scum.WarningOverflowPolicy
+	// warnCap is the maximum number of warnings which will be processed during parsing.
+	warnCap int
 }
 
-// Munch parses the input and returns a [Poop] and possibly a *[ConfigError].
-func (p *Eater) Munch(input string) (Poop, error) {
-	w, err := scum.NewWarnings(p.WarningOverflowPolicy, p.WarnCap)
-	if err != nil {
-		return Poop{}, NewConfigError(
-			"SML parser warnings list",
-			ReasonInvalidParams,
-			err,
-		)
-	}
+// Munch parses the input and returns a [Poop].
+func (p *Eater) Munch(input string) Poop {
+	w, _ := scum.NewWarnings(p.warningOverflowPolicy, p.warnCap)
 	ast := scum.Parse(input, &p.dict, &w)
 	tree := ast.Serialize(&p.dict)
 
@@ -135,48 +129,63 @@ func (p *Eater) Munch(input string) (Poop, error) {
 		ast:      ast,
 		tree:     tree,
 		Warnings: warns,
-	}, nil
+	}
 }
 
-// It will return a *[ConfigError] if something go wrong.
+// It will return a *[ConfigError] if invalid arguments passed.
 func NewEater(warnPol scum.WarningOverflowPolicy, warnCap int) (Eater, error) {
 	d, err := scum.NewDictionary(scum.Limits{})
 	if err != nil {
-		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+		// this should not happen
+		panic(err.Error())
+	}
+
+	// checking if provided arguments are valid.
+	// this helps to avoid error check in the Munch method
+	_, err = scum.NewWarnings(warnPol, warnCap)
+	if err != nil {
+		return Eater{}, NewConfigError("SML Parser", ReasonInvalidParams, err)
 	}
 
 	err = d.AddUniversalTag(Bold, []byte{'$'}, scum.NonGreedy, scum.RuleNA)
 	if err != nil {
-		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+		// this should not happen
+		panic(err.Error())
 	}
 	err = d.AddUniversalTag(Italic, []byte{'*'}, scum.NonGreedy, scum.RuleNA)
 	if err != nil {
-		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+		// this should not happen
+		panic(err.Error())
 	}
 	err = d.AddUniversalTag(Underline, []byte{'_'}, scum.NonGreedy, scum.RuleInfraWord)
 	if err != nil {
-		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+		// this should not happen
+		panic(err.Error())
 	}
 	err = d.AddTag(Link, []byte{'['}, scum.NonGreedy, scum.RuleNA, 0, ']')
 	if err != nil {
-		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+		// this should not happen
+		panic(err.Error())
 	}
 	err = d.AddTag(Link, []byte{']'}, scum.NonGreedy, scum.RuleNA, '[', 0)
 	if err != nil {
-		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+		// this should not happen
+		panic(err.Error())
 	}
 	err = d.SetAttributeSignature('!', '{', '}')
 	if err != nil {
-		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+		// this should not happen
+		panic(err.Error())
 	}
 	err = d.SetEscapeTrigger('\\')
 	if err != nil {
-		return Eater{}, NewConfigError("SML parser", ReasonInternal, err)
+		// this should not happen
+		panic(err.Error())
 	}
 
 	return Eater{
 		dict:                  d,
-		WarningOverflowPolicy: warnPol,
-		WarnCap:               warnCap,
+		warningOverflowPolicy: warnPol,
+		warnCap:               warnCap,
 	}, nil
 }

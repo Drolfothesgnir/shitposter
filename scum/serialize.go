@@ -38,10 +38,10 @@ type SerializableNode struct {
 	//
 	// For tag nodes it comes from the [Dictionary]. For non-tag nodes serializer
 	// uses conventional names such as "ROOT" and "TEXT".
-	Name       string                  `json:"name"`
+	Name string `json:"name"`
 
 	// Type is the coarse node kind: "Root", "Tag" or "Text".
-	Type       string                  `json:"type"`
+	Type string `json:"type"`
 
 	// Attributes contains attributes attached directly to this node.
 	Attributes []SerializableAttribute `json:"attributes"`
@@ -51,15 +51,15 @@ type SerializableNode struct {
 	// For text nodes this is plain text. For tag nodes this is parser data, not
 	// a ready-to-render value: renderers may interpret it differently depending
 	// on the tag's meaning and may also rely on Children.
-	Content    string                  `json:"content"`
+	Content string `json:"content"`
 
 	// Children contains this node's parsed descendants in source order.
-	Children   []SerializableNode      `json:"children"`
+	Children []SerializableNode `json:"children"`
 
 	// ID is the numeric trigger byte of the tag.
 	//
 	// It is 0 for nodes that are not backed by a concrete tag, such as the root.
-	ID         byte                    `json:"id"`
+	ID byte `json:"id"`
 }
 
 type serializeTask struct {

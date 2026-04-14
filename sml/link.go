@@ -12,20 +12,29 @@ import (
 
 const MaxTitleLength int = 65
 
-func attrHref(b *strings.Builder, i *Issues, a scum.SerializableAttribute) bool {
+func basicLinkCheck(i *Issues, a scum.SerializableAttribute, attrName string) (string, bool) {
 	if a.IsFlag {
-		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute href must have a value"))
-		return false
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, fmt.Sprintf("attribute %s must have a value", attrName)))
+		return "", false
 	}
 
 	payload := strings.TrimSpace(a.Payload)
 	if payload == "" {
-		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute href must not be empty"))
-		return false
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, fmt.Sprintf("attribute %s must not be empty", attrName)))
+		return "", false
 	}
 
 	if strings.ContainsAny(payload, "\x00\r\n\t") {
-		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute href contains forbidden control characters"))
+		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, fmt.Sprintf("attribute %s contains forbidden control characters", attrName)))
+		return "", false
+	}
+
+	return payload, true
+}
+
+func attrHref(b *strings.Builder, i *Issues, a scum.SerializableAttribute) bool {
+	payload, ok := basicLinkCheck(i, a, "href")
+	if !ok {
 		return false
 	}
 
@@ -58,19 +67,8 @@ func attrHref(b *strings.Builder, i *Issues, a scum.SerializableAttribute) bool 
 }
 
 func attrTarget(b *strings.Builder, i *Issues, a scum.SerializableAttribute) bool {
-	if a.IsFlag {
-		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute target must have a value"))
-		return false
-	}
-
-	payload := strings.TrimSpace(a.Payload)
-	if payload == "" {
-		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute target must not be empty"))
-		return false
-	}
-
-	if strings.ContainsAny(payload, "\x00\r\n\t") {
-		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute target contains forbidden control characters"))
+	payload, ok := basicLinkCheck(i, a, "target")
+	if !ok {
 		return false
 	}
 
@@ -92,19 +90,8 @@ func attrTarget(b *strings.Builder, i *Issues, a scum.SerializableAttribute) boo
 }
 
 func attrTitle(b *strings.Builder, i *Issues, a scum.SerializableAttribute) bool {
-	if a.IsFlag {
-		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute title must have a value"))
-		return false
-	}
-
-	payload := strings.TrimSpace(a.Payload)
-	if payload == "" {
-		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute title must not be empty"))
-		return false
-	}
-
-	if strings.ContainsAny(payload, "\x00\r\n\t") {
-		i.Add(NewSyntaxIssueDescriptor(IssueAttributeInvalidPayload, "attribute title contains forbidden control characters"))
+	payload, ok := basicLinkCheck(i, a, "title")
+	if !ok {
 		return false
 	}
 

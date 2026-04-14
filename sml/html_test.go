@@ -74,6 +74,54 @@ func TestPoopHTML_LinkUsesFirstDuplicateAttributes(t *testing.T) {
 	requireIssueDescription(t, Issues{List: issues}, "attribute onclick is not allowed")
 }
 
+func TestPoopHTML_LinkTargetBlankPayloadIsNotUnderlineMarkup(t *testing.T) {
+	eater, err := NewEater(scum.WarnOverflowNoCap, 0)
+	require.NoError(t, err)
+
+	poop := eater.Munch(`[link]!target{_blank}`)
+	html, issues := poop.HTML()
+
+	require.Empty(t, poop.Warnings)
+	require.Empty(t, issues)
+	require.Equal(t, `<a target="_blank" rel="noopener noreferrer">link</a>`, html)
+}
+
+func TestPoopHTML_UnderlineClosesImmediatelyAfterLinkTargetBlank(t *testing.T) {
+	eater, err := NewEater(scum.WarnOverflowNoCap, 0)
+	require.NoError(t, err)
+
+	poop := eater.Munch(`_under [link]!target{_blank}_`)
+	html, issues := poop.HTML()
+
+	require.Empty(t, poop.Warnings)
+	require.Empty(t, issues)
+	require.Equal(t, `<span class="sml-internal-underline">under <a target="_blank" rel="noopener noreferrer">link</a></span>`, html)
+}
+
+func TestPoopHTML_TightNestedClosersAfterLinkTargetBlank(t *testing.T) {
+	eater, err := NewEater(scum.WarnOverflowNoCap, 0)
+	require.NoError(t, err)
+
+	poop := eater.Munch(`$bold *italic _under [link]!target{_blank}_*$`)
+	html, issues := poop.HTML()
+
+	require.Empty(t, poop.Warnings)
+	require.Empty(t, issues)
+	require.Equal(t, `<strong>bold <em>italic <span class="sml-internal-underline">under <a target="_blank" rel="noopener noreferrer">link</a></span></em></strong>`, html)
+}
+
+func TestPoopHTML_UnderlineClosesBeforeFollowingAttribute(t *testing.T) {
+	eater, err := NewEater(scum.WarnOverflowNoCap, 0)
+	require.NoError(t, err)
+
+	poop := eater.Munch(`_under_!title{hello}`)
+	html, issues := poop.HTML()
+
+	require.Empty(t, poop.Warnings)
+	require.Equal(t, `<span class="sml-internal-underline">under</span>`, html)
+	requireIssueDescription(t, Issues{List: issues}, "attribute title is not allowed")
+}
+
 func TestPoopHTML_LinkFlagCountsAsDuplicateAttributeName(t *testing.T) {
 	eater, err := NewEater(scum.WarnOverflowNoCap, 0)
 	require.NoError(t, err)

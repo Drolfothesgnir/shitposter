@@ -13,14 +13,31 @@ func mustTag(t *testing.T, seq []byte, name string, openID, closeID byte, opts .
 }
 
 // helper to build ActionContext for StepInfraWordCheck
-func mkCtx(input string, idx int, tag *Tag) *ActionContext {
+func mkCtx(t *testing.T, input string, idx int, tag *Tag) *ActionContext {
+	t.Helper()
+
+	d, err := NewDictionary(Limits{})
+	require.NoError(t, err)
+
+	seq := tag.Seq.Bytes[:tag.Seq.Len]
+	err = d.AddUniversalTag(tag.Name, seq, tag.Greed, tag.Rule)
+	require.NoError(t, err)
+
+	err = d.AddUniversalTag("STAR", []byte{'*'}, NonGreedy, RuleNA)
+	require.NoError(t, err)
+	err = d.SetAttributeSignature('!', '{', '}')
+	require.NoError(t, err)
+	err = d.SetEscapeTrigger('\\')
+	require.NoError(t, err)
+
 	return &ActionContext{
 		Input: input,
 		Idx:   idx,
 		Tag:   tag,
 		// the step should set these itself when it returns true
-		Stride: 0,
-		Skip:   false,
+		Stride:     0,
+		Skip:       false,
+		Dictionary: &d,
 	}
 }
 
@@ -28,7 +45,7 @@ func TestStepInfraWordCheck_TagAtBeginning_IsRealTag(t *testing.T) {
 	// idx=0 -> leftIsWordPart=false => should treat as real tag
 	tag := mustTag(t, []byte{'#'}, "HASH", 0, 0)
 
-	ctx := mkCtx("#abc", 0, &tag)
+	ctx := mkCtx(t, "#abc", 0, &tag)
 
 	ok := StepInfraWordCheck(ctx)
 
@@ -41,7 +58,7 @@ func TestStepInfraWordCheck_TagAtEnd_IsRealTag(t *testing.T) {
 	// idx = last -> rightIsWordPart=false => real tag
 	tag := mustTag(t, []byte{'#'}, "HASH", 0, 0)
 
-	ctx := mkCtx("abc#", 3, &tag)
+	ctx := mkCtx(t, "abc#", 3, &tag)
 
 	ok := StepInfraWordCheck(ctx)
 
@@ -54,7 +71,7 @@ func TestStepInfraWordCheck_SurroundedByASCIIAlphanum_IsPlainText(t *testing.T) 
 	// a#a -> both sides are ASCII alphanum => infra-word => plain text
 	tag := mustTag(t, []byte{'#'}, "HASH", 0, 0)
 
-	ctx := mkCtx("a#a", 1, &tag)
+	ctx := mkCtx(t, "a#a", 1, &tag)
 
 	ok := StepInfraWordCheck(ctx)
 
@@ -67,7 +84,7 @@ func TestStepInfraWordCheck_LeftAlphanum_RightSpace_IsRealTag(t *testing.T) {
 	// a#  -> right is not word part => real tag
 	tag := mustTag(t, []byte{'#'}, "HASH", 0, 0)
 
-	ctx := mkCtx("a# ", 1, &tag)
+	ctx := mkCtx(t, "a# ", 1, &tag)
 
 	ok := StepInfraWordCheck(ctx)
 
@@ -80,7 +97,7 @@ func TestStepInfraWordCheck_LeftSpace_RightAlphanum_IsRealTag(t *testing.T) {
 	//  #a -> left is not word part => real tag
 	tag := mustTag(t, []byte{'#'}, "HASH", 0, 0)
 
-	ctx := mkCtx(" #a", 1, &tag)
+	ctx := mkCtx(t, " #a", 1, &tag)
 
 	ok := StepInfraWordCheck(ctx)
 
@@ -93,7 +110,7 @@ func TestStepInfraWordCheck_SurroundedByASCIIPunct_IsPlainText(t *testing.T) {
 	// -#- -> hyphen is ASCIIPunct in your definition => infra-word => plain text
 	tag := mustTag(t, []byte{'#'}, "HASH", 0, 0)
 
-	ctx := mkCtx("-#-", 1, &tag)
+	ctx := mkCtx(t, "-#-", 1, &tag)
 
 	ok := StepInfraWordCheck(ctx)
 
@@ -106,7 +123,7 @@ func TestStepInfraWordCheck_SurroundedBySameTrigger_IsPlainText(t *testing.T) {
 	// ### at idx=1 -> left and right are trigger byte => infra-word => plain text
 	tag := mustTag(t, []byte{'#'}, "HASH", 0, 0)
 
-	ctx := mkCtx("###", 1, &tag)
+	ctx := mkCtx(t, "###", 1, &tag)
 
 	ok := StepInfraWordCheck(ctx)
 
@@ -115,13 +132,54 @@ func TestStepInfraWordCheck_SurroundedBySameTrigger_IsPlainText(t *testing.T) {
 	require.Equal(t, 1, ctx.Stride)
 }
 
+func TestStepInfraWordCheck_LeftSpecialASCII_IsRealTag(t *testing.T) {
+	// }#- -> } is an attribute payload closer in the dictionary, so it should not
+	// make # look like intra-word punctuation.
+	tag := mustTag(t, []byte{'#'}, "HASH", 0, 0)
+
+	ctx := mkCtx(t, "}#-", 1, &tag)
+
+	ok := StepInfraWordCheck(ctx)
+
+	require.False(t, ok)
+	require.False(t, ctx.Skip)
+	require.Equal(t, 0, ctx.Stride)
+}
+
+func TestStepInfraWordCheck_RightSpecialASCII_IsRealTag(t *testing.T) {
+	// -#! -> ! is an attribute trigger in the dictionary, so it should not
+	// make # look like intra-word punctuation.
+	tag := mustTag(t, []byte{'#'}, "HASH", 0, 0)
+
+	ctx := mkCtx(t, "-#!", 1, &tag)
+
+	ok := StepInfraWordCheck(ctx)
+
+	require.False(t, ok)
+	require.False(t, ctx.Skip)
+	require.Equal(t, 0, ctx.Stride)
+}
+
+func TestStepInfraWordCheck_SurroundedBySpecialASCII_IsRealTag(t *testing.T) {
+	// }#* -> both neighbors are registered special bytes in the dictionary.
+	tag := mustTag(t, []byte{'#'}, "HASH", 0, 0)
+
+	ctx := mkCtx(t, "}#*", 1, &tag)
+
+	ok := StepInfraWordCheck(ctx)
+
+	require.False(t, ok)
+	require.False(t, ctx.Skip)
+	require.Equal(t, 0, ctx.Stride)
+}
+
 func TestStepInfraWordCheck_LeftUnicodeLetter_RightASCIIAlphanum_IsPlainText(t *testing.T) {
 	// å#b : left rune is unicode letter, right is ASCII alphanum => infra-word => plain text
 	tag := mustTag(t, []byte{'#'}, "HASH", 0, 0)
 
 	input := "å#b"
 	// bytes: 'å' is two bytes, '#' at index 2
-	ctx := mkCtx(input, 2, &tag)
+	ctx := mkCtx(t, input, 2, &tag)
 
 	ok := StepInfraWordCheck(ctx)
 
@@ -136,7 +194,7 @@ func TestStepInfraWordCheck_LeftASCIIAlphanum_RightUnicodeLetter_IsPlainText(t *
 
 	input := "a#Ж"
 	// bytes: 'a'(0), '#'(1), 'Ж' starts at index 2
-	ctx := mkCtx(input, 1, &tag)
+	ctx := mkCtx(t, input, 1, &tag)
 
 	ok := StepInfraWordCheck(ctx)
 
@@ -151,7 +209,7 @@ func TestStepInfraWordCheck_LeftUnicodeLetter_RightSpace_IsRealTag(t *testing.T)
 
 	input := "Ж# "
 	// 'Ж' is two bytes, '#' at index 2
-	ctx := mkCtx(input, 2, &tag)
+	ctx := mkCtx(t, input, 2, &tag)
 
 	ok := StepInfraWordCheck(ctx)
 
@@ -166,7 +224,7 @@ func TestStepInfraWordCheck_LeftSpace_RightUnicodeLetter_IsRealTag(t *testing.T)
 
 	input := " #Ж"
 	// '#' at index 1
-	ctx := mkCtx(input, 1, &tag)
+	ctx := mkCtx(t, input, 1, &tag)
 
 	ok := StepInfraWordCheck(ctx)
 

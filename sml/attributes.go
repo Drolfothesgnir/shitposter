@@ -19,19 +19,20 @@ type attrMap map[string]attrMapper
 // handleAttributes is used during the conversion of the input to the HTML string.
 // It takes attributes of the node n and writes their HTML representation to the builder b.
 func handleAttributes(b *strings.Builder, i *Issues, m attrMap, n scum.SerializableNode) {
+	seen := make(map[string]struct{}, len(m))
 	for _, a := range n.Attributes {
-		var name string
-		if a.IsFlag {
-			name = strings.ToLower(a.Payload)
-		} else {
-			name = strings.ToLower(a.Name)
-		}
+		name := attrName(a)
 
 		fn, ok := m[name]
 		if !ok {
 			i.Add(NewSyntaxIssueDescriptor(IssueAttributeNotAllowed, fmt.Sprintf("attribute %s is not allowed", name)))
 			continue
 		}
+
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
 
 		var attr strings.Builder
 		if !fn(&attr, i, a) {
@@ -41,4 +42,12 @@ func handleAttributes(b *strings.Builder, i *Issues, m attrMap, n scum.Serializa
 		b.WriteByte(' ')
 		b.WriteString(attr.String())
 	}
+}
+
+func attrName(a scum.SerializableAttribute) string {
+	if a.IsFlag {
+		return strings.ToLower(a.Payload)
+	}
+
+	return strings.ToLower(a.Name)
 }

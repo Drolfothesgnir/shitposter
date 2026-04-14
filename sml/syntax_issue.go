@@ -104,9 +104,9 @@ func (w Warning) Description() string {
 }
 
 type Issues struct {
-	list []SyntaxIssue
+	List []SyntaxIssue `json:"issues"`
 }
 
 func (i *Issues) Add(d SyntaxIssue) {
-	i.list = append(i.list, d)
+	i.List = append(i.List, d)
 }

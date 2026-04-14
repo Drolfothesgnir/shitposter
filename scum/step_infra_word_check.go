@@ -20,7 +20,8 @@ func StepInfraWordCheck(ctx *ActionContext) bool {
 
 		// if the previous byte is ASCII char, check the byte directly
 		if b < 128 {
-			leftIsWordPart = isASCIIAlphanum(b) || isASCIIPunct(b) || b == ctx.Tag.ID()
+			leftIsWordPart = b == ctx.Tag.ID() ||
+				(!ctx.Dictionary.IsSpecial(b) && (isASCIIAlphanum(b) || isASCIIPunct(b)))
 		} else {
 			// else, decode the previous UTF-8 code point
 			prev, _ := utf8.DecodeLastRuneInString(ctx.Input[:i])
@@ -40,7 +41,8 @@ func StepInfraWordCheck(ctx *ActionContext) bool {
 
 		// if the next byte is ASCII char, check the byte directly
 		if b < 128 {
-			rightIsWordPart = isASCIIAlphanum(b) || isASCIIPunct(b) || b == ctx.Tag.ID()
+			rightIsWordPart = b == ctx.Tag.ID() ||
+				(!ctx.Dictionary.IsSpecial(b) && (isASCIIAlphanum(b) || isASCIIPunct(b)))
 		} else {
 			// else, decode the next UTF-8 code point
 			next, _ := utf8.DecodeRuneInString(ctx.Input[i+1:])

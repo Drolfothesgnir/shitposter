@@ -30,24 +30,22 @@ func FuzzPoopHTML_DeterministicAndTextLengthInvariant(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, input string) {
-		poop := eater.Munch(input)
+		poop, issues1 := eater.Munch(input)
 
 		text := poop.Text()
 		if len(text) != poop.TextByteLen() {
 			t.Fatalf("TextByteLen mismatch: got %d, want len(%q)=%d", poop.TextByteLen(), text, len(text))
 		}
 
-		html1, issues1 := poop.HTML()
-		html2, issues2 := poop.HTML()
+		html1 := poop.HTML()
+		poop2, issues2 := eater.Munch(input)
+		html2 := poop2.HTML()
 		if html1 != html2 {
 			t.Fatalf("HTML is not deterministic:\nfirst:  %q\nsecond: %q", html1, html2)
 		}
 		assertSameIssues(t, issues1, issues2)
 
 		for _, issue := range issues1 {
-			assertIssueMethodsDoNotReturnEmptyCodename(t, issue)
-		}
-		for _, issue := range poop.Warnings {
 			assertIssueMethodsDoNotReturnEmptyCodename(t, issue)
 		}
 	})
@@ -72,33 +70,23 @@ func FuzzAttrHref_Invariants(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, payload string) {
-		var b strings.Builder
-		issues := Issues{}
-
-		ok := attrHref(&b, &issues, scum.SerializableAttribute{
-			Name:    "href",
-			Payload: payload,
+		out, issues := renderNormalizedLink([]scum.SerializableAttribute{
+			{Name: "href", Payload: payload},
 		})
-		out := b.String()
 
-		if !ok {
-			if out != "" {
+		if len(issues.List) != 0 {
+			if out != `<a></a>` {
 				t.Fatalf("rejected href wrote output: %q", out)
-			}
-			if len(issues.List) == 0 {
-				t.Fatalf("rejected href produced no issue for payload %q", payload)
 			}
 			return
 		}
 
-		if len(issues.List) != 0 {
-			t.Fatalf("accepted href produced issues: %#v", issues.List)
-		}
-		if !strings.HasPrefix(out, `href="`) || !strings.HasSuffix(out, `"`) {
+		if !strings.HasPrefix(out, `<a href="`) || !strings.HasSuffix(out, `"></a>`) {
 			t.Fatalf("accepted href has malformed attribute output: %q", out)
 		}
-		if strings.ContainsAny(out, "<>\x00\r\n\t") {
-			t.Fatalf("accepted href output contains raw forbidden characters: %q", out)
+		value := strings.TrimSuffix(strings.TrimPrefix(out, `<a href="`), `"></a>`)
+		if strings.ContainsAny(value, "<>\x00\r\n\t") {
+			t.Fatalf("accepted href output contains raw forbidden characters: %q", value)
 		}
 		if strings.HasPrefix(strings.TrimSpace(payload), "//") {
 			t.Fatalf("protocol-relative href was accepted: payload=%q output=%q", payload, out)

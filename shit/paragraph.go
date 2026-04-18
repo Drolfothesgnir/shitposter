@@ -21,9 +21,9 @@ func (p Paragraph) Render(w io.Writer) error {
 }
 
 func (p *Paragraph) Parse(eater sml.Eater, i *sml.Issues) error {
-	outpoop := eater.Munch(p.Content)
+	outpoop, issues := eater.Munch(p.Content)
 
-	html, issues := outpoop.HTML()
+	html := outpoop.HTML()
 	p.parsedContent = html
 	if i != nil {
 		for _, issue := range issues {

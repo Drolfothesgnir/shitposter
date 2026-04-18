@@ -8,56 +8,72 @@ import (
 	"github.com/Drolfothesgnir/shitposter/scum"
 )
 
-func handleTextNode(b *strings.Builder, _ *Issues, n scum.SerializableNode) {
+// HTML returns the parsed input as an HTML.
+func (p Poop) HTML() string {
+	var b strings.Builder
+	for _, n := range p.Tree.Children {
+		renderNode(&b, n)
+	}
+	return b.String()
+}
+
+func renderTextNode(b *strings.Builder, n scum.SerializableNode) {
 	b.WriteString(html.EscapeString(n.Content))
 }
 
-func handleTagNode(b *strings.Builder, i *Issues, n scum.SerializableNode) {
-
+func renderTagNode(b *strings.Builder, n scum.SerializableNode) {
 	switch n.Name {
 	case Bold:
-		handleTag(b, i, n, attrMap{}, "strong", "strong")
+		renderTag(b, n, "strong", "strong")
 	case Italic:
-		handleTag(b, i, n, attrMap{}, "em", "em")
+		renderTag(b, n, "em", "em")
 	case Underline:
-		handleTag(b, i, n, attrMap{}, "span class=\"sml-internal-underline\"", "span")
+		renderTag(b, n, "span class=\"sml-internal-underline\"", "span")
 	case Link:
-		handleTag(b, i, n, attrMap{"href": attrHref, "target": attrTarget, "title": attrTitle}, "a", "a")
+		renderLink(b, n)
 	default:
-		i.Add(NewSyntaxIssueDescriptor(
-			IssueUnknownTag,
-			fmt.Sprintf("unknown tag %q encountered", n.Name),
-		))
+		panic(fmt.Sprintf("AAAAAAAAAAAA - data corruption; SML encountered unknown tag %q", n.Name))
 	}
 }
 
-func handleNode(b *strings.Builder, i *Issues, n scum.SerializableNode) {
+func renderNode(b *strings.Builder, n scum.SerializableNode) {
 	if n.Type == "Tag" {
-		handleTagNode(b, i, n)
+		renderTagNode(b, n)
 		return
 	}
 
 	if n.Type == "Text" {
-		handleTextNode(b, i, n)
+		renderTextNode(b, n)
 		return
 	}
 
-	// Shouldn't happen
-	i.Add(NewSyntaxIssueDescriptor(
-		IssueUnknownNodeType,
-		fmt.Sprintf("unknown node type encountered: %s", n.Type),
-	))
+	panic(fmt.Sprintf("AAAAAAAAAAAAA - data corruption; SML encountered unknown node type %q", n.Type))
 }
 
-func handleTag(b *strings.Builder, i *Issues, n scum.SerializableNode, m attrMap, start, end string) {
+func renderTag(b *strings.Builder, n scum.SerializableNode, start, end string) {
 	b.WriteByte('<')
 	b.WriteString(start)
-	handleAttributes(b, i, m, n)
 	b.WriteByte('>')
 	for _, c := range n.Children {
-		handleNode(b, i, c)
+		renderNode(b, c)
 	}
 	b.WriteString("</")
 	b.WriteString(end)
 	b.WriteByte('>')
+}
+
+func renderLink(b *strings.Builder, n scum.SerializableNode) {
+	b.WriteString("<a")
+	for _, a := range n.Attributes {
+		b.WriteByte(' ')
+		b.WriteString(a.Name)
+		b.WriteString(`="`)
+		b.WriteString(html.EscapeString(a.Payload))
+		b.WriteByte('"')
+	}
+	b.WriteByte('>')
+	for _, c := range n.Children {
+		renderNode(b, c)
+	}
+	b.WriteString("</a>")
 }

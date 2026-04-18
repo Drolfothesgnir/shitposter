@@ -110,3 +110,8 @@ type Issues struct {
 func (i *Issues) Add(d SyntaxIssue) {
 	i.List = append(i.List, d)
 }
+
+func NewIssues(cap int) Issues {
+	l := make([]SyntaxIssue, 0, cap)
+	return Issues{l}
+}

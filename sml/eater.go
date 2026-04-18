@@ -54,7 +54,7 @@
 package sml
 
 import (
-	"strings"
+	"slices"
 
 	"github.com/Drolfothesgnir/shitposter/scum"
 )
@@ -68,39 +68,22 @@ const (
 )
 
 // Poop is the result of the input parsing, returned by [Eater.Munch].
-// It contains a list of [SyntaxIssue]s occured during the parsing and the methods
-// to manipulate the resulting syntax tree and converting the parse result into HTML or plain text.
+// It contains the parsed tree and methods for rendering it as HTML or plain text.
+// Syntax issues are returned separately by [Eater.Munch].
 type Poop struct {
-	input    string
-	ast      scum.AST
-	tree     scum.SerializableNode
-	Warnings []SyntaxIssue
-}
-
-// HTML returns the parsed input as an HTML string and
-// a list of [SyntaxIssue]s which were discovered during the process.
-func (p Poop) HTML() (string, []SyntaxIssue) {
-	var b strings.Builder
-
-	// len(p.input/10) is just a guess
-	list := make([]SyntaxIssue, 0, len(p.input)/10)
-
-	issues := Issues{list}
-
-	for _, n := range p.tree.Children {
-		handleNode(&b, &issues, n)
-	}
-	return b.String(), issues.List
+	Input string
+	AST   scum.AST
+	Tree  scum.SerializableNode
 }
 
 // Text returns the parsed input as plain text string.
 func (p Poop) Text() string {
-	return p.ast.Text()
+	return p.AST.Text()
 }
 
 // TextByteLength returns the byte count of the plain text in the input, that is the non-tag and non-attribute parts.
 func (p Poop) TextByteLen() int {
-	return p.ast.TextByteLen
+	return p.AST.TextByteLen
 }
 
 // Eater is the main SML parser object.
@@ -112,24 +95,26 @@ type Eater struct {
 	warnCap int
 }
 
-// Munch parses the input and returns a [Poop].
-func (p *Eater) Munch(input string) Poop {
+// Munch parses and normalizes the input, returning a [Poop] and all syntax issues
+// found while parsing, validating and normalizing.
+func (p *Eater) Munch(input string) (Poop, []SyntaxIssue) {
 	w, _ := scum.NewWarnings(p.warningOverflowPolicy, p.warnCap)
 	ast := scum.Parse(input, &p.dict, &w)
 	tree := ast.Serialize(&p.dict)
-
+	issues := NewIssues(len(input) / 10)
+	normalizeRenderTree(&tree, &issues)
 	scumWarns := make([]scum.SerializableWarning, 0, w.WarnCount())
 	w.SerializeAll(&scumWarns, &p.dict)
 	warns := make([]SyntaxIssue, 0, w.WarnCount())
 	for _, w := range scumWarns {
 		warns = append(warns, Warning{w})
 	}
+	allIssues := slices.Concat(warns, issues.List)
 	return Poop{
-		input:    input,
-		ast:      ast,
-		tree:     tree,
-		Warnings: warns,
-	}
+		Input: input,
+		AST:   ast,
+		Tree:  tree,
+	}, allIssues
 }
 
 // It will return a *[ConfigError] if invalid arguments passed.

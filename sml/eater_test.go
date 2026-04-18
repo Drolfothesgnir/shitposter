@@ -12,21 +12,21 @@ func TestPoopText(t *testing.T) {
 	eater, err := NewEater(scum.WarnOverflowNoCap, 0)
 	require.NoError(t, err)
 
-	poop := eater.Munch("pre $bold$ [link]!href{https://example.com} hé")
+	poop, issues := eater.Munch("pre $bold$ [link]!href{https://example.com} hé")
 
-	require.Empty(t, poop.Warnings)
+	require.Empty(t, issues)
 	require.Equal(t, "pre bold link hé", poop.Text())
 	require.Equal(t, len("pre bold link hé"), poop.TextByteLen())
 }
 
-func TestEaterMunch_RecordsParserWarnings(t *testing.T) {
+func TestEaterMunch_ReturnsParserIssues(t *testing.T) {
 	eater, err := NewEater(scum.WarnOverflowNoCap, 0)
 	require.NoError(t, err)
 
-	poop := eater.Munch("$unclosed")
+	_, issues := eater.Munch("$unclosed")
 
-	require.NotEmpty(t, poop.Warnings)
-	requireIssueCodename(t, poop.Warnings, "UNCLOSED_TAG")
+	require.NotEmpty(t, issues)
+	requireIssueCodename(t, issues, "UNCLOSED_TAG")
 }
 
 func TestNewEater_InvalidWarningConfig(t *testing.T) {

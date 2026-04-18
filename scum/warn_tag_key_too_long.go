@@ -1,6 +1,6 @@
 package scum
 
-// WarnTagKeyTooLong adds a Warnig if the Tag's opening/closing sequence is too long.
+// WarnTagKeyTooLong adds a Warning if the Tag's opening/closing sequence is too long.
 func WarnTagKeyTooLong(ctx *ActionContext) {
 	if !ctx.Bounds.KeyLenLimitReached {
 		return

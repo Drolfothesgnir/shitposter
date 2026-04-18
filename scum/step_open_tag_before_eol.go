@@ -1,8 +1,7 @@
 package scum
 
 // StepSkipOpenTagBeforeEOL checks if the opening Tag is the last Tag in the
-// input. If the Tag is the last one, the step handle the
-// opening Tag, by skipping it.
+// input. If the Tag is the last one, the step handles it by skipping it.
 func StepSkipOpenTagBeforeEOL(ctx *ActionContext) bool {
 	n := len(ctx.Input)
 	w := ctx.Bounds.Width

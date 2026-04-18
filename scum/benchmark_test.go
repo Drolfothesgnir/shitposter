@@ -1,8 +1,13 @@
 package scum
 
-import "testing"
+import (
+	"sync"
+	"testing"
+)
 
 // Benchmark functions must start with "Benchmark" and take *testing.B
+
+var benchmarkParseSink int
 
 func BenchmarkTokenize(b *testing.B) {
 	d := benchDict(b)
@@ -26,6 +31,41 @@ func BenchmarkParse(b *testing.B) {
 	}
 }
 
+func BenchmarkParseOuterAST(b *testing.B) {
+	d := benchDict(b)
+	cases := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "Simple",
+			input: "Hello *world* this is $$bold text$$ and [link text] with :[image]",
+		},
+		{
+			name:  "LongInput",
+			input: benchLongInput(),
+		},
+		{
+			name:  "DeeplyNested",
+			input: "[$$*deeply nested content*$$]",
+		},
+	}
+
+	for _, tc := range cases {
+		b.Run(tc.name, func(b *testing.B) {
+			b.Run("Parse", func(b *testing.B) {
+				benchmarkParseFreshAST(b, &d, tc.input)
+			})
+			b.Run("ParseIntoCallerAST", func(b *testing.B) {
+				benchmarkParseIntoCallerAST(b, &d, tc.input)
+			})
+			b.Run("ParseIntoPooledAST", func(b *testing.B) {
+				benchmarkParseIntoPooledAST(b, &d, tc.input)
+			})
+		})
+	}
+}
+
 func BenchmarkSerialize(b *testing.B) {
 	d := benchDict(b)
 	warns := &Warnings{}
@@ -40,12 +80,7 @@ func BenchmarkSerialize(b *testing.B) {
 
 func BenchmarkParse_LongInput(b *testing.B) {
 	d := benchDict(b)
-	// ~1KB of mixed content
-	chunk := "Hello *world* this is $$bold text$$ and [link text] end. "
-	input := ""
-	for i := 0; i < 20; i++ {
-		input += chunk
-	}
+	input := benchLongInput()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -161,6 +196,87 @@ func BenchmarkParse_Chaos_MixedMayhem(b *testing.B) {
 		warns := &Warnings{}
 		Parse(input, &d, warns)
 	}
+}
+
+func benchmarkParseFreshAST(b *testing.B, d *Dictionary, input string) {
+	b.Helper()
+	var total int
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var warns Warnings
+		ast := Parse(input, d, &warns)
+		total += benchmarkASTTotal(&ast, &warns)
+	}
+
+	benchmarkParseSink = total
+}
+
+func benchmarkParseIntoCallerAST(b *testing.B, d *Dictionary, input string) {
+	b.Helper()
+	var ast AST
+	var total int
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var warns Warnings
+		ParseInto(&ast, input, d, &warns)
+		total += benchmarkASTTotal(&ast, &warns)
+	}
+
+	benchmarkParseSink = total
+}
+
+func benchmarkParseIntoPooledAST(b *testing.B, d *Dictionary, input string) {
+	b.Helper()
+	pool := sync.Pool{
+		New: func() any {
+			return new(AST)
+		},
+	}
+	var total int
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var warns Warnings
+		ast := pool.Get().(*AST)
+		ParseInto(ast, input, d, &warns)
+		total += benchmarkASTTotal(ast, &warns)
+		releaseBenchmarkAST(ast)
+		pool.Put(ast)
+	}
+
+	benchmarkParseSink = total
+}
+
+func benchmarkASTTotal(ast *AST, warns *Warnings) int {
+	return len(ast.Nodes) +
+		len(ast.Attributes) +
+		ast.MaxDepth +
+		ast.TextByteLen +
+		ast.TotalTagNodes +
+		ast.TotalTextNodes +
+		len(warns.List())
+}
+
+func releaseBenchmarkAST(ast *AST) {
+	*ast = AST{
+		Nodes:      ast.Nodes[:0],
+		Attributes: ast.Attributes[:0],
+	}
+}
+
+func benchLongInput() string {
+	// ~1KB of mixed content
+	chunk := "Hello *world* this is $$bold text$$ and [link text] end. "
+	input := ""
+	for i := 0; i < 20; i++ {
+		input += chunk
+	}
+	return input
 }
 
 // Helper to create dictionary for benchmarks

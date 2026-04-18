@@ -1,6 +1,6 @@
 package scum
 
-// TokenType can define a Text, a Tag, an EscapeSequence, or an Attribute.
+// TokenType defines whether a [Token] contains text, a tag, or an attribute.
 type TokenType int
 
 const (
@@ -25,12 +25,13 @@ const (
 	// RuleNA means no additional checks.
 	RuleNA Rule = iota
 
-	// RuleInfraWord allows to check if the single char non-greedy universal [Tag] is an actual Tag or a plain text.
-	// If the both sides of the Tag's symbol contain an alphanumeric, a punctuation, or the symbol itself, the symbol
-	// is cnsidered a plain text.
+	// RuleInfraWord checks whether a single-char non-greedy universal [Tag] is
+	// an actual Tag or plain text. If both sides of the Tag's symbol contain an
+	// alphanumeric, punctuation, or the symbol itself, the symbol is considered
+	// plain text.
 	RuleInfraWord
 
-	// RuleTagVsContent allows to avoid the confusion of the starting and closing sequences of a greedy tag and it's content,
+	// RuleTagVsContent avoids confusion between a greedy tag's opening/closing sequences and its content
 	// by ensuring that the Tag sequences and the content sequence have different length.
 	RuleTagVsContent
 )

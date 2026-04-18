@@ -76,7 +76,7 @@ func closingPlan(_ *Tag, p *Plan) {
 // singleCharNonGreedyPlan creates plan for single-char tags
 // with Greed 0 and optional Infra-Word rule.
 func singleCharNonGreedyPlan(t *Tag, p *Plan) {
-	// check the Infra-Word rule if neccessary
+	// check the Infra-Word rule if necessary
 	if t.Rule == RuleInfraWord {
 		p.AddStep(StepInfraWordCheck)
 	}
@@ -154,20 +154,24 @@ func multiCharOpeningPlan(t *Tag, p *Plan) {
 	multiCharUniversalPlan(t, p)
 }
 
+// CountTag increments the tokenizer's total tag counter.
 func CountTag(ac *ActionContext) {
 	ac.State.TagsTotal++
 }
 
+// CountCloseTag increments the tokenizer's total and closing tag counters.
 func CountCloseTag(ac *ActionContext) {
 	CountTag(ac)
 	ac.State.CloseTags++
 }
 
+// CountOpenTag increments the tokenizer's total and opening tag counters.
 func CountOpenTag(ac *ActionContext) {
 	CountTag(ac)
 	ac.State.OpenTags++
 }
 
+// CountUniversalTag increments the tokenizer's total and universal tag counters.
 func CountUniversalTag(ac *ActionContext) {
 	CountTag(ac)
 	ac.State.UniversalTags++

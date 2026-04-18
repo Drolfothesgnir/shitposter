@@ -4,13 +4,13 @@ import (
 	"fmt"
 )
 
-// Warning describes the problem occured during the tokenizing or the parsing processes.
+// Warning describes a recoverable problem found during tokenization or parsing.
 type Warning struct {
 
 	// Issue defines the type of the problem.
 	Issue Issue
 
-	// Pos defines the byte position in the input string at which the problem occured.
+	// Pos defines the byte position in the input string at which the problem occurred.
 	Pos int
 
 	// TagID is the ID of the Tag causing the issue.
@@ -26,31 +26,30 @@ type Warning struct {
 	Got byte
 }
 
-// WarningOverflowPolicy determines what happends when the maximum Warning capacity is reached.
+// WarningOverflowPolicy determines what happens when the maximum Warning capacity is reached.
 type WarningOverflowPolicy int
 
 const (
-	// WarnNoCap means no limit for Warning recording.
+	// WarnOverflowNoCap means no limit for Warning recording.
 	WarnOverflowNoCap WarningOverflowPolicy = iota
 
-	// WarnNoRecording means adding new Warning is a no-op.
+	// WarnOverflowNoRec means adding a new Warning is a no-op.
 	WarnOverflowNoRec
 
-	// WarnOverflowDrop means all Warnings, after the overflow reached, will be simply discarded.
+	// WarnOverflowDrop means all Warnings after the overflow is reached are discarded.
 	WarnOverflowDrop
 
-	// WarnOverflowTrunc means all Warnings, after the overflow reached, will be discarded, but
-	// the number dropped ones will be recorded and additional Warning, signalling the overflow,
-	// added.
+	// WarnOverflowTrunc means all Warnings after the overflow is reached are discarded,
+	// but the number of dropped warnings is recorded and a truncation Warning is added.
 	WarnOverflowTrunc
 
 	// should be the last. used for policy validation
 	numPolicies
 )
 
-// Warnings maintains the list of issues occured during the tokenization or the parsing.
-// The list can have maximum capacity, after which all further Warnings will be discarded,
-// with only number of discared ones available.
+// Warnings maintains the list of issues found during tokenization or parsing.
+// The list can have a maximum capacity, after which all further Warnings are
+// discarded according to the configured [WarningOverflowPolicy].
 type Warnings struct {
 	policy WarningOverflowPolicy
 
@@ -58,25 +57,25 @@ type Warnings struct {
 	list []Warning
 
 	// maxWarnings defines how many Warnings the list can contain.
-	// It's used for prevent the stalling of the tokenization in case
-	// of huge number of issues in the input.
+	// It prevents tokenization from stalling on inputs with huge numbers of issues.
 	maxWarnings int
 
-	// overflow is true if the number of recorded Warnings reached the maximum capacity
+	// overflowed is true if the number of recorded Warnings reached the maximum capacity.
 	overflowed bool
 
-	// droppedCount is the number of the discarded Warnings after the overflow
+	// droppedCount is the number of discarded Warnings after the overflow.
 	droppedCount int
 
-	// firstDropPos is the index of the input from which the Warnings are discarded
+	// firstDropPos is the input index from which Warnings are discarded.
 	firstDropPos int
 }
 
+// IsOverflow reports whether the warning collector has reached its configured capacity.
 func (w *Warnings) IsOverflow() bool {
 	return w.overflowed
 }
 
-// DroppedCount is a number of Warnings discarded after the overflow reach.
+// DroppedCount is the number of Warnings discarded after overflow.
 func (w *Warnings) DroppedCount() int {
 	return w.droppedCount
 }
@@ -86,11 +85,12 @@ func (w *Warnings) FirstDropPos() int {
 	return w.firstDropPos
 }
 
+// List returns the recorded Warnings.
 func (w *Warnings) List() []Warning {
 	return w.list
 }
 
-// Add appends new [Warning] item to the inner list.
+// Add appends a new [Warning] item to the inner list.
 // If the policy is [WarnOverflowNoRec], this is no-op.
 func (w *Warnings) Add(item Warning) {
 	switch w.policy {
@@ -138,7 +138,7 @@ func (w *Warnings) Add(item Warning) {
 }
 
 // NewWarnings creates a Warnings collector with the given overflow policy and capacity.
-// It returns a [ConfigError] if the policy is not-allowed or the cap is negative.
+// It returns a [ConfigError] if the policy is invalid or the cap is negative.
 func NewWarnings(policy WarningOverflowPolicy, cap int) (Warnings, error) {
 
 	if policy < 0 || policy > (numPolicies-1) {

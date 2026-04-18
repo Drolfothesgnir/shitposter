@@ -11,8 +11,13 @@ type Range struct {
 type NodeType int
 
 const (
+	// NodeRoot is the synthetic root of every AST.
 	NodeRoot NodeType = iota
+
+	// NodeText contains plain text from the input.
 	NodeText
+
+	// NodeTag contains a parsed tag.
 	NodeTag
 
 	// NumNodeTypes is the total number of Node types. Should be placed as last const.
@@ -51,6 +56,7 @@ type Node struct {
 	Attributes Range
 }
 
+// NewNode returns a root node with empty child/sibling links.
 func NewNode() Node {
 	return Node{
 		Type:        NodeRoot,
@@ -72,7 +78,7 @@ type AST struct {
 	// Attributes stores all attributes referenced by nodes.
 	Attributes []Attribute
 
-	// MaxDepth is a meassurement of maximum embedding level of the AST.
+	// MaxDepth is the maximum nesting level reached while parsing.
 	MaxDepth int
 
 	// TextByteLen is the total byte length of text in the input.

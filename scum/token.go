@@ -18,7 +18,7 @@ func NewSpan(startIdx int, width int) Span {
 // Token is the result of the first stage processing of a part of the input string.
 // It contains metadata and value of the processed sequence of bytes.
 type Token struct {
-	// Type defines the type of the Token, e.g. opening, closing, or universal tag, or an escape sequence.
+	// Type defines the type of the Token: text, tag, or attribute.
 	Type TokenType
 
 	// Trigger is the leading special byte that started this Token.
@@ -26,7 +26,6 @@ type Token struct {
 	//
 	// Examples:
 	//   - for a Tag token, Trigger is the first byte of the tag sequence (its ID).
-	//   - for an EscapeSequence token, Trigger is the escape symbol.
 	//   - for an Attribute token, Trigger is the attribute signature symbol.
 	Trigger byte
 
@@ -45,7 +44,6 @@ type Token struct {
 	// The meaning depends on Token type:
 	//   - Tag tokens: Payload spans the plain text content inside the tag (without opening/closing symbols).
 	//   - Text tokens: Payload is equal to Raw.
-	//   - EscapeSequence tokens: Payload spans the escaped UTF-8 code point.
 	//   - AttributeKV tokens: Payload spans the attribute value.
 	//   - AttributeFlag tokens: Payload is empty.
 	Payload Span

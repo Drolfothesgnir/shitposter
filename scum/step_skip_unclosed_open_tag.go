@@ -6,7 +6,7 @@ func StepSkipUnclosedOpenTag(ctx *ActionContext) bool {
 		return false
 	}
 
-	// we explicitely tell that no Token will be returned
+	// we explicitly tell that no Token will be returned
 	ctx.Token = Token{}
 
 	// we also tell that we only processed the available opening sequence

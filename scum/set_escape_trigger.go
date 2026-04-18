@@ -6,7 +6,7 @@ import (
 
 // SetEscapeTrigger sets the char as an escape symbol. Escaping means
 // treating the next UTF-8 code point after the trigger as a plain text, whether
-// it's special or not.
+// it is special or not.
 // NOTE: escape symbol can be only 1-byte long ASCII char.
 func (d *Dictionary) SetEscapeTrigger(char byte) error {
 	// if the char is not printable, abort with error
@@ -26,6 +26,8 @@ func (d *Dictionary) SetEscapeTrigger(char byte) error {
 	return nil
 }
 
+// ActEscape processes an escape trigger and makes the tokenizer skip the next
+// UTF-8 code point as plain text.
 func ActEscape(ac *ActionContext) (token Token, stride int, skip bool) {
 	i := ac.Idx
 	n := len(ac.Input)

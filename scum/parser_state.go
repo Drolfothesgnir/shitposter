@@ -21,6 +21,9 @@ type parserState struct {
 	// ast is the AST being constructed.
 	ast AST
 
+	// limits contains parse-time resource limits copied from the Dictionary.
+	limits Limits
+
 	// breadcrumbs is the ancestor chain from the root to the current open tag.
 	// Each entry is an index into [AST.Nodes]. The bottom element (index 0)
 	// is always the root node. The top element is the current parent for
@@ -68,6 +71,10 @@ type parserState struct {
 	// an open/close mismatch. These are added to the tokenizer's TextTokens
 	// count to produce [AST.TotalTextNodes].
 	textNodes int
+
+	warnedMaxNodes      bool
+	warnedMaxAttributes bool
+	warnedMaxParseDepth bool
 }
 
 // peekCrumb returns the index inside [AST.Nodes] of the deepest last Node in the current branch.
@@ -143,27 +150,38 @@ func (s *parserState) peekCumWidth() int {
 	return s.cumWidth[len(s.cumWidth)-1]
 }
 
-// newParserState initializes a parserState with a root node and pre-allocated
-// arenas sized according to the tokenizer output.
-func newParserState(input string, out TokenizerOutput) parserState {
-	root := NewNode()
+// Reset returns the state to the default without reallocating new memory for slices.
+func (s *parserState) Reset() {
+	s.ast = AST{}
+	s.limits = Limits{}
+	s.breadcrumbs = s.breadcrumbs[:0]
+	s.breadcrumbs = append(s.breadcrumbs, 0) // returning back the Root node
+	s.cumWidth = s.cumWidth[:0]
+	s.cumWidth = append(s.cumWidth, 0) // assigning the initial root cumulative width
+	clear(s.skip[:])                   // removing any skipped tags
+	clear(s.openedTags[:])             // removing any opened tags
+	s.stack = s.stack[:0]
+	s.maxDepth = 1
+	s.lastNodeIdx = 0
+	s.totalTagNodes = 0
+	s.textNodes = 0
+	s.warnedMaxNodes = false
+	s.warnedMaxAttributes = false
+	s.warnedMaxParseDepth = false
+}
 
-	totalExpectedNodes := max(out.TagsTotal+out.TextTokens, 1)
-	nodes := make([]Node, 1, totalExpectedNodes)
-	nodes[0] = root
-
-	ast := AST{
-		Input:      input,
-		Nodes:      nodes,
-		Attributes: make([]Attribute, 0, out.Attributes),
-	}
+func newParserState() *parserState {
+	// 4 is just the normal max depth of the tree
+	breadcrumbs := make([]int, 1, 4) // automatically filled with zero on the index 0
+	cumWidth := make([]int, 1, 4)    // automatically filled with zero on the index 0
+	stack := make([]byte, 0, 4)
 
 	// TODO: breadcrumbs/cumWidth/stack are unbounded — consider enforcing a max nesting depth
 	// to prevent pathological input from causing excessive stack growth
-	return parserState{
-		ast:         ast,
-		breadcrumbs: []int{0},  // root is always present
-		cumWidth:    []int{0},  // root's cumulative width starts at 0
+	return &parserState{
+		breadcrumbs: breadcrumbs, // root is always present
+		cumWidth:    cumWidth,    // root's cumulative width starts at 0
+		stack:       stack,
 		maxDepth:    1,
 	}
 }

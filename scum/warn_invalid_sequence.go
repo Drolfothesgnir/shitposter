@@ -1,5 +1,7 @@
 package scum
 
+// WarnInvalidSequence adds [IssueUnexpectedSymbol] when a multi-char Tag
+// sequence is interrupted before it is complete.
 func WarnInvalidSequence(ctx *ActionContext) {
 	w := ctx.Bounds.Width
 	i := ctx.Idx

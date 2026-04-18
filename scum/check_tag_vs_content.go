@@ -22,7 +22,7 @@ func CheckTagVsContent(ctx *ActionContext) {
 	}
 
 	// if the opening tag spans the entire rest of the string
-	// the tag conisdered unclosed and the context is mutated accordingly
+	// the tag is considered unclosed and the context is mutated accordingly
 	if i+openWidth == n {
 		mutateWithOnlyOpeningTag(ctx, openWidth, false, false)
 		return

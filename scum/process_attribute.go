@@ -3,7 +3,11 @@ package scum
 // processAttribute converts an attribute token (key-value or flag) into an
 // [Attribute] and appends it to the most recently created or closed node
 // (state.lastNodeIdx).
-func processAttribute(state *parserState, tok Token) {
+func processAttribute(state *parserState, tok Token, warns *Warnings) {
+	if !canAppendAttribute(state, tok.Pos, warns) {
+		return
+	}
+
 	attr := Attribute{
 		Name:    tok.AttrKey,
 		Payload: tok.Payload,

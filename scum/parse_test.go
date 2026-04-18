@@ -892,3 +892,92 @@ func TestParse_TotalTagNodesAndTotalTextNodes(t *testing.T) {
 		})
 	}
 }
+
+func TestParseInto_ReusesASTBackingArrays(t *testing.T) {
+	d := testDict(t)
+	warns := newWarnings(t)
+	var ast AST
+
+	ParseInto(&ast, "pre $$bold$$ post", &d, warns)
+	require.Empty(t, warns.List())
+	require.Greater(t, cap(ast.Nodes), 1)
+
+	nodesCap := cap(ast.Nodes)
+	attrsCap := cap(ast.Attributes)
+	firstNode := &ast.Nodes[0]
+
+	warns = newWarnings(t)
+	ParseInto(&ast, "plain", &d, warns)
+
+	require.Empty(t, warns.List())
+	require.Equal(t, nodesCap, cap(ast.Nodes))
+	require.Equal(t, attrsCap, cap(ast.Attributes))
+	require.Same(t, firstNode, &ast.Nodes[0])
+	require.Len(t, ast.Nodes, 2)
+	require.Equal(t, "plain", ast.Text())
+}
+
+func TestParseInto_MaxNodesExceeded(t *testing.T) {
+	d := testDict(t)
+	d.Limits.MaxNodes = 2
+	warns := newWarnings(t)
+	var ast AST
+
+	ParseInto(&ast, "a $$b$$ c", &d, warns)
+
+	require.Len(t, ast.Nodes, 2)
+	require.LessOrEqual(t, cap(ast.Nodes), d.Limits.MaxNodes)
+	requireWarningIssue(t, warns, IssueMaxNodesExceeded)
+}
+
+func TestParseInto_MaxAttributesExceeded(t *testing.T) {
+	d := testDict(t)
+	d.Limits.MaxAttributes = 1
+	warns := newWarnings(t)
+	var ast AST
+
+	ParseInto(&ast, "[link]!href{https://example.com}!title{hello}", &d, warns)
+
+	require.Len(t, ast.Attributes, 1)
+	require.LessOrEqual(t, cap(ast.Attributes), d.Limits.MaxAttributes)
+	requireWarningIssue(t, warns, IssueMaxAttributesExceeded)
+}
+
+func TestParseInto_MaxParseDepthExceeded(t *testing.T) {
+	d := testDict(t)
+	d.Limits.MaxParseDepth = 1
+	warns := newWarnings(t)
+	var ast AST
+
+	ParseInto(&ast, "$$bold *italic*$$", &d, warns)
+
+	requireWarningIssue(t, warns, IssueMaxParseDepthExceeded)
+	for _, n := range ast.Nodes {
+		require.NotEqual(t, byte('*'), n.TagID)
+	}
+}
+
+func TestNewDictionary_NegativeParseLimits(t *testing.T) {
+	tests := []Limits{
+		{MaxNodes: -1},
+		{MaxAttributes: -1},
+		{MaxParseDepth: -1},
+	}
+
+	for _, limits := range tests {
+		_, err := NewDictionary(limits)
+		require.Error(t, err)
+	}
+}
+
+func requireWarningIssue(t *testing.T, warns *Warnings, issue Issue) {
+	t.Helper()
+
+	for _, w := range warns.List() {
+		if w.Issue == issue {
+			return
+		}
+	}
+
+	require.Failf(t, "missing warning issue", "expected issue %v in %#v", issue, warns.List())
+}

@@ -1,6 +1,6 @@
 package scum
 
-// CheckCloseTag is a [Mutator], which checks if the current [Tag] has it's closing counterpart somewhere in the
+// CheckCloseTag is a [Mutator], which checks if the current [Tag] has its closing counterpart somewhere in the
 // input string and mutates the [ActionContext] accordingly.
 func CheckCloseTag(ctx *ActionContext) {
 	n := len(ctx.Input)

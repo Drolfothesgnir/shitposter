@@ -41,7 +41,7 @@ func processClosingTag(state *parserState, d *Dictionary, warns *Warnings, tok T
 		// text is the raw tag bytes, not the tag payload.
 		tok.Type = TokenText
 		tok.Payload = NewSpan(tok.Pos, tok.Width)
-		processText(state, tok)
+		processText(state, tok, warns)
 		return
 	}
 

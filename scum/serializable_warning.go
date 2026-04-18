@@ -2,18 +2,16 @@ package scum
 
 import "strconv"
 
-// SerializableWarning is a serializable human-readable description of the issue found in the input.
+// SerializableWarning is a JSON-friendly description of an issue found in the input.
 type SerializableWarning struct {
 	// Code is the numeric ID of the [Issue].
 	Code Issue `json:"code"`
-	// Codename is the string semi-human-readable name of the [Issue].
+	// Codename is the stable string name of the [Issue].
 	Codename string `json:"codename"`
 	// ByteIdx is the position of the starting byte of the erroneous sequence in the input.
 	ByteIdx int `json:"byte_idx"`
 	// SymbolIdx is the position of the symbol/letter causing the issue.
 	SymbolIdx int `json:"symbol_idx"`
-	// // Summary is the short description of the problem.
-	// Summary string `json:"summary"`
 	// Description is a human-readable description of the issue.
 	Description string `json:"description"`
 }
@@ -77,6 +75,9 @@ func init() {
 	mapIssueToCodename[issueIndex(IssueWarningsTruncated)] = "WARNINGS_TRUNCATED"
 	mapIssueToCodename[issueIndex(IssueInvalidRule)] = "INVALID_RULE"
 	mapIssueToCodename[issueIndex(IssueInvalidTagNameLen)] = "INVALID_TAG_NAME_LEN"
+	mapIssueToCodename[issueIndex(IssueMaxNodesExceeded)] = "MAX_NODES_EXCEEDED"
+	mapIssueToCodename[issueIndex(IssueMaxAttributesExceeded)] = "MAX_ATTRIBUTES_EXCEEDED"
+	mapIssueToCodename[issueIndex(IssueMaxParseDepthExceeded)] = "MAX_PARSE_DEPTH_EXCEEDED"
 
 	serializers[issueIndex(IssueUnexpectedEOL)] = serializeUnexpectedEOL
 	serializers[issueIndex(IssueUnexpectedSymbol)] = serializeUnexpectedSymbol
@@ -104,6 +105,9 @@ func init() {
 	serializers[issueIndex(IssueTagPayloadTooLong)] = serializeTagPayloadTooLong
 	serializers[issueIndex(IssueOpenCloseTagMismatch)] = serializeOpenCloseTagMismatch
 	serializers[issueIndex(IssueDuplicateNestedTag)] = serializeDuplicateNestedTag
+	serializers[issueIndex(IssueMaxNodesExceeded)] = serializeMaxNodesExceeded
+	serializers[issueIndex(IssueMaxAttributesExceeded)] = serializeMaxAttributesExceeded
+	serializers[issueIndex(IssueMaxParseDepthExceeded)] = serializeMaxParseDepthExceeded
 }
 
 type warnSerializer func(w Warning, d *Dictionary) SerializableWarning
@@ -147,6 +151,33 @@ func serializeWarningsTruncated(w Warning, d *Dictionary) SerializableWarning {
 		ByteIdx:  w.Pos,
 		// Summary:     mapIssueToSumm[w.Issue],
 		Description: "too many warnings; further warnings suppressed",
+	}
+}
+
+func serializeMaxNodesExceeded(w Warning, d *Dictionary) SerializableWarning {
+	return SerializableWarning{
+		Code:        w.Issue,
+		Codename:    mapIssueToCodename[issueIndex(w.Issue)],
+		ByteIdx:     w.Pos,
+		Description: "maximum AST node count reached; further nodes were omitted.",
+	}
+}
+
+func serializeMaxAttributesExceeded(w Warning, d *Dictionary) SerializableWarning {
+	return SerializableWarning{
+		Code:        w.Issue,
+		Codename:    mapIssueToCodename[issueIndex(w.Issue)],
+		ByteIdx:     w.Pos,
+		Description: "maximum AST attribute count reached; further attributes were omitted.",
+	}
+}
+
+func serializeMaxParseDepthExceeded(w Warning, d *Dictionary) SerializableWarning {
+	return SerializableWarning{
+		Code:        w.Issue,
+		Codename:    mapIssueToCodename[issueIndex(w.Issue)],
+		ByteIdx:     w.Pos,
+		Description: "maximum parse depth reached; further nested tag structure was omitted.",
 	}
 }
 

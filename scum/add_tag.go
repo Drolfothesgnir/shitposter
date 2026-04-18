@@ -1,6 +1,6 @@
 package scum
 
-// AddTag registers new [Tag] in the [Dictionary] and return [ConfigError] if the provided values are
+// AddTag registers a new [Tag] in the [Dictionary] and returns [ConfigError] if the provided values are
 // inconsistent or invalid.
 func (d *Dictionary) AddTag(name string, seq []byte, greed Greed, rule Rule, openID, closeID byte) error {
 

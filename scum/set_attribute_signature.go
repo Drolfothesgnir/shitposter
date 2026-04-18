@@ -9,7 +9,7 @@ import (
 // All symbols must be printable ASCII characters.
 // trigger must be unique among the Tags and the escape symbol.
 // trigger must be different from payloadStart and payloadEnd.
-// payloadStart and payloadEnd does not need to be unique and can be the same symbol.
+// payloadStart and payloadEnd do not need to be unique and can be the same symbol.
 func (d *Dictionary) SetAttributeSignature(trigger, payloadStart, payloadEnd byte) error {
 	// checking trigger uniqueness
 	if d.actions[trigger] != nil {

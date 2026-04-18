@@ -1,11 +1,79 @@
 # Performance Analysis: scum Parser and Tokenizer
 
-**Last Updated**: 2026-02-01  
+**Last Updated**: 2026-04-18  
 **System**: AMD Ryzen 9 6900HS, Linux, Go benchmark with `-benchmem -benchtime=3s`
 
 ---
 
-## Benchmark Results Summary (Current)
+## External-AST Model Benchmark (Current)
+
+Command:
+
+```bash
+go test -run '^$' -bench 'BenchmarkParseOuterAST' -benchmem -benchtime=3s -count=3 ./scum
+```
+
+The table uses the average of 3 runs. `Parse` is the return-AST wrapper. `ParseIntoCallerAST`
+uses one caller-owned AST reused across iterations. `ParseIntoPooledAST` gets an AST from a
+`sync.Pool`, parses into it, clears only ownership-sensitive fields, then returns it to the pool.
+
+| Input | Mode | ns/op | B/op | allocs/op | Speed vs `Parse` | Bytes vs `Parse` |
+|-------|------|-------|------|-----------|------------------|------------------|
+| Simple | `Parse` | 2,058 | 2,643 | 5 | baseline | baseline |
+| Simple | `ParseIntoCallerAST` | 1,667 | 1,361 | 4 | 19.0% faster | 48.5% less |
+| Simple | `ParseIntoPooledAST` | 1,681 | 1,362 | 4 | 18.3% faster | 48.5% less |
+| LongInput (~1KB) | `Parse` | 25,277 | 39,291 | 5 | baseline | baseline |
+| LongInput (~1KB) | `ParseIntoCallerAST` | 22,289 | 18,788 | 4 | 11.8% faster | 52.2% less |
+| LongInput (~1KB) | `ParseIntoPooledAST` | 21,712 | 18,806 | 4 | 14.1% faster | 52.1% less |
+| DeeplyNested | `Parse` | 1,140 | 1,361 | 5 | baseline | baseline |
+| DeeplyNested | `ParseIntoCallerAST` | 952 | 784 | 4 | 16.5% faster | 42.4% less |
+| DeeplyNested | `ParseIntoPooledAST` | 967 | 785 | 4 | 15.2% faster | 42.3% less |
+
+### Why External AST Wins
+
+The old return-AST model makes each `Parse` call start with an empty AST value. That is simple,
+but it means the parser must allocate fresh `Nodes` and `Attributes` backing arrays for every
+parse. Returning the AST by value is not the main cost: the AST header is small. The cost is that
+the arenas owned by that AST cannot be reused by the next parse.
+
+The external-AST model changes ownership:
+
+- The caller owns the `AST` and passes `*AST` to `ParseInto`.
+- The parser resets the AST metadata for the new input.
+- Existing `Nodes` and `Attributes` backing arrays are reused when their capacity is suitable.
+- Explicit limits still control memory retention: if `MaxNodes` or `MaxAttributes` is lower than
+  the reused backing capacity, `ParseInto` allocates a smaller arena instead of retaining the old
+  oversized one.
+
+This removes one allocation per parse in the measured cases and cuts bytes/op by roughly 42-52%.
+The remaining allocation pressure mostly comes from tokenization and warning storage, not AST arena
+creation.
+
+`ParseIntoCallerAST` is the best model when one worker or loop can keep a local AST and reuse it
+serially. It has no pool overhead and makes ownership obvious.
+
+`ParseIntoPooledAST` is useful for request-style workloads where each parse needs a separate AST
+object but the application can return ASTs to a pool after rendering/serialization is complete.
+Pooling is not magic: it performs about the same as direct caller-owned reuse, sometimes a little
+slower from `sync.Pool` overhead, sometimes a little faster from run-to-run noise. Its value is
+sharing warmed AST arenas across independent requests.
+
+### Ownership Rules
+
+- Do not reuse or return an AST to a pool while any renderer, serializer, or caller still reads it.
+- Reusing an AST invalidates its previous `Input`, `Nodes`, and `Attributes` contents.
+- Pooled ASTs can retain large arenas. Use `MaxNodes` / `MaxAttributes`, or drop oversized ASTs
+  before returning them to an application-level pool.
+- Unit tests should usually use plain AST values. Pooling belongs in benchmarks or explicit pool
+  lifecycle tests, otherwise ownership bugs can get hidden.
+
+---
+
+## Older Full Benchmark Snapshot (2026-02-01)
+
+> Historical note: the remaining profile details and recommendations from this
+> snapshot predate parser-state pooling and the external-AST `ParseInto` model.
+> Treat them as baseline context, not current profiler output.
 
 | Benchmark | ops/sec | ns/op | Allocs | Bytes/op |
 |-----------|---------|-------|--------|----------|

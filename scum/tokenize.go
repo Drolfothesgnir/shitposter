@@ -32,7 +32,7 @@ type TokenizerState struct {
 
 // Tokenize transforms the input string into the sequence of Tokens.
 // It can emit Warnings during the process.
-// NOTE: i will likely reuse the warns slice during the parsing, so it's passed as reference instead of being created here.
+// warns must be non-nil.
 func Tokenize(d *Dictionary, input string, warns *Warnings) (out TokenizerOutput) {
 	n := len(input)
 	out.Tokens = make([]Token, 0, n/(ByteToTokenRatio+1))
@@ -55,7 +55,7 @@ func Tokenize(d *Dictionary, input string, warns *Warnings) (out TokenizerOutput
 
 		act, isSpecial := d.Action(b)
 
-		// if the current byte is not a special one, we simply move forward withe the loop
+		// if the current byte is not a special one, we simply move forward with the loop
 		if !isSpecial {
 			i++
 			continue

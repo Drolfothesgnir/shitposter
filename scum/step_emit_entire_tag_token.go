@@ -1,5 +1,6 @@
 package scum
 
+// StepEmitEntireTagToken emits the current Tag bounds as a [TokenTag].
 func StepEmitEntireTagToken(ctx *ActionContext) bool {
 	w := ctx.Bounds.Raw.End - ctx.Bounds.Raw.Start
 

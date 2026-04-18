@@ -1,6 +1,6 @@
 package scum
 
-// Issue defines types of problems we might encounter during the tokenizing or the parsing processes.
+// Issue defines types of problems that can occur during configuration, tokenization, or parsing.
 type Issue int
 
 const (
@@ -12,7 +12,7 @@ const (
 	// but the input string was terminated.
 	IssueUnexpectedEOL Issue = issueCodeBase + iota
 
-	// IssueUnexpectedSymbol usually occurs during the tokenization, when the occured symbol breaks the Tag's
+	// IssueUnexpectedSymbol usually occurs during tokenization when a symbol breaks the Tag's
 	// opening or closing sequence.
 	IssueUnexpectedSymbol
 
@@ -26,7 +26,7 @@ const (
 	// IssueInvalidGreedLevel means the Tag's Greed level is greater than [MaxGreedLevel].
 	IssueInvalidGreedLevel
 
-	// IssueInvalidRule means the [Rule] is not applicable to the current [Tag], or it's value is higher than [MaxRule].
+	// IssueInvalidRule means the [Rule] is not applicable to the current [Tag], or its value is higher than [MaxRule].
 	IssueInvalidRule
 
 	// IssueAmbiguousTagType means that the [Tag] has both [Tag.OpenID] and [Tag.CloseID] set, which means
@@ -47,14 +47,14 @@ const (
 	// IssueInvalidTagSeq occurs when the Tag's string representation contains unprintable chars.
 	IssueInvalidTagSeq
 
-	// IssueRuleInapplicable occurs when the [Rule] is not avaliable due to [Greed] level or the [Tag] being multi-char.
+	// IssueRuleInapplicable occurs when the [Rule] is not available due to [Greed] level or the [Tag] being multi-char.
 	IssueRuleInapplicable
 
 	// IssueRedundantEscape occurs when the next byte after the escape symbol does not trigger any [Action], and
-	// considered a plain text.
+	// is considered plain text.
 	IssueRedundantEscape
 
-	// IssueUnprintableChar occurs when the symbol is not printable ASCII character
+	// IssueUnprintableChar occurs when the symbol is not a printable ASCII character.
 	IssueUnprintableChar
 
 	// IssueWarningsTruncated occurs when there are too many Warnings recorded.
@@ -85,7 +85,7 @@ const (
 	// IssueNegativeLimit occurs during configuration when any value in [Limits] is negative.
 	IssueNegativeLimit
 
-	// IssueTagKeyTooLong occurs when the opening Tag sequence is longer [Limits.MaxKeyLen].
+	// IssueTagKeyTooLong occurs when the opening Tag sequence is longer than [Limits.MaxKeyLen].
 	IssueTagKeyTooLong
 
 	// IssueTagPayloadTooLong occurs when the Tag's payload is longer than [Limits.MaxPayloadLen].
@@ -96,6 +96,18 @@ const (
 
 	// IssueDuplicateNestedTag occurs when the Tag is a descendant of the Tag with the same ID.
 	IssueDuplicateNestedTag
+
+	// IssueMaxNodesExceeded occurs when [Limits.MaxNodes] is reached and the parser omits
+	// additional AST nodes.
+	IssueMaxNodesExceeded
+
+	// IssueMaxAttributesExceeded occurs when [Limits.MaxAttributes] is reached and the parser
+	// omits additional attributes.
+	IssueMaxAttributesExceeded
+
+	// IssueMaxParseDepthExceeded occurs when [Limits.MaxParseDepth] is reached and the parser
+	// omits additional nested tag structure.
+	IssueMaxParseDepthExceeded
 
 	maxIssueCode
 )

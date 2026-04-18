@@ -29,7 +29,7 @@ type Bounds struct {
 	// found in the input. It's only relevant for the greedy opening and
 	// universal Tags, since a closing Tag can't have its own closing Tag.
 	//
-	// WARNING: use it only for get the complementary closing Tag's width.
+	// WARNING: use it only to get the complementary closing Tag's width.
 	// For the trigger Tag's width use Width.
 	CloseWidth int
 
@@ -45,7 +45,7 @@ type Bounds struct {
 	KeyLenLimitReached bool
 
 	// PayloadLimitReached is true when the Tag's or attribute's payload is
-	// longer then [Limits.MaxAttrPayloadLen]
+	// longer than [Limits.MaxAttrPayloadLen].
 	PayloadLimitReached bool
 }
 
@@ -115,7 +115,7 @@ func NewActionContext(d *Dictionary, s *TokenizerState, w *Warnings, input strin
 	}
 }
 
-// Step is a function which is a part of the Action, responsibe for the one single part.
+// Step is one part of an [Action].
 // Step returns true when it can handle the case completely.
 type Step func(*ActionContext) bool
 
@@ -147,8 +147,8 @@ func (p *Plan) AddStep(s Step) {
 	p.Steps = append(p.Steps, s)
 }
 
-// Mutator is a function which recieves [ActionContext], does some manipulations with it,
-// like checks or preparations, and modifies it's state.
+// Mutator receives an [ActionContext], performs checks or preparations, and
+// modifies its state.
 type Mutator func(*ActionContext)
 
 // MutateWith makes a [Step] out of a [Mutator] function. It's used to allow mutators

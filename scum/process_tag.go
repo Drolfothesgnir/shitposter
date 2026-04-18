@@ -18,7 +18,7 @@ func processTag(state *parserState, d *Dictionary, warns *Warnings, tok Token) {
 	tag := d.tags[tok.Trigger]
 
 	if tag.Greed > NonGreedy {
-		appendGreedyNode(state, tok)
+		appendGreedyNode(state, tok, warns)
 		return
 	}
 

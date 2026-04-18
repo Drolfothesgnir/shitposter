@@ -5,10 +5,10 @@ import (
 	"fmt"
 )
 
-// ConfigError describes an error which occures during the configuration of the [Dictionary], like improper Tags.
+// ConfigError describes an error that occurs during [Dictionary] configuration.
 type ConfigError struct {
-	Issue Issue // Issue is a kind or the problem occured.
-	Err   error // Err contains original error created during some configuration process.
+	Issue Issue // Issue is the kind of configuration problem.
+	Err   error // Err contains the original error created during configuration.
 }
 
 func (e *ConfigError) Unwrap() error {

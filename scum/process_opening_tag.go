@@ -22,11 +22,26 @@ func processOpeningTag(state *parserState, d *Dictionary, warns *Warnings, tok T
 		return
 	}
 
+	if !canPushParseDepth(state, tok.Pos, warns) {
+		state.incrementCumWidth(tok.Width)
+		if closeID := d.tags[tok.Trigger].CloseID; closeID != 0 {
+			state.skip[closeID]++
+		}
+		return
+	}
+
 	node := NewNode()
 	node.Type = NodeTag
 	node.TagID = tok.Trigger
 	node.Span = NewSpan(tok.Pos, tok.Width)
-	idx := appendNode(&state.ast, state.peekCrumb(), node)
+	idx, ok := appendStateNode(state, state.peekCrumb(), node, tok.Pos, warns)
+	if !ok {
+		state.incrementCumWidth(tok.Width)
+		if closeID := d.tags[tok.Trigger].CloseID; closeID != 0 {
+			state.skip[closeID]++
+		}
+		return
+	}
 	state.pushCrumb(idx)
 	state.pushStack(tok.Trigger)
 	state.pushCumWidth(tok.Width)

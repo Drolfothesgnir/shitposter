@@ -1,8 +1,8 @@
 // # Shitposter's Completely User-customizable Markup.
 //
-// It is expected to be used to define INLINE markup for the post content.
+// It is intended for inline markup in post content.
 // You can set opening, closing, universal and greedy tags along with the escape symbol dynamically during runtime.
-// Tags will have the tag name of your choice and the end AST will be built based on it.
+// Tags will have the tag name of your choice and the final AST will be built based on it.
 //
 // WARNING: It works exclusively with simple 1-byte long ASCII symbols as tags.
 //
@@ -13,19 +13,27 @@
 //  3. ALL special symbols must be 1-byte long printable ASCII characters.
 //  4. Nested tags with the same ID will have no effect. Children of the repeated descendants will become
 //     children of the "oldest" original tag and the duplicates will not end up in the final AST.
-//  5. A universal Tag is one, which has both the opening and the closing tags the same.
+//  5. A universal Tag uses the same Tag as opener and closer.
 //  6. The parser will try to make sense out of the User's gibberish and will not return any errors but only a slice of [Warning].
 //  7. The trigger Tag is one which starts the Action.
 //  8. The complementary Tag is one which closes the greedy Tag's body.
+//
+// # Parsing model.
+//
+// Use [Parse] for the convenient return-AST API. Use [ParseInto] when the caller
+// owns an [AST] and wants to reuse its [AST.Nodes] and [AST.Attributes] backing
+// arrays across parses. Reusing an AST invalidates its previous contents; do not
+// return an AST to a pool while any renderer, serializer, or caller is still
+// reading it.
 //
 // # Behaviour. This will likely change in the future.
 //
 // Properties of Tags:
 //
-//  1. ID. Each Tag has unique byte, which triggers the tag's corresponding Action and starts the process of Tokenization.
+//  1. ID. Each Tag has a unique byte, which triggers the tag's corresponding Action and starts the process of Tokenization.
 //     It also serves as unique ID of the Tag and is used for fast lookup for the Tag's info.
 //
-//  2. Name. Each Tag has Name string associated with it. It does not need to be unique. It's used during the parsing process
+//  2. Name. Each Tag has a Name string associated with it. It does not need to be unique. It is used during the parsing process
 //     for naming the AST's Node.
 //
 //  3. Greed. If a Tag has Greed level > 0, it becomes "greedy". Each Tag can have 3 Greed levels:
@@ -35,7 +43,7 @@
 //     name "BOLD", string representation "$$" and Greed 0. In string "$$hello$$", the first token will be with ID '$' and have value "$$".
 //
 //     3.2. 1 Level. All bytes starting from the opening tag and including the closing tag will be considered as this token's value. If
-//     the closing tag is not present during the tokenization, the text token will be returned and it's value will
+//     the closing tag is not present during the tokenization, the text token will be returned and its value will
 //     be the opening tag string representation only. All next characters will be tokenized normally.
 //
 //     3.2.1. Example 1: Imagine a tag with id '(', name "URL", tag string "(" and Greed level 1. Imagine also its closing tag with the same
@@ -47,11 +55,11 @@
 //
 //     3.3 2 Level. Same logic as with Level 1, but in the case of missing closing tag, the rest of the string will still be consumed, and
 //     token will be for tag not a text. Example: The same setting as in the Example 2, 3.2.2. - "[**some link**](https://google.com". The
-//     substring, starting from "(" and to the end, will be a token and it's internal value will be "https://google.com".
+//     substring, starting from "(" and to the end, will be a token and its internal value will be "https://google.com".
 //
 //     3.4 Payload. The Greedy Tag's payload is considered as a text node and will be accounted as a plain text.
 //
-//  4. Sequence. You can construct your tags from at most [MaxTagLength] (4 by default). You can create tag like this "$}{|". The Sequence
+//  4. Sequence. You can construct your tags from at most [MaxTagLen] (4 by default). You can create tag like this "$}{|". The Sequence
 //     is a slice of bytes with length of the defined tag, and with indexes corresponding to indexes of chars in the tag. For tag "$}{|"
 //     Sequence will be []byte{'$', '}', '{', '|'}.
 //
@@ -65,32 +73,32 @@
 //     5.2.1.	Example 1: '_' defines a Tag with name "UNDERLINE" and has
 //     Rule 1 on it. In string "image_from_.png" both '_' will be considered a plain text.
 //
-//     5.2.2. Example 2: In string "_image_from_net.jpg", only 2 last '_'
+//     5.2.2. Example 2: In string "_image_from_net.jpg", only the last two '_'
 //     symbols will be a plain text. The first '_' will trigger the Action for the "UNDERLINE" tag, because it has nothing on the left.
 //
-//     5.2.3. Example 3:  In string "_hello__", both the first and the last '_' will be considered a tokens, but the one before
+//     5.2.3. Example 3:  In string "_hello__", both the first and the last '_' will be considered tokens, but the one before
 //     the last will not, since it has "o" on the left and "_" on the right.
 //
 //     5.3 2 Rule - Tag-VS-Content Rule. Only available for single-byte GREEDY tags. When you have single char tag, like '`',
 //     and your text contains symbol "`", it will be interpreted as a closing tag. This might be a problem. Consider Example 1: '`' defines a greedy universal tag
 //     with name "CODE". In the string "here is some code: `const rawStr = `hello world`;`". In this case there will be tokens: type text with value ("here is some code: "),
 //     type tag with name "CODE" and value "`const rawStr = `", type text with value "hello world" and type tag with name "CODE" and value "`;`". It's likely
-//     not what the User intended. The Tag-VS-Content Rule solves this problem by imposing two conditions: 1) You can repeat symbol in tags how, but the lengths of
-//     the opening and closing tags must be the same. 2) Length of tags must differ ftom the length of the symbol sequence in the plain text.
+//     not what the User intended. The Tag-VS-Content Rule solves this problem by imposing two conditions: 1) You can repeat the trigger symbol in tags, but the lengths of
+//     the opening and closing tags must be the same. 2) Length of tags must differ from the length of the symbol sequence in the plain text.
 //     WARNING: Closing tag is any run of the trigger symbol whose length equals the opening run length k.
 //     To avoid accidental closure, choose k such that no run of length k appears inside the content.
 //
 //     5.3.1. Example 2: The setting from the example 1, but now we make tag length equal 3, by making each tag "```":
 //     "here is some code: ```const rawStr = `hello world`;```". Now the "CODE" tag will capture entire "```const rawStr = `hello world`;```" part.
 //
-//  6. Opening/Closing tag IDs. Each Tag has OpenID and ClosID fields. You have to set at least one of them to ensure the Parser will process them correctly. To make
-//     a Tag an opening tag, you have to set its ClosID value to something other than 0, to inform the Parser that this tag has to be closed with some other Tag.
-//     The same with the closing tags: just set the OpenID value to something. To make a Tag universal you have to set both values to the Tag's ID.
+//  6. Opening/Closing tag IDs. Each Tag has OpenID and CloseID fields. You have to set at least one of them to ensure the Parser will process them correctly. To make
+//     a Tag an opening tag, you have to set its CloseID value to something other than 0, to inform the Parser that this tag has to be closed with some other Tag.
+//     For closing tags, set the OpenID value. To make a Tag universal you have to set both values to the Tag's ID.
 //
 //     6.1. Example - The Tag expected to be closed with specific other Tag: Imagine you've defined the non-greedy single-byte Tag with name "LINK_TEXT_START",
-//     ID '[' and ClosID ']'. Then you've defined the non-greedy Tag with name "LINK_TEXT_END", ID ']' and OpenID '['. During the parsing of the tokens, the Parser,
-//     when first encounters the "LINK_TEXT_START", saves its ID to the stack. While the '[' is at the top of the stack and the Parser encounters a closing Tag
-//     it checks if the encountered Tag ID is equal to the "LINK_TEXT_START's" ClosID. What will happen next is a good question.
+//     ID '[' and CloseID ']'. Then you've defined the non-greedy Tag with name "LINK_TEXT_END", ID ']' and OpenID '['. During the parsing of the tokens, the Parser,
+//     when first encounters the "LINK_TEXT_START", saves its ID to the stack. While the '[' is at the top of the stack and the Parser encounters a closing Tag,
+//     it checks if the encountered Tag ID is equal to the "LINK_TEXT_START's" CloseID.
 //
 // Attributes.
 //
@@ -100,12 +108,12 @@
 //
 //     The flag Attribute definition - <marker><payload start>(name)<payload end>.
 //
-//     Example: tou have a Tag with name "TAG", ID '[' and a closing Tag for it with ID ']'. You define the Attribute marker as '!' and '{' and '}' as
-//     the payload opening and closing tags respectively. You use it by writing "[hello world]!attr1{foo-bar-001}!attr2{goodbye world}". You cam also create flag
-//     Attributes like this: [...]!{flagAttr1}!{flagAttr2}. You can combine valued and flag attributes. All attributes, that are following immediately after a Tag,
+//     Example: You have a Tag with name "TAG", ID '[' and a closing Tag for it with ID ']'. You define the Attribute marker as '!' and '{' and '}' as
+//     the payload opening and closing tags respectively. You use it by writing "[hello world]!attr1{foo-bar-001}!attr2{goodbye world}". You can also create flag
+//     Attributes like this: [...]!{flagAttr1}!{flagAttr2}. You can combine valued and flag attributes. All attributes immediately following a Tag
 //     will be considered this Tag's attributes.
 //
-//     Attribute will be attached to previous Tag, whether it's a normal tag or a text.
+//     Attributes attach to the previous node, whether it is a tag or text.
 //
 //     Example: in the input "$$hello$$ world!STYLE{color: \"#fff\"}", the STYLE attribute will be attached to the text node " world".
 //
@@ -114,22 +122,21 @@
 //
 // Escape symbol.
 //
-//   - You can define an Escape symbol, which, when encountered during the tokenization, will make the Tokenizer treat next character, whether it's special or
+//   - You can define an Escape symbol, which, when encountered during the tokenization, will make the Tokenizer treat the next character, whether it is special or
 //     a simple text character, as a plain text. Escape symbol can be only 1-byte long ASCII char.
 //     In case of the escape symbol being before non-special character, or being the last symbol in the input, it will be treated as a plain text,
-//     and a Warning will be returned. Escaping also available inside the attribute payload bodies. As for now, escape inside the payload body
-//     will not cause any Warnings even if it's placed before a non-special character. Live with it. As for now, escaping is not available inside greedy Tag's
-//     body. Live with it, too.
+//     and a Warning will be returned. Escaping is also available inside attribute payload bodies. Escapes inside attribute payload bodies
+//     do not currently produce Warnings when placed before non-special characters. Escaping is not available inside greedy Tag bodies.
 //
 // Scanning limits.
 //
-//   - Greedy Tags have limited length of the payload, defined by [Limits.MaxPayloadLen]. If after the reaching the maximum payload length,
-//     the complementary Tag was not found, the trigger Tag will be skipped as a plain text and a Warning of unclosed Greedy Tag will be added.
+//   - Greedy Tags have limited length of the payload, defined by [Limits.MaxPayloadLen]. If the complementary Tag is not found before
+//     the maximum payload length is reached, the trigger Tag will be skipped as a plain text and a Warning of unclosed Greedy Tag will be added.
 //     If the provided limit is 0, then the actual limit value will be [DefaultMaxPayloadLen].
 //
 //   - Tag-Vs-Content-rule-based Tags have length limits for opening and closing sequences and for the payload. [Limits.MaxKeyLen] defines
 //     the sequences limit and [Limits.MaxPayloadLen] defines the payload limit. If the opening Tag sequence is larger than the provided
-//     limit, the opening sequence will be trated as a plain text and a Warning will be added. The payload limit logic is the same as for
+//     limit, the opening sequence will be treated as a plain text and a Warning will be added. The payload limit logic is the same as for
 //     the greedy Tags. If either the [Limits.MaxKeyLen] or the [Limits.MaxPayloadLen] are provided as 0, they will be replaced with
 //     [DefaultMaxKeyLen] and [DefaultMaxPayloadLen] respectively.
 //
@@ -137,6 +144,20 @@
 //     defines the limit for the payload. If the attribute key length exceeds the limit without finding the payload start symbol, the attribute
 //     trigger is treated as plain text and a Warning with [IssueAttrKeyTooLong] is added. If the attribute payload length exceeds the limit
 //     without finding the payload end symbol, the attribute trigger is treated as plain text and a Warning with [IssueAttrPayloadTooLong] is added.
+//
+// Resource limits.
+//
+//   - [Limits.MaxNodes] limits the number of [Node] entries kept in the parsed [AST]. The root node counts toward this limit.
+//     When the limit is reached, additional nodes are omitted and [IssueMaxNodesExceeded] is added.
+//
+//   - [Limits.MaxAttributes] limits the number of [Attribute] entries kept in the parsed [AST].
+//     When the limit is reached, additional attributes are omitted and [IssueMaxAttributesExceeded] is added.
+//
+//   - [Limits.MaxParseDepth] limits the number of simultaneously open tag nodes. The root node is not counted.
+//     When the limit is reached, deeper opening tags are omitted and [IssueMaxParseDepthExceeded] is added.
+//
+// Zero resource limits mean unlimited. Unlike the scanning limits, resource
+// limits are not replaced with default values by [NewDictionary].
 //
 // # Config errors.
 //
@@ -168,14 +189,14 @@
 //
 // # Warnings.
 //
-// A [Warning] is added during tokenization when the input contains problematic but recoverable patterns. Warnings do not stop processing;
-// instead, the tokenizer attempts to make sense of the input. Each Warning contains an [Issue] and a position in the input.
+// A [Warning] is added during tokenization or parsing when the input contains problematic but recoverable patterns. Warnings do not stop
+// processing; instead, the tokenizer and parser attempt to make sense of the input. Each Warning contains an [Issue] and a position in the input.
 //
 //   - [IssueUnexpectedEOL] Added when a special symbol is found at the very end of the input where more content is expected.
 //     This includes: escape symbol at EOL, opening tag at EOL, attribute trigger at EOL, and attribute payload start at EOL.
 //
 //   - [IssueRedundantEscape] Added when the escape symbol precedes a non-special character. The escaped character is still
-//     included in the output as an escape sequence token.
+//     included in the output as plain text.
 //
 //   - [IssueUnclosedTag] Added when a greedy or grasping tag's opening sequence is found, but no matching closing sequence
 //     exists in the input. For [Greedy] tags, the opening tag is skipped as plain text. For [Grasping] tags, the entire rest
@@ -208,14 +229,22 @@
 //   - [IssueWarningsTruncated] Added automatically by [Warnings] when using [WarnOverflowTrunc] policy and the maximum capacity
 //     is reached. This warning replaces all subsequent warnings and indicates how many were dropped.
 //
-//   - [IssueOpenCloseTagMismatch] Added when the opening Tag awaits for the closing Tag with one ID but the next closing Tag has different ID.
+//   - [IssueOpenCloseTagMismatch] Added when the currently open Tag expects one closing Tag ID but the next closing Tag has a different ID.
 //     In this case the closing Tag will be treated as a plain text.
+//
+//   - [IssueDuplicateNestedTag] Added when a Tag is nested inside another open Tag with the same ID. The duplicate is omitted.
+//
+//   - [IssueMaxNodesExceeded] Added when [Limits.MaxNodes] is reached and further nodes are omitted.
+//
+//   - [IssueMaxAttributesExceeded] Added when [Limits.MaxAttributes] is reached and further attributes are omitted.
+//
+//   - [IssueMaxParseDepthExceeded] Added when [Limits.MaxParseDepth] is reached and deeper opening tags are omitted.
 package scum
 
-// Dictionary manages creation and deletion of Tags and their corresponding Actions.
+// Dictionary manages registration of Tags and their corresponding Actions.
 type Dictionary struct {
 	// Limits is a set of numbers defined to limit the excessive input scanning
-	// during the tokenization process and to reduce the damage of the potential DoS attacks.
+	// during tokenization and parsing and to reduce the damage of potential DoS attacks.
 	Limits Limits
 
 	// actions maps particular Tag's ID to its corresponding [Action].
@@ -230,27 +259,27 @@ type Dictionary struct {
 	// attrPayloadStart is special symbol, which marks the start of the Attribute's payload.
 	attrPayloadStart byte
 
-	// attrPayloadEnd is a special symbol, which masrks the end of the Attribute's payload.
+	// attrPayloadEnd is a special symbol, which marks the end of the Attribute's payload.
 	attrPayloadEnd byte
 
-	// escapeTrigger is a symbol which make the tokenizer treat the next symbol after it as non-special.
+	// escapeTrigger is a symbol which makes the tokenizer treat the next symbol after it as non-special.
 	escapeTrigger byte
 }
 
-// Tag allows to get particular Tag's info by providing its ID.
+// Tag returns a registered Tag by ID.
 func (d *Dictionary) Tag(id byte) (Tag, bool) {
 	t := d.tags[id]
 	return t, t.Seq.Len != 0
 }
 
-// Action allows to get particular Tag's [Action] by providing the Tag's ID.
+// Action returns a registered [Action] by Tag ID.
 func (d *Dictionary) Action(id byte) (Action, bool) {
 	a := d.actions[id]
 	return a, a != nil
 }
 
 // IsSpecial returns true if the provided char is registered inside the [Dictionary]
-// as either a [Tag], an attribute signature's part, an escape symbol, or an escape symbol;
+// as either a [Tag], an attribute signature part, or an escape symbol.
 func (d *Dictionary) IsSpecial(char byte) bool {
 	if char == 0 {
 		return false
@@ -267,10 +296,12 @@ func (d *Dictionary) IsSpecial(char byte) bool {
 	return d.actions[char] != nil
 }
 
-// NewDictionary creates new [Dictionary] with provided optional limits.
-// [Limits] struct must be provided, but You can fill relevant fields only.
-// All zero fields will be populated with default values.
-// Negative limits will cause [ConfigError].
+// NewDictionary creates a [Dictionary] with the provided limits.
+// [Limits] must be provided, but only relevant fields need to be set.
+// Zero scanning limits will be populated with default values. Zero resource
+// limits such as [Limits.MaxNodes], [Limits.MaxAttributes] and
+// [Limits.MaxParseDepth] mean unlimited.
+// Negative limits return [ConfigError].
 func NewDictionary(limits Limits) (Dictionary, error) {
 	if err := limits.Validate(); err != nil {
 		return Dictionary{}, err
